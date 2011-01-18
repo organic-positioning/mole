@@ -1,0 +1,4 @@
+# Service description file
+[D-BUS Service]
+Name=com.nokia.moled
+Exec=/usr/sbin/moled

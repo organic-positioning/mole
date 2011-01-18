@@ -1,0 +1,10 @@
+[Desktop Entry]
+Encoding=UTF-8
+Version=1.0
+Type=Application
+Name=Mole Daemon
+Exec=/usr/bin/osso-xterm "/usr/sbin/moled -d"
+Icon=moled
+Terminal=true
+X-HildonDesk-ShowInToolbar=true
+X-Osso-Type=application/x-executable

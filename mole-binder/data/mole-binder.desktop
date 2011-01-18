@@ -1,0 +1,9 @@
+[Desktop Entry]
+Encoding=UTF-8
+Version=1.0
+Type=Application
+Name=Mole Binder
+Exec=/usr/bin/osso-xterm "/usr/bin/mole-binder -d"
+Icon=mole-binder
+X-HildonDesk-ShowInToolbar=true
+X-Osso-Type=application/x-executable
