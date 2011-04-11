@@ -8,6 +8,9 @@ Domain
   Complexity: C1 ... C8
    C1 = 1-2 weeks for a person familiar with the code.
 
+- automatic binds
+- daemon code
+- https -> http problem with amazon
 
 INITIAL CODE RELEASE
 ======================
@@ -126,8 +129,10 @@ SERVER IMPROVEMENTS
 CLIENT BACKEND IMPROVEMENTS
 ===========================
 
-- Reduce CPU consumption
+- Reduce CPU/network consumption
   Variable scan rate and fetch rate.
+  Reduce accelerometer usage when doing scan detection
+  Configure cloud poll update frequency
 
   Priority: Medium
   Complexity: C2

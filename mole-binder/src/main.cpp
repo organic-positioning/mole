@@ -21,6 +21,7 @@
 #include <QApplication>
 
 #include "binder.h"
+#include "ground_truth.h"
 
 QString icon_root = "/usr/share/mole/icons/";
 
@@ -35,16 +36,15 @@ const int icon_size_small = 20;
 QString mole = QString("Mol")+QChar(0x00E9);
 QString mole_binder = mole+" Binder";
 
-void print_usage () {
-  qFatal("mole-binder\n -d debug\n -D verbose debug\n -s server_url\n -m mapserver_url\n");
+void usage ();
 
-}
 
 int main(int argc, char *argv[])
 {
   QApplication *app = new QApplication(argc, argv);
   QStringList args = QCoreApplication::arguments();
   QStringListIterator args_iter (args);
+  QString groundTruthFilename = "";
   args_iter.next(); // = mole-binder
 
   while (args_iter.hasNext()) {
@@ -61,9 +61,10 @@ int main(int argc, char *argv[])
     } else if (arg == "-m") {
       setting_mapserver_url_value = args_iter.next();      
       setting_mapserver_url_value.trimmed();
+    } else if (arg == "-T") {
+      groundTruthFilename = args_iter.next();
     } else {
-      print_usage ();
-      app->exit (0);
+      usage ();
     }
 
   }
@@ -96,13 +97,18 @@ int main(int argc, char *argv[])
   QWidget *main_widget = new QWidget (main_window);
   main_window->setCentralWidget (main_widget);
 
-  Binder *binder = new Binder (main_widget);
+  if (groundTruthFilename.isEmpty()) {
+    Binder *binder = new Binder (main_widget);
 
   //QLineEdit *edit = new QLineEdit (main_widget);
   //QToolButton *about_button = new QToolButton (main_widget);
   //about_button->setIcon (QIcon("about.png"));
-  app->connect (app, SIGNAL(aboutToQuit()), binder, SLOT(handle_quit()));
-
+    app->connect (app, SIGNAL(aboutToQuit()), binder, SLOT(handle_quit()));
+  } else {
+    GroundTruth *gt = new GroundTruth (main_widget, groundTruthFilename);
+    app->connect (app, SIGNAL(aboutToQuit()), gt, SLOT(handle_quit()));
+  }
+  
   //binder->show();
   main_window->show();
 
@@ -113,3 +119,12 @@ int main(int argc, char *argv[])
   return app->exec();
 }
 
+void usage () {
+  qCritical ()
+    << "mole-binder\n"
+    << "-d debug\n"
+    << "-D verbose debug\n"
+    << "-s server_url\n"
+    << "-m mapserver_url\n"
+    << "-T ground truth file (for evaluation)";
+}

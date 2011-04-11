@@ -12,8 +12,8 @@ MOBILITY += sensors
 
 
 # Input
-HEADERS += src/places.h src/settings.h src/common.h ../common/mole.h ../common/network.h ../common/util.h ../common/qt-utils.h ../common/timer.h ../common/models.h ../common/completer.h src/binder.h
-SOURCES += src/main.cpp src/settings.cpp src/places.cpp ../common/network.cpp ../common/util.cpp ../common/mole.cpp ../common/qt-utils.cpp ../common/timer.cpp ../common/models.cpp ../common/completer.cpp src/binder.cpp
+HEADERS += src/places.h src/settings.h src/common.h ../common/mole.h ../common/network.h ../common/util.h ../common/qt-utils.h ../common/timer.h ../common/models.h ../common/completer.h src/binder.h src/ground_truth.h
+SOURCES += src/main.cpp src/settings.cpp src/places.cpp ../common/network.cpp ../common/util.cpp ../common/mole.cpp ../common/qt-utils.cpp ../common/timer.cpp ../common/models.cpp ../common/completer.cpp src/binder.cpp src/ground_truth.cpp
 
 LIBS += -L/usr/lib -lqjson
 #LIBS += -L../qjson-build-desktop/lib -lqjson
