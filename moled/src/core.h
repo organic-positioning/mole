@@ -18,18 +18,10 @@
 #ifndef CORE_H_
 #define CORE_H_
 
-#include <QtCore>
-#include <QtDBus>
-#include <QCoreApplication>
-//#include <QSystemNetworkInfo>
-//#include <QNetworkConfigurationManager>
-//#include <NetworkManager/NetworkManager.h>
-#include <QNetworkInterface>
-
-#include "moled.h"
 #include "localizer.h"
-#include "whereami.h"
-#include "../common/speedsensor2.h"
+//#include "whereami.h"
+//#include "../common/speedsensor2.h"
+#include "../../common/speedsensor.h"
 
 #ifdef Q_WS_MAEMO_5
 #include "scanner-maemo.h"
@@ -59,12 +51,13 @@ public slots:
 
 private:
   Localizer *localizer;
-  WhereAmI *whereAmI;
+  //WhereAmI *whereAmI;
   Binder *binder;
   Scanner *scanner;
 
 #ifdef Q_WS_MAEMO_5
-  SpeedSensor2 *speedsensor;
+  SpeedSensor *speedsensor;
+  //SpeedSensor2 *speedsensor;
 #endif
 
 };

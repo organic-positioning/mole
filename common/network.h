@@ -18,11 +18,6 @@
 #ifndef NETWORK_H_
 #define NETWORK_H_
 
-#include <QtCore>
-#include <QNetworkRequest>
-#include <QNetworkReply>
-//#include <QNetworkCookie>
-
 #include "mole.h"
 #include "util.h"
 

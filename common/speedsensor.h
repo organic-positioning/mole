@@ -36,36 +36,32 @@ class SpeedSensor : public QObject, public QAccelerometerFilter
  
     public:
  
-  SpeedSensor(QObject* parent = 0);
+  SpeedSensor(QObject* parent = 0, int onPeriodMS = 0, int offPeriodMS = 0);
   void shutdown();
  
   private slots:
  
   // Override of QAcclerometerFilter::filter(QAccelerometerReading*)
   bool filter(QAccelerometerReading* reading);
-  void update_speed();
+  void updateSpeed();
+  void handleTimeout ();
  
  private:
  
-  QAccelerometer* m_sensor;
-  // acceleration vector
+  QAccelerometer* sensor;
 
-  int inst;
-  qreal accel_inst[25][3];
-  qreal accel_ewma[3];
+  bool on;
 
-  // scalar
-  qreal speed;
+  QTimer timer;
+  qreal magSum;
+  int magSumCount;
 
-  bool moving;
-  int moving_count;
-  bool startup;
+  const int onPeriodMS;
+  const int offPeriodMS;
 
-  QTimer *update_timer;
-
-  QTime log_time;
-  QTextStream stream;
-  QFile log_file;
+  //QTime log_time;
+  //QTextStream stream;
+  //QFile log_file;
 };
 
 

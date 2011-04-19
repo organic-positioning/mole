@@ -15,10 +15,21 @@
  * limitations under the License.
  */
 
-#ifndef OILD_H_
-#define OILD_H_
+#ifndef MOLED_H_
+#define MOLED_H_
 
-#include "../common/mole.h"
-#include "../common/network.h"
+//#include "whereami.h"
+//#include "../common/speedsensor2.h"
+#include "../../common/speedsensor.h"
+#include "../../common/network.h"
 
-#endif /* OILD_H_ */
+#define DEFAULT_LOG_FILE    "/var/log/moled.log"
+#define DEFAULT_CONFIG_FILE "/etc/moled.conf"
+#define DEFAULT_ROOT_PATH   "/opt/var/lib"
+#define DEFAULT_LOCAL_PORT  7070
+
+#define MOLE_MAPSERVER_URL_CHOP 12
+// CHOP => number of characters between slash and end + 1 (this should be done programmatically....)
+
+
+#endif /* MOLED_H_ */

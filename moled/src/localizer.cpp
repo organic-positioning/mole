@@ -61,7 +61,7 @@ Localizer::Localizer(QObject *parent, Binder *_binder) :
   network_success_level = 10;
 
   // map dir created/checked in init_mole_app
-  QString map_dir_name = app_root_dir->absolutePath();
+  QString map_dir_name = rootDir.absolutePath();
   map_dir_name.append ("/map");
   map_root = new QDir (map_dir_name);
 
@@ -394,12 +394,14 @@ void Localizer::localize () {
   stats->set_macs_seen_size (active_macs->size());
   stats->set_total_area_count (valid_areas);
 
+
   if (verbose) {
     qDebug() << "areas top "<< max_c_area << " c=" << max_c
 	     << " count=" << potential_areas.size()
 	     << " valid=" << valid_areas 
 	     << " nomap=" << (signal_maps->size() - valid_areas);
   }
+
 
   if (potential_areas.size() == 0) {
     qDebug() << "eliminated all areas";
@@ -642,7 +644,7 @@ void Localizer::fill_area_cache() {
   if (!loud_mac.isEmpty()) {
 
     QNetworkRequest request;
-    QString url_str = setting_server_url_value;
+    QString url_str = mapServerURL;
     QUrl url(url_str.append("/getAreas"));
 
     url.addQueryItem ("mac", loud_mac);
@@ -655,7 +657,7 @@ void Localizer::fill_area_cache() {
     //cache_network_manager->get (request);
 
     if (!mac_reply_in_flight) {
-      mac_reply = network_access_manager->get (request);
+      mac_reply = networkAccessManager->get (request);
       qDebug () << "mac_reply creation " << mac_reply;  
       connect (mac_reply, SIGNAL(finished()), 
 	       SLOT (mac_to_areas_response()));
@@ -803,7 +805,7 @@ void Localizer::request_area_map (QString area_name, int /*version*/) {
 
   QNetworkRequest request;
 
-  QString area_url(setting_mapserver_url_value);
+  QString area_url(staticServerURL);
   area_url.append("/map");
   area_url = area_url.trimmed ();
   area_url.append ("/");
@@ -836,7 +838,7 @@ void Localizer::request_area_map (QString area_name, int /*version*/) {
 
   // TODO move up
   if (!area_map_reply_in_flight) {
-    area_map_reply = network_access_manager->get (request);
+    area_map_reply = networkAccessManager->get (request);
     qDebug () << "area_map_reply creation " << area_map_reply;  
     connect (area_map_reply, SIGNAL(finished()), 
 	     SLOT (area_map_response()));

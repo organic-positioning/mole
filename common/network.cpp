@@ -31,6 +31,9 @@ void set_network_request_headers (QNetworkRequest &request) {
   }
   */
 
+  QString agent = "moled/";
+  agent.append (QString::number(MOLE_VERSION));
+
   request.setRawHeader(QString("User-Agent").toAscii(),
                        settings->value("user_agent").toString().toAscii());
 
@@ -45,12 +48,15 @@ void set_network_request_headers (QNetworkRequest &request) {
   cookies.append (settings->value("cookie").toString());
 
   cookies.append ("; mole_version=");
-  cookies.append (settings->value("version").toString());
+  //cookies.append (settings->value("version").toString());
+  cookies.append (QString::number(MOLE_VERSION));
 
   cookies.append ("; session=");
   cookies.append (settings->value("session").toString());
 
+  //qDebug () << "cookie " << settings->value("cookie").toString();
   //qDebug () << "session " << settings->value("session").toString();
+  //qDebug () << "mole_version " << settings->value("mole_version").toString();
 
   request.setRawHeader(QString("Cookie").toAscii(),
                        cookies.toAscii());

@@ -20,7 +20,7 @@
 
 #include <QtCore>
 
-#include "../common/sig.h"
+#include "../../common/sig.h"
 
 //Q_DECLARE_METATYPE(Sig)
 

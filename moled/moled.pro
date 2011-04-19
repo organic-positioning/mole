@@ -29,8 +29,8 @@ maemo5 {
 
 # MOBILITY += systeminfo bearer
 
-HEADERS += src/binder.h ../common/util.h src/scan.h src/localizer.h src/core.h src/whereami.h ../common/overlap.h ../common/network.h ../common/sig.h src/moled.h ../common/mole.h ../common/speedsensor2.h ../common/speedsensor.h
-SOURCES += src/main.cpp src/binder.cpp ../common/util.cpp src/scan.cpp src/localizer.cpp src/core.cpp src/whereami.cpp ../common/overlap.cpp ../common/network.cpp ../common/sig.cpp ../common/mole.cpp ../common/speedsensor2.cpp ../common/speedsensor.cpp
+HEADERS += src/binder.h ../common/util.h src/scan.h src/localizer.h src/core.h ../common/overlap.h ../common/network.h ../common/sig.h src/moled.h ../common/mole.h ../common/speedsensor2.h ../common/speedsensor.h
+SOURCES += src/binder.cpp ../common/util.cpp src/scan.cpp src/localizer.cpp src/core.cpp ../common/overlap.cpp ../common/network.cpp ../common/sig.cpp ../common/mole.cpp ../common/speedsensor2.cpp ../common/speedsensor.cpp
 
 
 FORMS += 

@@ -26,9 +26,13 @@
 QString icon_root = "/usr/share/mole/icons/";
 
 #ifdef Q_WS_MAEMO_5
+const int UI_WIDTH = 800;
+const int UI_HEIGHT = 400;
 const int icon_size_reg = 64;
 const int icon_size_small = 40;
 #else
+const int UI_WIDTH = 510;
+const int UI_HEIGHT = 240;
 const int icon_size_reg = 32;
 const int icon_size_small = 20;
 #endif

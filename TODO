@@ -1,200 +1,62 @@
 
-Domain
-======
+SPRINT 1: Low Hanging Fruit - Refactoring
+- daemonize code and start on install/restart; optify - 3pt
+- https -> http problem with amazon - 1pt
+- rm displayed client/server bits of username check-in - 1pt
+- refactor client into like local socket daemon, but don't define API
+yet - 3pt
+- Check again for memory leaks - 1pt
+- Very basic client check that clock is > some current date
 
-- Topic
+SPRINT 2: Local Socket API
+- implement local socket API - 3pt
+- apply scans locally first - 3pt
+- Reduce CPU/network consumption
+  Variable scan rate and fetch rate.
+  Reduce accelerometer usage when doing scan detection
+  Configure cloud poll update frequency - 3pt
 
-  Priority: Low, Medium, High
-  Complexity: C1 ... C8
-   C1 = 1-2 weeks for a person familiar with the code.
-
-- automatic binds
-- daemon code
-- https -> http problem with amazon
-
-INITIAL CODE RELEASE
-======================
-
-- Private information out of compiled code
-  
-  Priority: High
-  Complexity: C1
-  Date assigned: Oct 26 2010
-  Date completed: Oct 27 2010
-
-- Prune off Posti code
-  
-  Priority: Medium
-  Complexity: C1
-  Date assigned: Oct 26 2010
-  Date completed:
+- Client should work in different network availability environments
+  Test binding when wifi turned off and only 3g is available
 
 
-- Version
-  As a developer, I want to be able to see what version the client and
-  server are running.  Does a non-number cause an error?
+SPRINT 3:
+- automatic binds - 3pt
+- icon: compass in/over a building?  over stata?
 
-  Priority: Low
-  Complexity: C1
-  Date assigned: Oct 26 2010
-  Date completed: Oct 29 2010
-
-INITIAL PACKAGE RELEASE
-======================
-
-- Icons
-  As a user, I want Mole to have a recognizable, sensible icon.  DOD:
-  A sensible icon shows up in Maemo and Ubuntu clients
-
-  Priority: Low
-  Complexity: C1
-  Date assigned: Oct 26 2010
-  Date completed:
-
+SPRINT -Unassigned
+- Periodic Statistics sent from client and recorded appropriately - 3pt
 
 - Privacy Policy and Terms of Service
   User needs to accept terms when installing software on install.
   Might not ever use Binder, so needs to accept when install.
   Need to create terms and policy with Legal.
-  But terms only apply when directing to Nokia servers.
-  
-  Priority: Medium
-  Complexity: C2
-  Date assigned: Oct 26 2010
-  Date completed:
-
+  But terms only apply when directing to Nokia servers. - 5pt
 
 - Reliability and Alarms
   As a user, the regular system should be available most of the time:
   DOD: A server-side alert system is put in place to monitor the two
-  components
-
-  Priority: Medium
-  Complexity: C2
-  Date assigned: Oct 26 2010
-  Date completed:
-
-
-EVALUATION
-==========
-
-- Periodic Statistics sent from client and recorded appropriately
-
-  Priority: Medium
-  Complexity: C2
-  Date assigned: Oct 26 2010
-
-PACKAGING
-=========
-
-- Background daemon on Linux and Maemo
-  As a user, I want the moled daemon to run in the background and on
-  startup, and to generate useable logs that can help with debugging.
-  DOD: A package that does this.  When moled is run as root, put HOME
-  file in different place (not ~root)
-
-  Priority: Low
-  Complexity: C2
-  Date assigned: Oct 26 2010
-  
-- Local Development and Testing
-  As a developer, I want to be able to run a local version easily.
-  DOD: Ability to point client at alternative server simply; passwords
-  are not in code; run server anywhere
-
-  Priority: High
-  Complexity: C1
-  Date assigned: Oct 26 2010
-  Date completed: Oct 29 2010
-
-SERVER IMPROVEMENTS
-===================
+  components - 5pt
 
 - Filter bad client info: add regex filter for bad bssids sent to
-  server
-
-  Priority: Low
-  Complexity: C1
-  Date assigned: Oct 26 2010
-
+  server - 1pt
 
 - "fillAreaCache:631 - loop through results" -- we seem to be adding
-  and then dropping results too frequently
+  and then dropping results too frequently - 3pt
 
-  Priority: Low
-  Complexity: C1
-  Date assigned: Oct 26 2010
-
-
-CLIENT BACKEND IMPROVEMENTS
-===========================
-
-- Reduce CPU/network consumption
-  Variable scan rate and fetch rate.
-  Reduce accelerometer usage when doing scan detection
-  Configure cloud poll update frequency
-
-  Priority: Medium
-  Complexity: C2
-  Date assigned: Oct 26 2010
-
-
-- Remove virtual APs / reduce each AP to one real one
-
-  Priority: Low
-  Complexity: C2
-  Date assigned: Oct 29 2010
-
-
-- Eliminate memory leaks
-  Are all scans on Maemo client being deleted?
-  There seems to be a very small memory leak.
-
-  Priority: Medium
-  Complexity: C1
-  Date assigned: Oct 26 2010
-
-
-- Client should work in different network availability environments
-  Test binding when wifi turned off and only 3g is available
-
-  Priority: Low
-  Complexity: C2
-  Date assigned: Oct 26 2010
-
+- Remove virtual APs / reduce each AP to one real one - 3pt
 
 - User should be able to reset and clean cache
   Cache should be placed in correct place in Ubuntu and Maemo
   (optification)
-  Base this on a global configuration file
+  Base this on a global configuration file - 1pt
+ 
+- Bigger feedback window - 1pt
 
-  Priority: Low
-  Complexity: C2
-  Date assigned: Oct 26 2010
-  
-
-CLIENT USER INTERFACE IMPROVEMENTS
-==================================
-
-- Bigger feedback window
-
-  Priority: Low
-  Complexity: C1
-  Date assigned: Oct 26 2010
-
-  
 - Enforce clean entry submission
   If you set the binder inputs to a value, then start activates, but
   then if you delete the entry without hitting enter, you can still
-  click start and submit a blank entry.
+  click start and submit a blank entry - 3pt
 
-  Priority: Low
-  Complexity: C1
-  Date assigned: Oct 26 2010
+- Reflect local area coverage to user - 3pt
 
-
-- Reflect local area coverage to user
-
-  Priority: Low
-  Complexity: C1
-  Date assigned: Oct 26 2010

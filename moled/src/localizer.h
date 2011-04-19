@@ -28,9 +28,9 @@
 #include <QXmlSimpleReader>
 
 #include "moled.h"
-#include "../common/util.h"
-#include "../common/network.h"
-#include "../common/overlap.h"
+#include "../../common/util.h"
+#include "../../common/network.h"
+#include "../../common/overlap.h"
 #include "scan.h"
 #include "binder.h"
 

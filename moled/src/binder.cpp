@@ -22,10 +22,10 @@ QTM_USE_NAMESPACE
 
 Binder::Binder(QObject *parent) : QObject(parent) {
 
-  if (!app_root_dir->exists ("binds")) {
-    bool ret = app_root_dir->mkdir ("binds");
+  if (!rootDir.exists ("binds")) {
+    bool ret = rootDir.mkdir ("binds");
 
-    qDebug () << "root " << app_root_dir->absolutePath();
+    qDebug () << "root " << rootDir.absolutePath();
 
     if (!ret) {
       qFatal ("Failed to create binds directory. Exiting...");
@@ -34,7 +34,7 @@ Binder::Binder(QObject *parent) : QObject(parent) {
     qDebug () << "created binds dir";
   }
 
-  bind_dir_name = app_root_dir->absolutePath();
+  bind_dir_name = rootDir.absolutePath();
   bind_dir_name.append ("/binds");
 
   binds_dir = new QDir (bind_dir_name);
@@ -255,7 +255,7 @@ void Binder::xmit_bind () {
 
   file.close();
 
-  QString url_str = setting_server_url_value;
+  QString url_str = mapServerURL;
   QUrl url(url_str.append("/bind"));
   QNetworkRequest request;
   request.setUrl(url);
@@ -263,7 +263,7 @@ void Binder::xmit_bind () {
 
   request.setRawHeader ("Bind", bind_file_name.toAscii());
 
-  reply = network_access_manager->post (request, serialized);
+  reply = networkAccessManager->post (request, serialized);
   connect (reply, SIGNAL(finished()), 
 	   SLOT (handle_bind_response()));
 

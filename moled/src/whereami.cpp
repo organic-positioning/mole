@@ -106,7 +106,7 @@ void WhereAmI::post_location() {
   qDebug () << "req " << url;
 
   set_network_request_headers (request);
-  reply = network_access_manager->get (request);
+  reply = networkAccessManager->get (request);
   connect (reply, SIGNAL(finished()), 
 	     SLOT (post_response()));
 

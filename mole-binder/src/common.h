@@ -33,4 +33,7 @@ extern const int icon_size_small;
 extern QString icon_root;
 extern QString mole;
 
+extern const int UI_WIDTH;
+extern const int UI_HEIGHT;
+
 #endif /* COMMON_H_ */
