@@ -97,7 +97,7 @@ Core::Core (int argc, char *argv[]) : QCoreApplication (argc, argv) {
 
   qWarning ("Starting scanner");
 
-  //scanner = new Scanner (this, localizer, binder, mode);
+  scanner = new Scanner (this, localizer, binder, mode);
 
 #else
   scanner = new Scanner (this, localizer, binder);
