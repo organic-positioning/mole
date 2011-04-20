@@ -24,8 +24,6 @@
 #include "../../common/network.h"
 
 #define DEFAULT_LOG_FILE    "/var/log/moled.log"
-#define DEFAULT_CONFIG_FILE "/etc/moled.conf"
-#define DEFAULT_ROOT_PATH   "/opt/var/lib"
 #define DEFAULT_LOCAL_PORT  7070
 
 #define MOLE_MAPSERVER_URL_CHOP 12

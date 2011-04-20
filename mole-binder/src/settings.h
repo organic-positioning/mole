@@ -46,6 +46,7 @@ private:
 
   QPushButton *random_cookie_button;
 
+  /*
   QPushButton *save_username_button;
   QLineEdit *username;
   QComboBox *checkin_combo;
@@ -60,15 +61,18 @@ private:
   UsernameState username_state;
 
   void set_username_color ();
+  */
 
 private slots:
   void handle_random_cookie ();
+  void handle_clicked_cookie_help ();
+  /*
   void handle_checkin_combo_changed(int value);
   void handle_save_username();
   void handle_check_username();
 
   void handle_clicked_checkin_help ();
-  void handle_clicked_cookie_help ();
+
 
   //void handle_username_return ();
   //void handle_username_edited ();
@@ -78,7 +82,7 @@ private slots:
   void handle_username_state_change ();
 
   void handle_reset ();
-
+  */
 };
 
 #endif /* SETTINGS_H_ */

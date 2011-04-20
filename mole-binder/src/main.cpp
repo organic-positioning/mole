@@ -45,10 +45,34 @@ void usage ();
 
 int main(int argc, char *argv[])
 {
+  initSettings ();
+
   QApplication *app = new QApplication(argc, argv);
+  QString groundTruthFilename = "";
+
+  //settings = new QSettings (DEFAULT_CONFIG_FILE,QSettings::NativeFormat);
+
+  // let user's settings override system's via fallback mechanism
+  settings = new QSettings (MOLE_ORGANIZATION,
+			    MOLE_APPLICATION, app);
+
+
+  if (settings->contains("map_server_url")) {
+    mapServerURL = settings->value ("map_server_url").toString();
+  }
+  if (settings->contains("fingerprint_server_url")) {
+    staticServerURL = settings->value ("fingerprint_server_url").toString();
+  }
+
+  //if (settings->contains("root_path")) {
+  //rootPathname = settings->value ("root_path").toString();
+  //}
+
+
+  QString logFilename = "";
+
   QStringList args = QCoreApplication::arguments();
   QStringListIterator args_iter (args);
-  QString groundTruthFilename = "";
   args_iter.next(); // = mole-binder
 
   while (args_iter.hasNext()) {
@@ -56,15 +80,15 @@ int main(int argc, char *argv[])
     //qDebug () << arg;
     if (arg == "-d") {
       debug = true;
-    } else if (arg == "-D") {
-      verbose = true;
-      debug = true;
     } else if (arg == "-s") {
-      setting_server_url_value = args_iter.next();
-      setting_server_url_value.trimmed();
-    } else if (arg == "-m") {
-      setting_mapserver_url_value = args_iter.next();      
-      setting_mapserver_url_value.trimmed();
+	mapServerURL = args_iter.next();
+	mapServerURL.trimmed();
+      } else if (arg == "-f") {
+	staticServerURL = args_iter.next();
+	staticServerURL.trimmed();
+      } else if (arg == "-l") {
+	logFilename = args_iter.next();
+	logFilename.trimmed();
     } else if (arg == "-T") {
       groundTruthFilename = args_iter.next();
     } else {
@@ -73,9 +97,7 @@ int main(int argc, char *argv[])
 
   }
 
-  //CleanExit cleanExit;
-
-  init_mole_app (argc, argv, app, mole_binder, NULL);
+  initCommon(logFilename);
 
   //app->setStyleSheet (normal_group_box);
 
@@ -118,8 +140,6 @@ int main(int argc, char *argv[])
 
   main_window->resize(QSize(UI_WIDTH, UI_HEIGHT).expandedTo(main_window->minimumSizeHint()));
 
-
-
   return app->exec();
 }
 
@@ -127,8 +147,8 @@ void usage () {
   qCritical ()
     << "mole-binder\n"
     << "-d debug\n"
-    << "-D verbose debug\n"
-    << "-s server_url\n"
-    << "-m mapserver_url\n"
+    << "-s map server url\n"
+    << "-f fingerprint (static) server\n"
+    << "-l log file\n"
     << "-T ground truth file (for evaluation)";
 }

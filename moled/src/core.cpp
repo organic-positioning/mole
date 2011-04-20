@@ -21,68 +21,18 @@
 #include <fcntl.h>
 #include "core.h"
 
-bool debug = false;
-bool verbose = false;
 
-QDir rootDir;
-QString mapServerURL = DEFAULT_MAP_SERVER_URL;
-QString staticServerURL = DEFAULT_STATIC_SERVER_URL;
-QString rootPathname = DEFAULT_ROOT_PATH;
 QString pidfile = "/var/run/mole.pid";
-QSettings *settings;
-QNetworkAccessManager *networkAccessManager;
-
-QFile *logFile = NULL;
-QTextStream *logStream = NULL;
 
 void daemonize();
 void usage ();
 
-struct CleanExit{
-  CleanExit() {
-    signal(SIGINT, &CleanExit::exitQt);
-    signal(SIGTERM, &CleanExit::exitQt);
-    signal(SIGHUP, &CleanExit::exitQt); 
-  }
-
-  static void exitQt(int /*sig*/) {
-    *logStream << QDateTime::currentDateTime().toString() << " I: Exiting.\n\n";
-    if (logFile != NULL) {
-      logFile->close ();
-    }
-    QCoreApplication::exit(0);
-  }
-};
-
-
-void output_handler(QtMsgType type, const char *msg)
-{
-  switch (type) {
-  case QtDebugMsg:
-    if (debug) {
-      *logStream << QDateTime::currentDateTime().toString() << " D: " << msg << "\n";
-      logStream->flush();
-    }
-    break;
-  case QtWarningMsg:
-    *logStream << QDateTime::currentDateTime().toString() << " I: " << msg << "\n";
-    logStream->flush();
-    break;
-  case QtCriticalMsg:
-    *logStream << QDateTime::currentDateTime().toString() << " C: " << msg << "\n";
-    logStream->flush();
-    break;
-  case QtFatalMsg:
-    *logStream << QDateTime::currentDateTime().toString() << " F: " << msg << "\n";
-    logStream->flush();
-    abort();
-  }
-}
-
 Core::Core (int argc, char *argv[]) : QCoreApplication (argc, argv) {
 
+  initSettings ();
+
   QString logFilename = DEFAULT_LOG_FILE;
-  QString configFilename = DEFAULT_CONFIG_FILE;
+  //QString configFilename = DEFAULT_CONFIG_FILE;
   
   int port = DEFAULT_LOCAL_PORT;
   bool isDaemon = true;
@@ -144,16 +94,17 @@ Core::Core (int argc, char *argv[]) : QCoreApplication (argc, argv) {
       } else if (arg == "-l") {
 	logFilename = args_iter.next();
 	logFilename.trimmed();
-      } else if (arg == "-c") {
-	configFilename = args_iter.next();
-	configFilename.trimmed();
+	//} else if (arg == "-c") {
+	//configFilename = args_iter.next();
+	//configFilename.trimmed();
       }
     }
   }
 
 
-  settings = new QSettings (configFilename,QSettings::NativeFormat);
-
+  //settings = new QSettings (configFilename,QSettings::NativeFormat);
+  settings = new QSettings (QSettings::SystemScope, MOLE_ORGANIZATION,
+			    MOLE_APPLICATION, this);
   //////////////////////////////////////////////////////////
   // Read default settings
   if (settings->contains("wifi_scanning")) {
@@ -206,30 +157,8 @@ Core::Core (int argc, char *argv[]) : QCoreApplication (argc, argv) {
 
   //////////////////////////////////////////////////////////
   // check a few things before daemonizing
-  rootDir.setPath (rootPathname);
-  if (!rootDir.isReadable()) {
-    qCritical () << "Cannot read root dir " << rootDir.path();
-    usage ();
-  }
 
-  //////////////////////////////////////////////////////////
-  // Initialize logger
-  if (logFilename != NULL && !logFilename.isEmpty()) {
-    logFile = new QFile (logFilename);
-    if (logFile->open (QFile::WriteOnly | QFile::Append)) {
-      logStream = new QTextStream (logFile);
-    } else {
-      fprintf (stderr, "Could not open log file %s.\n\n", 
-	       logFilename.toAscii().data());
-      exit (-1);
-    }
-  } else {
-    logStream = new QTextStream (stderr);
-  }
-
-  // Set up shutdown handler
-  CleanExit cleanExit;
-  qInstallMsgHandler (output_handler);
+  initCommon (logFilename);
 
   //////////////////////////////////////////////////////////
   qWarning () << "Starting mole daemon " 
@@ -237,7 +166,7 @@ Core::Core (int argc, char *argv[]) : QCoreApplication (argc, argv) {
 	      << "port=" << port
 	      << "wifi_scanning=" << runWiFiScanner
 	      << "movement_detector=" << runMovementDetector
-	      << "config=" << configFilename
+    //<< "config=" << configFilename
 	      << "logFilename=" << logFilename
 	      << "map_server_url=" << mapServerURL
 	      << "fingerprint_server_url=" << staticServerURL
@@ -351,14 +280,14 @@ void usage () {
 	       << "-h print usage\n"
 	       << "-d debug\n"
 	       << "-n run in foreground\n"
-	       << "-c config file [" << DEFAULT_CONFIG_FILE << "]"
-	       << " (overridden by cmd line parameters)\n"
+    //<< "-c config file [" << DEFAULT_CONFIG_FILE << "]"
+    //<< " (overridden by cmd line parameters)\n"
 	       << "-s map server URL [" << DEFAULT_MAP_SERVER_URL << "] \n"
 	       << "-f fingerprint (static) server [" << DEFAULT_STATIC_SERVER_URL << "]\n"
 	       << "-l log file [" << DEFAULT_LOG_FILE << "]\n"
 	       << "-r root path [" << DEFAULT_ROOT_PATH << "]\n"
-	       << "-p local port [" << DEFAULT_LOCAL_PORT << "]\n"
 	       << " (app data stored here)\n"
+	       << "-p local port [" << DEFAULT_LOCAL_PORT << "]\n"
 	       << "-a run movement detection ourselves (requires accelerometer)\n"
 	       << "-w run wifi scanner ourselves\n";
 

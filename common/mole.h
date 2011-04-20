@@ -29,6 +29,7 @@
 
 extern QString MOLE_ORGANIZATION;
 extern QString MOLE_APPLICATION;
+extern QString MOLE_DOMAIN;
 extern int     MOLE_VERSION;
 
 // d3f1ftrfyzkx8f.cloudfront.net <=> mole-static.research.nokia.com
@@ -38,6 +39,9 @@ extern int     MOLE_VERSION;
 #define DEFAULT_MAP_SERVER_URL    "http://mole.research.nokia.com:8080"
 #define DEFAULT_STATIC_SERVER_URL "https://s3.amazonaws.com/mole-nokia"
 
+#define DEFAULT_ROOT_PATH   "/opt/var/lib"
+
+//#define DEFAULT_CONFIG_FILE "/etc/moled.conf"
 
 extern QSettings *settings;
 extern QDir rootDir;
@@ -53,8 +57,6 @@ extern bool verbose;
 //void start_timer (QTimer *timer, int period);
 //void set_timer (QTimer *timer, bool increase, int &period, int min, int max);
 
-extern const int UI_WIDTH;
-extern const int UI_HEIGHT;
 
 //extern const int UI_MAIN_WIDTH;
 //extern const int UI_MAIN_HEIGHT;
@@ -68,7 +70,7 @@ extern const int UI_HEIGHT;
 //#define setting_version_key "version"
 //#define setting_mapserver_url_key "mapserver_url"
 //#define setting_user_agent_key "user_agent"
-//#define setting_cookie_key "cookie"
+
 
 //extern QString setting_mole_server_url_value;
 //extern QString setting_server_url_value;
@@ -84,5 +86,10 @@ extern QString rootPathname;
 
 
 extern QNetworkAccessManager *networkAccessManager;
+
+//struct CleanExit;
+//void output_handler(QtMsgType type, const char *msg);
+void initSettings ();
+void initCommon (QString logFilename);
 
 #endif /* MOLE_H_ */

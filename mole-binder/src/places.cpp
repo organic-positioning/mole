@@ -140,7 +140,7 @@ void PlaceModel::set_url () {
   }
 
   
-  QString url_str(setting_mapserver_url_value);
+  QString url_str(mapServerURL);
   url_str.append ("/map/");
   
   for (int i = 0; i < index; i++) {

@@ -146,8 +146,9 @@ void Binder::build_ui () {
   space_name_edit->setToolTip ("Space");
   tags_edit->setToolTip ("Tags");
 
-  QString tags_file = app_root_dir->absolutePath().append ("/map/tags.txt");
-  QString url_str = setting_mapserver_url_value;
+  qDebug () << "rootDir " << rootDir;
+  QString tags_file = rootDir.absolutePath().append ("/map/tags.txt");
+  QString url_str = mapServerURL;
   QUrl tags_url (url_str.append("/map/tags.txt"));
   UpdatingFileModel *tag_model = new UpdatingFileModel (tags_file, tags_url, tags_completer);
 
@@ -407,11 +408,11 @@ void Binder::handle_clicked_feedback() {
     // TODO truncate - make sure text does not exceed some max length
 
     QNetworkRequest request;
-    QString url_str = setting_server_url_value;
+    QString url_str = mapServerURL;
     QUrl url(url_str.append("/feedback"));
     request.setUrl(url);
     set_network_request_headers (request);
-    feedback_reply = network_access_manager->post (request, text.toUtf8());
+    feedback_reply = networkAccessManager->post (request, text.toUtf8());
     connect (feedback_reply, SIGNAL(finished()), 
 	     SLOT (handle_send_feedback_finished()));
 
