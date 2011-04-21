@@ -57,7 +57,8 @@ void output_handler(QtMsgType type, const char *msg)
   switch (type) {
   case QtDebugMsg:
     if (debug) {
-      *logStream << QDateTime::currentDateTime().toString() << " D: " << msg << "\n";
+      //*logStream << QDateTime::currentDateTime().toString() << " D: " << msg << "\n";
+      *logStream << QDateTime::currentMSecsSinceEpoch() << " D: " << msg << "\n";
       logStream->flush();
     }
     break;

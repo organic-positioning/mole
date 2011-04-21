@@ -1,12 +1,12 @@
 
 SPRINT 1: Low Hanging Fruit - Refactoring
-- daemonize code and start on install/restart; optify - 3pt
-- https -> http problem with amazon - 1pt
++ daemonize code and start on install/restart; optify - 3pt
++ https -> http problem with amazon - 1pt
 - rm displayed client/server bits of username check-in - 1pt
 - refactor client into like local socket daemon, but don't define API
 yet - 3pt
 - Check again for memory leaks - 1pt
-- Very basic client check that clock is > some current date
++ Very basic client check that clock is > some current date
 
 SPRINT 2: Local Socket API
 - implement local socket API - 3pt

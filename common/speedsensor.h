@@ -19,16 +19,41 @@
 #define SPEEDSENSOR_H_
 
 #include <QAccelerometer>
+//#include <QFeedbackEffect>
 //#include <QRotationReading>
 // #include <QCompassReading>
 #include <QtGui>
 #include <QtDBus>
-//#include "common.h"
 
-// http://wiki.forum.nokia.com/index.php/Qt_Mobility_example_application:_Fall_Detector
+
+//#include <qmobilityglobal.h>
+
+// #include <qfeedbackactuator.h>
+// #include <qfeedbackeffect.h>
 
 // Neccessary for Qt Mobility API usage
 QTM_USE_NAMESPACE
+
+//#include <QFeedback>
+//
+
+#define X                   0
+#define Y                   1
+#define Z                   2
+#define MAG                 3
+#define ACC_READING_COLUMNS 4
+
+#define DELTA               0
+#define STREAK              1
+#define META_READING_COLUMNS 2
+
+#define RISING              1
+#define NO_CHG              0
+#define FALLING            -1
+
+#define MAX_READING_COUNT 100
+
+enum Motion { HIBERNATE, STATIONARY, MOVING};
  
 class SpeedSensor : public QObject, public QAccelerometerFilter
 {
@@ -36,32 +61,51 @@ class SpeedSensor : public QObject, public QAccelerometerFilter
  
     public:
  
-  SpeedSensor(QObject* parent = 0, int onPeriodMS = 0, int offPeriodMS = 0);
+  SpeedSensor(QObject* parent = 0,
+	      int samplingPeriod = 500, int dutyCycle = 9500);
   void shutdown();
  
   private slots:
  
   // Override of QAcclerometerFilter::filter(QAccelerometerReading*)
   bool filter(QAccelerometerReading* reading);
-  void updateSpeed();
+  void updateSpeedStreak();
+  void updateSpeedShafer();
   void handleTimeout ();
+  void emitMotion ();
+ 
+ private:
+  QAccelerometer* sensor;
+  bool on;
+  Motion motion;
+  QTimer timer;
+  int readingCount;
+  qreal reading[MAX_READING_COUNT][ACC_READING_COLUMNS];
+  int   metaReading[MAX_READING_COUNT][META_READING_COLUMNS];
+
+  const int samplingPeriod;
+  const int dutyCycle;
+
+};
+
+
+class MotionLogger : public QObject, public QAccelerometerFilter
+{
+  Q_OBJECT
+ 
+    public:
+ 
+  MotionLogger(QObject* parent = 0);
+ 
+ private slots:
+ 
+  bool filter(QAccelerometerReading* reading);
  
  private:
  
   QAccelerometer* sensor;
-
-  bool on;
-
-  QTimer timer;
-  qreal magSum;
-  int magSumCount;
-
-  const int onPeriodMS;
-  const int offPeriodMS;
-
-  //QTime log_time;
-  //QTextStream stream;
-  //QFile log_file;
+  //QTextStream logStream;
+  //QFile *logFile;
 };
 
 

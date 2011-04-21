@@ -38,6 +38,7 @@ Core::Core (int argc, char *argv[]) : QCoreApplication (argc, argv) {
   bool isDaemon = true;
   bool runWiFiScanner = false;
   bool runMovementDetector = false;
+  bool runMotionLogger = false;
 
   //////////////////////////////////////////////////////////
   // Make sure no other arguments have been given
@@ -52,6 +53,7 @@ Core::Core (int argc, char *argv[]) : QCoreApplication (argc, argv) {
       if (arg == "-d" ||
 	  arg == "-n" ||
 	  arg == "-a" ||
+	  arg == "-A" ||
 	  arg == "-w") {
 	// nop
       } else if (arg == "-c" ||
@@ -146,6 +148,8 @@ Core::Core (int argc, char *argv[]) : QCoreApplication (argc, argv) {
 	staticServerURL.trimmed();
       } else if (arg == "-a") {
 	runMovementDetector = true;
+      } else if (arg == "-A") {
+	runMotionLogger = true;
       } else if (arg == "-w") {
 	runWiFiScanner = true;
       } else if (arg == "-r") {
@@ -166,6 +170,7 @@ Core::Core (int argc, char *argv[]) : QCoreApplication (argc, argv) {
 	      << "port=" << port
 	      << "wifi_scanning=" << runWiFiScanner
 	      << "movement_detector=" << runMovementDetector
+	      << "motion_logger=" << runMotionLogger
     //<< "config=" << configFilename
 	      << "logFilename=" << logFilename
 	      << "map_server_url=" << mapServerURL
@@ -200,7 +205,11 @@ Core::Core (int argc, char *argv[]) : QCoreApplication (argc, argv) {
 
   speedsensor = NULL;
   if (runMovementDetector) {
-    speedsensor = new SpeedSensor (localizer);
+    speedsensor = new SpeedSensor (this);
+  }
+  motionLogger = NULL;
+  if (runMotionLogger) {
+    motionLogger = new MotionLogger (this);
   }
 
   scanner = NULL;
@@ -219,6 +228,8 @@ void Core::handle_quit () {
     delete scanner;
   if (speedsensor)
     delete speedsensor;
+  if (motionLogger)
+    delete motionLogger;
   delete localizer;
   delete binder;
 

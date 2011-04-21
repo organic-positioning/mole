@@ -57,6 +57,7 @@ private:
 
 #ifdef Q_WS_MAEMO_5
   SpeedSensor *speedsensor;
+  MotionLogger *motionLogger;
   //SpeedSensor2 *speedsensor;
 #endif
 
