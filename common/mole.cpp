@@ -84,7 +84,7 @@ void initSettings () {
 }
 
 //////////////////////////////////////////////////////////
-void initCommon (QString logFilename) {
+void initCommon (QObject *parent, QString logFilename) {
 
   // very basic sanity time check
   QDateTime localtime (QDateTime::currentDateTime());
@@ -119,5 +119,7 @@ void initCommon (QString logFilename) {
   // Set up shutdown handler
   CleanExit cleanExit;
   qInstallMsgHandler (output_handler);
+
+  networkAccessManager = new QNetworkAccessManager (parent);
 
 }

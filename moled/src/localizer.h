@@ -55,7 +55,6 @@ class AreaDesc {
 
  public:
   AreaDesc ();
-  //void update (QMap<QString,SpaceDesc*> *_spaces, int version);
   ~AreaDesc ();
 
   QMap<QString,SpaceDesc*> *get_spaces ();
@@ -70,6 +69,10 @@ class AreaDesc {
   int get_map_version();
   void set_map_version (int version) { map_version = version; }
 
+  void touch () { pTouch = true; }
+  bool isTouched () { return pTouch; }
+  void untouch () { pTouch = false; }
+
  private:
   QSet<QString> *macs;
   QMap<QString,SpaceDesc*> *spaces;
@@ -79,6 +82,7 @@ class AreaDesc {
   // according to the server
   QDateTime last_modified_time;
   int map_version;
+  bool pTouch;
 
 };
 
@@ -236,7 +240,7 @@ private:
   // long time window
   QMap<QString,MacDesc*> *active_macs;
   // short time window (maybe just most recent scan)
-  QMap<QString,MacDesc*> *recent_active_macs;
+  //QMap<QString,MacDesc*> *recent_active_macs;
 
   //QNetworkAccessManager *area_map_network_manager;
   //QNetworkAccessManager *cache_network_manager;
@@ -251,7 +255,7 @@ private:
     (QMap<QString,MacDesc*> *macs_a, QSet<QString> *macs_b);
 
 
-  void request_area_map (QString area_name, int version);
+  void request_area_map (QString area_name, QDateTime last_update_time);
 
   QString get_loud_mac ();
 
@@ -290,7 +294,7 @@ private slots:
 
   QString handle_signature_request();
   void handle_location_estimate_request();
-  void handle_speed_estimate(int moving_count);
+  void handle_speed_estimate(int motion);
 
   //signals:
   //void parsed_area (QString fq_area);

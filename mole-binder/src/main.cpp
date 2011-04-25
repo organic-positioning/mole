@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
 
   }
 
-  initCommon(logFilename);
+  initCommon(app, logFilename);
 
   //app->setStyleSheet (normal_group_box);
 

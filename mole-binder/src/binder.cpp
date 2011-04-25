@@ -57,7 +57,7 @@ Binder::Binder(QWidget *parent) :
 
   QDBusConnection::sessionBus().connect(QString(), QString(), "com.nokia.moled", "LocationEstimate", this, SLOT(handle_location_estimate(QString, bool)));
 
-  QDBusConnection::sessionBus().connect(QString(), QString(), "com.nokia.moled", "SpeedEstimate", this, SLOT(handle_speed_estimate(int)));
+  QDBusConnection::sessionBus().connect(QString(), QString(), "com.nokia.moled", "MotionEstimate", this, SLOT(handle_speed_estimate(int)));
 
 }
 
@@ -657,12 +657,12 @@ void Binder::refresh_last_estimate () {
     tags_edit->setText (tags_estimate);
 }
 
-void Binder::handle_speed_estimate(int moving_count) {
-  qDebug () << "statistics got speed estimate" << moving_count;
+void Binder::handle_speed_estimate(int motion) {
+  qDebug () << "statistics got speed estimate" << motion;
 
-  if (moving_count > 0) {
+  if (motion == MOVING) {
     set_walking_label (true);
-    walking_timer->start (5000);
+    //walking_timer->start (5000);
   } else {
     set_walking_label (false);
   }

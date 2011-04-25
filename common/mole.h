@@ -90,6 +90,6 @@ extern QNetworkAccessManager *networkAccessManager;
 //struct CleanExit;
 //void output_handler(QtMsgType type, const char *msg);
 void initSettings ();
-void initCommon (QString logFilename);
+void initCommon (QObject *parent, QString logFilename);
 
 #endif /* MOLE_H_ */

@@ -162,7 +162,7 @@ Core::Core (int argc, char *argv[]) : QCoreApplication (argc, argv) {
   //////////////////////////////////////////////////////////
   // check a few things before daemonizing
 
-  initCommon (logFilename);
+  initCommon (this, logFilename);
 
   //////////////////////////////////////////////////////////
   qWarning () << "Starting mole daemon " 
@@ -184,7 +184,7 @@ Core::Core (int argc, char *argv[]) : QCoreApplication (argc, argv) {
     qDebug () << "not daemonizing";
   }
 
-  networkAccessManager = new QNetworkAccessManager (this);
+
 
  // start create map directory
   if (!rootDir.exists ("map")) {
@@ -296,10 +296,11 @@ void usage () {
 	       << "-s map server URL [" << DEFAULT_MAP_SERVER_URL << "] \n"
 	       << "-f fingerprint (static) server [" << DEFAULT_STATIC_SERVER_URL << "]\n"
 	       << "-l log file [" << DEFAULT_LOG_FILE << "]\n"
-	       << "-r root path [" << DEFAULT_ROOT_PATH << "]\n"
+	       << "-r root path [" << DEFAULT_ROOT_PATH << "]"
 	       << " (app data stored here)\n"
 	       << "-p local port [" << DEFAULT_LOCAL_PORT << "]\n"
 	       << "-a run movement detection ourselves (requires accelerometer)\n"
+	       << "-A trace all accelerometer data\n"
 	       << "-w run wifi scanner ourselves\n";
 
   exit (0);

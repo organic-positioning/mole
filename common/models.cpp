@@ -94,6 +94,8 @@ void UpdatingModel::start_refill () {
 
   QNetworkRequest request;
   request.setUrl (url);
+  qDebug () << "url " << url
+	    << "net " << networkAccessManager;
   reply = networkAccessManager->get (request);
   connect (reply, SIGNAL(finished()), 
 	   SLOT (finish_refill()));

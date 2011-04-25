@@ -22,6 +22,7 @@ QTM_USE_NAMESPACE
 
 Binder::Binder(QObject *parent) : QObject(parent) {
 
+  QDBusConnection::sessionBus().connect(QString(), QString(), "com.nokia.moled", "MotionEstimate", this, SLOT(handle_speed_estimate(int)));
   if (!rootDir.exists ("binds")) {
     bool ret = rootDir.mkdir ("binds");
 
@@ -346,6 +347,24 @@ void Binder::clean_scan_list (int expire_secs) {
   delete scan_list;
   scan_list = new_scan_list;
 
+}
+
+void Binder::handle_speed_estimate(int motion) {
+  qDebug () << "binder handle_speed_estimate" << motion;
+
+
+  if (motion == MOVING) {
+    int old_size = scan_list->size();
+    QListIterator<AP_Scan *> i (*scan_list);
+    while (i.hasNext()) {
+      AP_Scan *scan = i.next();
+      delete scan;
+    }
+    qDebug () << "handle_speed_estimate was: " << old_size 
+	      << "now: " << scan_list->size();
+    delete scan_list;
+    scan_list = new QList<AP_Scan *>;
+  }
 }
 
 

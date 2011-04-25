@@ -26,6 +26,7 @@
 #include "../../common/timer.h"
 #include "../../common/models.h"
 #include "../../common/completer.h"
+#include "../../common/speedsensor.h"
 
 extern const int icon_size_reg;
 extern const int icon_size_small;

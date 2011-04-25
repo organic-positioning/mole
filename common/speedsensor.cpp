@@ -97,25 +97,22 @@ void SpeedSensor::updateSpeedShafer() {
     metric += var;
   }
 
-  qDebug () << "metric " << metric
+  qDebug () << "motion metric " << metric
 	    << "m/3" << (metric / 3.);
 
   Motion oldMotion = motion;
   if (metric > 7) {
-    // moving
     motion = MOVING;
   } else if (metric < 0.1) {
-    // hibernate
     motion = HIBERNATE;
   } else {
-    // stationary
     motion = STATIONARY;
   }
 
-  //if (motion != oldMotion) {
+  if (motion != oldMotion) {
     emitMotion ();
     motion = oldMotion;
-    //}
+  }
 
 }
 
@@ -226,6 +223,7 @@ void SpeedSensor::emitMotion () {
   QDBusMessage msg = QDBusMessage::createSignal("/", "com.nokia.moled", "MotionEstimate");
   msg << motion;
   QDBusConnection::sessionBus().send(msg);
+  qDebug () << "emitMotion" << motion;
 }
 
 void SpeedSensor::shutdown() {

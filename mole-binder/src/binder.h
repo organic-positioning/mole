@@ -108,7 +108,7 @@ private slots:
   void request_location_estimate();
 
   void handle_walking_timer();
-  void handle_speed_estimate(int moving_count);
+  void handle_speed_estimate(int motion);
   void handle_online_change (bool online);
 
   /*
