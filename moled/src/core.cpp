@@ -200,8 +200,8 @@ Core::Core (int argc, char *argv[]) : QCoreApplication (argc, argv) {
   // reset session cookie on MOLEd restart
   reset_session_cookie ();
 
-  binder = new Binder (this);
-  localizer = new Localizer (this, binder);
+  localizer = new Localizer (this);
+  binder = new Binder (this, localizer);
 
   speedsensor = NULL;
   if (runMovementDetector) {

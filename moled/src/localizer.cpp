@@ -23,6 +23,7 @@ QString unknown_space_name = "??";
 #define area_fill_period_short   100
 #define area_fill_period       60000
 #define map_fill_period_short   1000
+#define map_fill_period_soon   10000
 //#define map_fill_period        5000
 #define map_fill_period        60000
 
@@ -30,8 +31,8 @@ QString unknown_space_name = "??";
 
 //bool offline_mode = true;
 
-Localizer::Localizer(QObject *parent, Binder *_binder) :
-  QObject(parent), binder (_binder) {
+Localizer::Localizer(QObject *parent) :
+  QObject(parent) {
 
   online = true;
   first_add_scan = true;
@@ -474,7 +475,6 @@ void Localizer::localize () {
 void Localizer::make_overlap_estimate 
 (QMap<QString,SpaceDesc*> &potential_spaces) {
 
-  QString max_space;
   double max_score = -5.;
   const double init_overlap_diff = 10.;
   double overlap_diff = init_overlap_diff;
@@ -523,9 +523,11 @@ void Localizer::make_overlap_estimate
 	    << " scans_used=" << scan_queue->size();
 
   if (!max_space.isEmpty()) {
+    /*
     if (binder != NULL) {
       binder->set_location_estimate (max_space, max_score);
     }
+    */
     emit_new_location_estimate (max_space, max_score);
   }
 
@@ -744,6 +746,20 @@ void Localizer::mac_to_areas_response () {
 
 }
 
+// request this area name soon -- called by binder
+void Localizer::touch (QString area_name) {
+  AreaDesc *area = signal_maps->value(area_name);
+  if (area != NULL) {
+    qDebug () << "touching area" << area_name;
+    area->touch();	
+  } else {
+    qDebug () << "touch did not find area" << area_name;
+    signal_maps->insert(area_name, NULL); 
+  }
+  map_cache_fill_timer->stop ();
+  map_cache_fill_timer->start (map_fill_period_soon);
+}
+
 void Localizer::fill_map_cache () {
 
   qDebug () << "fill_map_cache period " << map_fill_period;
@@ -944,7 +960,7 @@ void Localizer::area_map_response () {
   // TODO sanity check on the response
   QByteArray map_as_byte_array = area_map_reply->readAll();
 
-  qDebug () << "map_as_byte_array" << map_as_byte_array;
+  //qDebug () << "map_as_byte_array" << map_as_byte_array;
 
   // write it to a file, for offline positioning if need be
   //write_to_uid_file (maps_dir, "map-", map_as_byte_array);

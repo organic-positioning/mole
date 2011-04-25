@@ -18,11 +18,12 @@
 #ifndef LOCALIZER_H_
 #define LOCALIZER_H_
 
-#include <QtCore>
-#include <QNetworkReply>
-#include <QNetworkRequest>
-#include <QUrl>
-#include <QNetworkAccessManager>
+//#include <QtCore>
+//#include <QNetworkReply>
+//#include <QNetworkRequest>
+//#include <QUrl>
+//#include <QNetworkAccessManager>
+
 #include <QXmlDefaultHandler>
 #include <QXmlInputSource>
 #include <QXmlSimpleReader>
@@ -32,8 +33,9 @@
 #include "../../common/network.h"
 #include "../../common/overlap.h"
 #include "scan.h"
-#include "binder.h"
 
+//#include "binder.h"
+class Binder;
 
 class SpaceDesc {
 
@@ -193,16 +195,17 @@ class Localizer : public QObject {
   Q_OBJECT
 
 public:
-  Localizer(QObject *parent = 0, Binder *binder = 0);
+  Localizer(QObject *parent = 0);
   ~Localizer ();
   //Localizer(QObject *parent = 0, Network *network = 0);
 
   //void add_scan (AP_Scan *scan);
 
-
-public slots:
   void add_scan (AP_Scan *scan);
+  void touch (QString area_name);
+  QString get_location_estimate () { return max_space; }
 
+  //public slots:
 
 
   //void handle_quit ();
@@ -218,7 +221,6 @@ private:
 
   QDir *map_root;
 
-  Binder *binder;
   Overlap *overlap;
   QTime last_localized_time;
 
@@ -242,8 +244,7 @@ private:
   // short time window (maybe just most recent scan)
   //QMap<QString,MacDesc*> *recent_active_macs;
 
-  //QNetworkAccessManager *area_map_network_manager;
-  //QNetworkAccessManager *cache_network_manager;
+  QString max_space;
 
   QNetworkReply *area_map_reply;
   QNetworkReply *mac_reply;
@@ -258,6 +259,7 @@ private:
   void request_area_map (QString area_name, QDateTime last_update_time);
 
   QString get_loud_mac ();
+
 
   void emit_new_location_estimate 
     (QString estimated_space_name, double estimated_space_score);

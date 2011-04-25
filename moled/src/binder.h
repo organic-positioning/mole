@@ -19,14 +19,15 @@
 #define BINDER_H_
 
 //#include <QNetworkAccessManager>
-#include <QNetworkReply>
-#include <QDebug>
-#include <QNetworkRequest>
-#include <QUrl>
-#include <QtDBus> 
+//#include <QNetworkReply>
+//#include <QDebug>
+//#include <QNetworkRequest>
+//#include <QUrl>
+//#include <QtDBus> 
 
 #include "moled.h"
 #include "scan.h"
+#include "localizer.h"
 
 // 2.5 minutes
 const int EXPIRE_SECS = 180;
@@ -35,7 +36,7 @@ class Binder : public QObject {
   Q_OBJECT
 
 public:
-  Binder(QObject *parent = 0);
+  Binder(QObject *parent = 0, Localizer *localizer = 0);
   ~Binder ();
 
   void set_location_estimate
@@ -43,7 +44,6 @@ public:
 
   void set_device_desc (QString _device_desc);
   void set_wifi_desc (QString _wifi_desc);
-
 
 public slots:
   void handle_bind_request
@@ -78,8 +78,11 @@ private:
 
   QList<AP_Scan*> *scan_list;
 
-  QString estimated_space_name;
-  double estimated_space_score;
+  //QString estimated_space_name;
+  //double estimated_space_score;
+
+  QMap<QString,QString> bfn2area;
+  Localizer *localizer;
 
 };
 

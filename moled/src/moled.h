@@ -29,5 +29,4 @@
 #define MOLE_MAPSERVER_URL_CHOP 12
 // CHOP => number of characters between slash and end + 1 (this should be done programmatically....)
 
-
 #endif /* MOLED_H_ */

@@ -20,7 +20,8 @@
 
 QTM_USE_NAMESPACE
 
-Binder::Binder(QObject *parent) : QObject(parent) {
+Binder::Binder(QObject *parent, Localizer *_localizer) : 
+  QObject(parent), localizer (_localizer) {
 
   QDBusConnection::sessionBus().connect(QString(), QString(), "com.nokia.moled", "MotionEstimate", this, SLOT(handle_speed_estimate(int)));
   if (!rootDir.exists ("binds")) {
@@ -103,11 +104,13 @@ Binder::~Binder () {
 
 }
 
+/*
 void Binder::set_location_estimate
 (QString _estimated_space_name, double _estimated_space_score) {
   estimated_space_name = _estimated_space_name;
   estimated_space_score = _estimated_space_score;
 }
+*/
 
 void Binder::handle_bind_request
 (QString country, QString region, QString city, QString area, 
@@ -123,6 +126,7 @@ void Binder::handle_bind_request
   full_space_name.append (city);
   full_space_name.append ("/");
   full_space_name.append (area);
+  QString area_name = full_space_name;
   full_space_name.append ("/");
   full_space_name.append (space_name);
 
@@ -130,6 +134,7 @@ void Binder::handle_bind_request
   location_map.insert ("full_space_name", full_space_name);
 
   QVariantMap est_location_map;
+  QString estimated_space_name = localizer->get_location_estimate ();
   qDebug () << "bind est_space_name=" << estimated_space_name;
   est_location_map.insert ("full_space_name", estimated_space_name);
 
@@ -182,9 +187,10 @@ void Binder::handle_bind_request
   // write it to a file
   QString file_name = binds_dir->absolutePath();
   file_name.append ("/");
-  file_name.append ("bind-");
-  file_name.append (get_random_cookie(10));
-  file_name.append (".txt");
+  QString bind_file_name = "bind-";
+  bind_file_name.append (get_random_cookie(10));
+  bind_file_name.append (".txt");
+  file_name.append (bind_file_name);
   qDebug () << "file_name" << file_name;
   QFile file (file_name);
 
@@ -192,6 +198,11 @@ void Binder::handle_bind_request
     qFatal ("Could not open file to store bind data");
     QCoreApplication::exit (-1);
   }
+
+  // remember this area name so we can tell
+  // the localizer to do a refresh when
+  // we hear the bind was successful
+  bfn2area.insert (bind_file_name, area_name);
 
   QDataStream stream (&file);
   stream << serialized;
@@ -307,6 +318,12 @@ void Binder::handle_bind_response () {
 	qDebug () << "deleted sent bind file " << file.fileName();
       } else {
 	qWarning () << "sent bind file does not exist " << file.fileName();
+      }
+
+      QString area_name = bfn2area.take (bind_file_name);
+      qDebug () << "handle_bind_response area_name" << area_name;
+      if (!area_name.isEmpty()) {
+	localizer->touch (area_name);
       }
 
     }
