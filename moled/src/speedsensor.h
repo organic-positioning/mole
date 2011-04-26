@@ -25,6 +25,8 @@
 #include <QtGui>
 #include <QtDBus>
 
+#include "localizer.h"
+#include "binder.h"
 
 //#include <qmobilityglobal.h>
 
@@ -53,15 +55,14 @@ QTM_USE_NAMESPACE
 
 #define MAX_READING_COUNT 100
 
-enum Motion { HIBERNATE, STATIONARY, MOVING};
- 
 class SpeedSensor : public QObject, public QAccelerometerFilter
 {
   Q_OBJECT
  
     public:
  
-  SpeedSensor(QObject* parent = 0,
+  SpeedSensor(QObject* parent = 0, Localizer *localizer = 0,
+	      Binder *binder = 0,
 	      int samplingPeriod = 500, int dutyCycle = 9500);
   void shutdown();
  
@@ -76,6 +77,8 @@ class SpeedSensor : public QObject, public QAccelerometerFilter
  
  private:
   QAccelerometer* sensor;
+  Localizer *localizer;
+  Binder *binder;
   bool on;
   Motion motion;
   QTimer timer;

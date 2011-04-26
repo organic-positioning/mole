@@ -23,7 +23,7 @@ QString unknown_space_name = "??";
 #define area_fill_period_short   100
 #define area_fill_period       60000
 #define map_fill_period_short   1000
-#define map_fill_period_soon   10000
+#define map_fill_period_soon   15000
 //#define map_fill_period        5000
 #define map_fill_period        60000
 
@@ -89,8 +89,8 @@ Localizer::Localizer(QObject *parent) :
 	  this, SLOT(localize()));
   localize_timer->start(15000);
   */
-  connect (this, SIGNAL (location_data_changed()),
-	   SLOT (localize()));
+  //connect (this, SIGNAL (location_data_changed()),
+  //SLOT (localize()));
 
 
   last_localized_time = QTime::currentTime();
@@ -107,7 +107,7 @@ Localizer::Localizer(QObject *parent) :
 
   QDBusConnection::sessionBus().connect(QString(), QString(), "com.nokia.moled", "GetLocationEstimate", this, SLOT(handle_location_estimate_request()));
 
-  QDBusConnection::sessionBus().connect(QString(), QString(), "com.nokia.moled", "MotionEstimate", this, SLOT(handle_speed_estimate(int)));
+  //QDBusConnection::sessionBus().connect(QString(), QString(), "com.nokia.moled", "MotionEstimate", this, SLOT(handle_speed_estimate(int)));
 
 }
 
@@ -231,7 +231,8 @@ void Localizer::add_scan (AP_Scan *raw_scan) {
   //new_scan->add_active_macs (recent_active_macs);
   emit_new_local_signature ();
 
-  emit location_data_changed ();
+  //emit location_data_changed ();
+  localize ();
 
   /*
   // TODO for now, just blow away the old lists
@@ -331,12 +332,15 @@ void Localizer::localize () {
   */
 
   // do not localize faster than once per 10 seconds
+  /*
   const int min_localize_interval_sec = 10;
   if (last_localized_time.elapsed() < 1000 * min_localize_interval_sec) {
     qDebug () << "not localizing yet, not enough time elapsed";
     return;
   }
+  */
   last_localized_time = QTime::currentTime();
+
   //dirty = false;
 
   // add_scan has updated active_macs
@@ -1015,7 +1019,8 @@ bool Localizer::parse_map (const QByteArray &map_as_byte_array, const QDateTime 
       qDebug() << "inserted new map fq_area=" << fq_area;
 
       //dirty = true;
-      emit location_data_changed ();
+      //emit location_data_changed ();
+      localize ();
       ok = true;
 
     } else {

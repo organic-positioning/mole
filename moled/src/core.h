@@ -21,10 +21,11 @@
 #include "localizer.h"
 //#include "whereami.h"
 //#include "../common/speedsensor2.h"
-#include "../../common/speedsensor.h"
+
 
 #ifdef Q_WS_MAEMO_5
 #include "scanner-maemo.h"
+#include "speedsensor.h"
 #else
 #include "scanner.h"
 #endif

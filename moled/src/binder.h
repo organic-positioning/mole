@@ -44,6 +44,7 @@ public:
 
   void set_device_desc (QString _device_desc);
   void set_wifi_desc (QString _wifi_desc);
+  void handle_speed_estimate(int motion);
 
 public slots:
   void handle_bind_request
@@ -58,7 +59,7 @@ private slots:
   void clean_scan_list (int expire_secs = EXPIRE_SECS);
   //void handle_json_test ();
   void handle_bind_response ();
-  void handle_speed_estimate(int motion);
+
   void xmit_bind ();
 
 private:

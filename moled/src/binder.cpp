@@ -23,7 +23,7 @@ QTM_USE_NAMESPACE
 Binder::Binder(QObject *parent, Localizer *_localizer) : 
   QObject(parent), localizer (_localizer) {
 
-  QDBusConnection::sessionBus().connect(QString(), QString(), "com.nokia.moled", "MotionEstimate", this, SLOT(handle_speed_estimate(int)));
+  //QDBusConnection::sessionBus().connect(QString(), QString(), "com.nokia.moled", "MotionEstimate", this, SLOT(handle_speed_estimate(int)));
   if (!rootDir.exists ("binds")) {
     bool ret = rootDir.mkdir ("binds");
 

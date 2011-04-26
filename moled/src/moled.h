@@ -20,7 +20,7 @@
 
 //#include "whereami.h"
 //#include "../common/speedsensor2.h"
-#include "../../common/speedsensor.h"
+//#include "../../common/speedsensor.h"
 #include "../../common/network.h"
 
 #define DEFAULT_LOG_FILE    "/var/log/moled.log"

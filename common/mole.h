@@ -20,6 +20,7 @@
 
 #include <csignal>
 #include <QtCore>
+#include <QtDBus>
 #include <QCoreApplication>
 #include <QNetworkRequest>
 #include <QNetworkReply>
@@ -91,5 +92,7 @@ extern QNetworkAccessManager *networkAccessManager;
 //void output_handler(QtMsgType type, const char *msg);
 void initSettings ();
 void initCommon (QObject *parent, QString logFilename);
+
+enum Motion { HIBERNATE, STATIONARY, MOVING};
 
 #endif /* MOLE_H_ */

@@ -22,7 +22,7 @@
 #include "core.h"
 
 
-QString pidfile = "/var/run/mole.pid";
+QString pidfile = "/var/run/mole1.pid";
 
 void daemonize();
 void usage ();
@@ -205,7 +205,7 @@ Core::Core (int argc, char *argv[]) : QCoreApplication (argc, argv) {
 
   speedsensor = NULL;
   if (runMovementDetector) {
-    speedsensor = new SpeedSensor (this);
+    speedsensor = new SpeedSensor (this, localizer, binder);
   }
   motionLogger = NULL;
   if (runMotionLogger) {

@@ -204,6 +204,7 @@ public:
   void add_scan (AP_Scan *scan);
   void touch (QString area_name);
   QString get_location_estimate () { return max_space; }
+  void handle_speed_estimate(int motion);
 
   //public slots:
 
@@ -275,8 +276,8 @@ private:
 
   //void check_network_state ();
 
-signals:
-  void location_data_changed ();
+  //signals:
+  //void location_data_changed ();
 
 private slots:
   void localize ();
@@ -296,7 +297,7 @@ private slots:
 
   QString handle_signature_request();
   void handle_location_estimate_request();
-  void handle_speed_estimate(int motion);
+
 
   //signals:
   //void parsed_area (QString fq_area);

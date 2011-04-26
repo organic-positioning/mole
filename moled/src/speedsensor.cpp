@@ -47,8 +47,9 @@ void SpeedSensor::handleTimeout () {
   }
 }
 
-SpeedSensor::SpeedSensor(QObject* parent, int _samplingPeriod, int _dutyCycle) :
-  QObject(parent), samplingPeriod (_samplingPeriod), dutyCycle (_dutyCycle) {
+SpeedSensor::SpeedSensor(QObject* parent, Localizer *_localizer, Binder *_binder, int _samplingPeriod, int _dutyCycle) :
+  QObject(parent), localizer (_localizer), binder (_binder),
+  samplingPeriod (_samplingPeriod), dutyCycle (_dutyCycle) {
 
   qDebug () << "speedsensor samplingPeriod="<<samplingPeriod
 	    << "dutyCycle="<<dutyCycle;
@@ -222,6 +223,8 @@ void SpeedSensor::updateSpeedStreak() {
 void SpeedSensor::emitMotion () {
   QDBusMessage msg = QDBusMessage::createSignal("/", "com.nokia.moled", "MotionEstimate");
   msg << motion;
+  localizer->handle_speed_estimate (motion);
+  binder->handle_speed_estimate (motion);
   QDBusConnection::sessionBus().send(msg);
   qDebug () << "emitMotion" << motion;
 }
