@@ -1,13 +1,13 @@
 /*
  * Mole - Mobile Organic Localisation Engine
  * Copyright 2010 Nokia Corporation.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,72 +18,58 @@
 #ifndef PLACES_H_
 #define PLACES_H_
 
-#include <QtCore>
-#include <QNetworkReply>
-#include <QNetworkRequest>
-#include <QUrl>
-#include <QNetworkAccessManager>
-#include <QStandardItemModel>
 #include <QRegExpValidator>
 
 #include "common.h"
 
-class LineValidator : public QRegExpValidator {
+class LineValidator : public QRegExpValidator
+{
   Q_OBJECT
 
  public:
   LineValidator(QObject *parent);
 
-  QValidator::State validate ( QString & input, int & pos ) const;
-  void fixup ( QString & input ) const;
+  QValidator::State validate(QString &, int &) const;
+  void fixup(QString &) const;
 };
 
-
-class PlaceModel : public UpdatingModel {
+class PlaceModel : public UpdatingModel
+{
   Q_OBJECT
 
  public:
   PlaceModel(int index = -1, QObject *parent = 0);
-  ~PlaceModel ();
+  ~PlaceModel();
 
-  public slots:
-  void handle_parent_text_changed (QString text);
-  void handle_text_changed(QString);
+ public slots:
+  void onParentTextChanged(QString);
+  void onTextChanged(QString);
 
  signals:
-  void value_changed (QString);
+  void valueChanged(QString);
 
  private:
-  const int index;
-  QString settings_name;
-  void set_url ();
+  const int m_index;
+  QString m_settingsName;
 
+  void setUrl();
 };
 
-
-class PlaceEdit : public QLineEdit {
+class PlaceEdit : public QLineEdit
+{
   Q_OBJECT
 
  public:
-  PlaceEdit(PlaceEdit *_parent, int _index, 
-	    QString placeholder_text, QWidget *qparent = 0);
-  //~PlaceModel ();
-  PlaceModel* get_model () { return model; }
+  PlaceEdit(PlaceEdit *_parent, int _index, QString placeholder_text, QWidget *qparent = 0);
+  PlaceModel* model() const { return m_model; }
 
  public slots:
-  void handle_parent_text_changed (QString text);
-
- signals:
+  void onParentTextChanged(QString);
 
  private:
-
-  QTimer *timer;
-  PlaceModel *model;
-  QCompleter *completer;
-
- private slots:
-
-
+  QTimer *m_timer;
+  PlaceModel *m_model;
+  QCompleter *m_completer;
 };
 
 #endif /* PLACES_H_ */

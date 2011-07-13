@@ -36,15 +36,15 @@ double Overlap::compare_sig_overlap (const QMap<QString,Sig*> *sig_a,
 
       Sig* b = sig_b->value (mac);
 
-      double overlap = compute_overlap (a->mean, a->stddev,
-					b->mean, b->stddev);
+      double overlap = compute_overlap (a->mean(), a->stddev(),
+					b->mean(), b->stddev());
 
       
 
       //qDebug () << "overlap " << overlap
       //<< " w-a " << a->weight
       //<< " w-b " << b->weight;
-      double delta = overlap * ((a->weight+b->weight) / 2.);
+      double delta = overlap * ((a->weight()+b->weight()) / 2.);
       score += delta;
       hit_count++;
 
@@ -88,6 +88,73 @@ double Overlap::compare_sig_overlap (const QMap<QString,Sig*> *sig_a,
 
 
   return score;
+}
+
+double computePenalty (double weight, int penalty) {
+
+  if (penalty <= 0) {
+    return 0;
+  }
+  return weight/(double)penalty;
+
+}
+
+double Overlap::compareHistOverlap(const QMap<QString,Sig*> *sig_a,
+                                   const QMap<QString,Sig*> *sig_b, int penalty)
+{
+
+  double score = 0.;
+  int hitCount = 0;
+
+  QMapIterator<QString,Sig*> it (*sig_a);
+  while (it.hasNext()) {
+    it.next();
+    QString mac = it.key();
+    //Histogram *histA = (Histogram*)(it.value());
+    Sig* sigA = it.value();
+
+    if (sig_b->contains(mac)) {
+      //Histogram *histB = sig_b->value(mac)->histogram();
+      Sig* sigB = sig_b->value(mac);
+      double overlap = 0.0;
+      if (sigA && sigB) {
+        overlap = Sig::computeHistOverlap(sigA, sigB);
+	if (penalty == -1) {
+	  score += overlap;
+	} else {
+	  score += overlap * ((sigA->weight()+sigB->weight()) / 2.);
+	}
+        ++hitCount;
+      }
+    } else {
+
+      score -= computePenalty (sigA->weight(), penalty);
+
+    }
+  }
+
+  if (penalty > 0) {
+
+    QMapIterator<QString,Sig*> it (*sig_b);
+    while (it.hasNext()) {
+      it.next();
+      QString mac = it.key();
+      Sig* sigB = it.value();
+      if (!sig_a->contains (mac)) {
+	score -= computePenalty (sigB->weight(), penalty);
+      }
+
+    }
+  }
+
+  if (hitCount == 0)
+    return -1.0;
+
+  if (penalty == -1)
+    return score/hitCount;
+
+  return score;
+
 }
 
 double Overlap::compute_overlap

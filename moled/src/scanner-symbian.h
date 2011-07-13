@@ -1,13 +1,13 @@
 /*
  * Mole - Mobile Organic Localisation Engine
  * Copyright 2010 Nokia Corporation.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,36 +15,30 @@
  * limitations under the License.
  */
 
-#ifndef GROUND_TRUTH_H
-#define GROUND_TRUTH_H
+#ifndef SCANNER_SYMBIAN_H
+#define SCANNER_SYMBIAN_H
 
-#include <QtGui>
-#include <QtDBus>
-#include <QWidget>
+#include <QObject>
+#include <QString>
+#include <QList>
 
-#include "common.h"
-#include "settings.h"
-
-class GroundTruth : public QWidget
+class APReading
 {
-    Q_OBJECT
 public:
-  explicit GroundTruth(QWidget *parent = 0, QString groundTruthFilename = 0);
-    ~GroundTruth ();
+    APReading(QString _name, QString _mac, short int _level);
+    ~APReading();
 
-signals:
-
-public slots:
-  void handle_quit();
-
-private:
-
-  QList<QPushButton *> buttons;
-  void build_ui (QFile &file);
-
-private slots:
-  void buttonClicked();
-
+    const QString name;
+    const QString mac;
+    const short int level;
 };
 
-#endif // GROUND_TRUTH_H
+class Scanner
+{
+public:
+    Scanner() {};
+    ~Scanner() {};
+    QList<APReading*> availableAPs();
+
+};
+#endif // SCANNER_SYMBIAN_H

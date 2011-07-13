@@ -1,0 +1,106 @@
+/*
+ * Mole - Mobile Organic Localisation Engine
+ * Copyright 2010 Nokia Corporation.
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef SCANQUEUE_H_
+#define SCANQUEUE_H_
+
+#include "../../common/sig.h"
+
+#include "moled.h"
+#include "localizer.h"
+
+#define MAX_SCANQUEUE_READINGS 50
+#define MAX_SCANQUEUE_SCANS    60
+
+class Reading {
+friend QDebug operator<<(QDebug dbg, const Reading &reading);
+ public:
+  APDesc *ap;
+  qint8 strength;
+  void set (APDesc *_ap, qint8 _strength) {
+    ap = _ap; strength = _strength; }
+};
+
+// Scans start off as incomplete.
+// As they are being filled with readings, they are still incomplete.
+// When they are incomplete, they are not used by the localizer
+// or the binder.
+// When they are filled with readings (signalled by scanCompleted)
+// they become active, which means they will be used for localization
+// and for binding.  In this state, the readings will be mirrored by
+// each APs signal strength histogram.  I.e., when a scan becomes
+// active, its values are applied to the histogram, and when it
+// becomes inactive, they are removed.
+// Inactive scans are used by the binder, sent as part of the place's
+// signature.
+
+
+enum ScanState { INCOMPLETE, ACTIVE, INACTIVE};
+
+class Scan {
+friend QDebug operator<<(QDebug dbg, const Scan &scan);
+ public:
+  ScanState state;
+  QDateTime timestamp;
+  Reading readings [MAX_SCANQUEUE_READINGS];
+};
+
+class ScanQueue : public QObject {
+friend QDebug operator<<(QDebug dbg, const ScanQueue &scanQueue);
+  Q_OBJECT
+
+public:
+  ScanQueue(QObject *parent = 0, Localizer *localizer = 0, int maxActiveQueueLength = 0);
+
+  bool addReading (QString mac, QString ssid, 
+		   qint16 frequency, qint8 strength);
+  bool scanCompleted ();
+  void serialize (QDateTime oldestValidScan,
+		  QVariantList &scanList);
+  const int maxActiveQueueLength;
+  void handleMotionEstimate(int motion);
+
+ private:
+  Localizer *localizer;
+  qint8 currentScan;
+  qint8 currentReading;
+  qint8 activeScanCount;
+  qint8 seenMacsSize;
+  int responseRateTotal;
+  bool movementDetected;
+
+  QSet<QString> seenMacs;
+  QSet<APDesc*> dirtyAPs;
+
+  Scan scans [MAX_SCANQUEUE_SCANS];
+  APDesc* getAP (QString mac, QString ssid, 
+	     qint16 frequency);
+
+  QString getAPString (QString mac, QString ssid, 
+		    qint16 frequency);
+
+  void truncate();
+  void clear (int ignoreScan);
+
+};
+
+
+
+
+
+
+#endif /* SCANQUEUE_H_ */

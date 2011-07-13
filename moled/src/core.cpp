@@ -1,13 +1,13 @@
 /*
  * Mole - Mobile Organic Localisation Engine
  * Copyright 2010 Nokia Corporation.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,98 +15,81 @@
  * limitations under the License.
  */
 
-#include <QSystemNetworkInfo>
-#include <QAbstractSocket>
-#include <iostream>
-#include <fcntl.h>
 #include "core.h"
 
+#include "binder.h"
+#include "localizer.h"
+#include "localServer.h"
+#include "scanQueue.h"
+#include "speedsensor.h"
 
-QString pidfile = "/var/run/mole1.pid";
+#ifdef Q_WS_MAEMO_5
+#include "scanner-maemo.h"
+#else
+#include "scanner-nm.h"
+#endif
+
+#include <iostream>
+#include <fcntl.h>
+
+const QString pidfile = "/var/run/mole.pid";
 
 void daemonize();
-void usage ();
+void usage();
 
-Core::Core (int argc, char *argv[]) : QCoreApplication (argc, argv) {
-
-  initSettings ();
+Core::Core(int argc, char *argv[])
+  : QCoreApplication(argc, argv)
+{
+  initSettings();
 
   QString logFilename = DEFAULT_LOG_FILE;
-  //QString configFilename = DEFAULT_CONFIG_FILE;
-  
+
   int port = DEFAULT_LOCAL_PORT;
   bool isDaemon = true;
-  bool runWiFiScanner = false;
-  bool runMovementDetector = false;
-  bool runMotionLogger = false;
+  bool runWiFiScanner = true;
+  bool runMovementDetector = true;
 
   //////////////////////////////////////////////////////////
   // Make sure no other arguments have been given
-  //qDebug () << "arguments pass 1";
   QStringList args = QCoreApplication::arguments();
-  {
-    QStringListIterator args_iter (args);
-    args_iter.next(); // moled
+  QStringListIterator argsIter(args);
+  argsIter.next(); // moled
 
-    while (args_iter.hasNext()) {
-      QString arg = args_iter.next();
-      if (arg == "-d" ||
-	  arg == "-n" ||
-	  arg == "-a" ||
-	  arg == "-A" ||
-	  arg == "-w") {
-	// nop
-      } else if (arg == "-c" ||
-	  arg == "-s" ||
-	  arg == "-f" ||
-	  arg == "-l" ||
-	  arg == "-r" ||
-	  arg == "-p") {
-	// check that these guys have another arg and skip it
-	if (!args_iter.hasNext()) {
-	  usage ();
-	}
-	args_iter.next();
-      } else {
-	usage ();
-      }
+  while (argsIter.hasNext()) {
+    QString arg = argsIter.next();
+    if (arg == "-h") {
+      usage();
+    } else if (arg == "-d") {
+        debug = true;
+    } else if (arg == "-n") {
+        isDaemon = false;
+        logFilename = "";
+    } else if (arg == "-l") {
+        logFilename = argsIter.next();
+    } else if (arg == "-s") {
+        mapServerURL = argsIter.next();
+    } else if (arg == "-f") {
+        staticServerURL = argsIter.next();
+    } else if (arg == "-r") {
+        rootPathname = argsIter.next();
+    } else if (arg == "-p") {
+        port = argsIter.next().toInt();
+    } else if (arg == "--no-accelerometer") {
+        runMovementDetector = false;
+    } else if (arg == "--no-wifi") {
+        runWiFiScanner = false;
+    } else {
+        usage();
     }
   }
-
 
   // Seed rng
   QTime time = QTime::currentTime();
-  qsrand ((uint)time.msec());
+  qsrand((uint)time.msec());
 
-  //////////////////////////////////////////////////////////
-  // first pass on arguments
-  //QStringList args = QCoreApplication::arguments();
-  args = QCoreApplication::arguments();
-  {
-    QStringListIterator args_iter (args);
-    args_iter.next(); // moled
+  settings = new QSettings(QSettings::SystemScope, MOLE_ORGANIZATION,
+                                      MOLE_APPLICATION, this);
 
-    while (args_iter.hasNext()) {
-      QString arg = args_iter.next();
-      if (arg == "-d") {
-	debug = true;
-      } else if (arg == "-n") {
-	isDaemon = false;
-	logFilename = "";
-      } else if (arg == "-l") {
-	logFilename = args_iter.next();
-	logFilename.trimmed();
-	//} else if (arg == "-c") {
-	//configFilename = args_iter.next();
-	//configFilename.trimmed();
-      }
-    }
-  }
-
-
-  //settings = new QSettings (configFilename,QSettings::NativeFormat);
-  settings = new QSettings (QSettings::SystemScope, MOLE_ORGANIZATION,
-			    MOLE_APPLICATION, this);
   //////////////////////////////////////////////////////////
   // Read default settings
   if (settings->contains("wifi_scanning")) {
@@ -116,162 +99,130 @@ Core::Core (int argc, char *argv[]) : QCoreApplication (argc, argv) {
     runMovementDetector = settings->value("movement_detector").toBool();
   }
   if (settings->contains("map_server_url")) {
-    mapServerURL = settings->value ("map_server_url").toString();
+    mapServerURL = settings->value("map_server_url").toString();
   }
   if (settings->contains("fingerprint_server_url")) {
-    staticServerURL = settings->value ("fingerprint_server_url").toString();
+    staticServerURL = settings->value("fingerprint_server_url").toString();
   }
   if (settings->contains("port")) {
-    port = settings->value ("port").toInt();
+    port = settings->value("port").toInt();
   }
   if (settings->contains("root_path")) {
-    rootPathname = settings->value ("root_path").toString();
-  }
-
-  //////////////////////////////////////////////////////////
-  // Allow user to override these on command line
-  //qDebug () << "arguments pass 2";
-  args = QCoreApplication::arguments();
-  {
-    QStringListIterator args_iter (args);
-    //args_iter (args);
-
-    args_iter.next(); // moled
-
-    while (args_iter.hasNext()) {
-      QString arg = args_iter.next();
-      if (arg == "-s") {
-	mapServerURL = args_iter.next();
-	mapServerURL.trimmed();
-      } else if (arg == "-f") {
-	staticServerURL = args_iter.next();
-	staticServerURL.trimmed();
-      } else if (arg == "-a") {
-	runMovementDetector = true;
-      } else if (arg == "-A") {
-	runMotionLogger = true;
-      } else if (arg == "-w") {
-	runWiFiScanner = true;
-      } else if (arg == "-r") {
-	rootPathname = args_iter.next();
-	rootPathname.trimmed();
-      }
-    }
+    rootPathname = settings->value("root_path").toString();
   }
 
   //////////////////////////////////////////////////////////
   // check a few things before daemonizing
+  initCommon(this, logFilename);
 
-  initCommon (this, logFilename);
-
-  //////////////////////////////////////////////////////////
-  qWarning () << "Starting mole daemon " 
-	      << "debug=" << debug
-	      << "port=" << port
-	      << "wifi_scanning=" << runWiFiScanner
-	      << "movement_detector=" << runMovementDetector
-	      << "motion_logger=" << runMotionLogger
-    //<< "config=" << configFilename
-	      << "logFilename=" << logFilename
-	      << "map_server_url=" << mapServerURL
-	      << "fingerprint_server_url=" << staticServerURL
-	      << "rootPath=" << rootPathname;
-
+  qWarning() << "Starting mole daemon "
+             << "debug=" << debug
+             << "port=" << port
+             << "wifi_scanning=" << runWiFiScanner
+             << "movement_detector=" << runMovementDetector
+             << "logFilename=" << logFilename
+             << "map_server_url=" << mapServerURL
+             << "fingerprint_server_url=" << staticServerURL
+             << "rootPath=" << rootPathname;
 
   if (isDaemon) {
-    daemonize ();
+    daemonize();
   } else {
-    qDebug () << "not daemonizing";
+    qDebug() << "not daemonizing";
   }
 
-
-
- // start create map directory
-  if (!rootDir.exists ("map")) {
-    bool ret = rootDir.mkdir ("map");
+  // start create map directory
+  if (!rootDir.exists("map")) {
+    bool ret = rootDir.mkdir("map");
     if (!ret) {
-      qFatal ("Failed to create map directory. Exiting...");
-      exit (-1);
+      qFatal("Failed to create map directory. Exiting...");
+      exit(-1);
     }
-    qDebug () << "created map dir";
+    qDebug() << "created map dir";
   }
   // end create map directory
 
   // reset session cookie on MOLEd restart
-  reset_session_cookie ();
+  reset_session_cookie();
 
-  localizer = new Localizer (this);
-  binder = new Binder (this, localizer);
+  m_localizer = new Localizer(this);
 
-  speedsensor = NULL;
-  if (runMovementDetector) {
-    speedsensor = new SpeedSensor (this, localizer, binder);
-  }
-  motionLogger = NULL;
-  if (runMotionLogger) {
-    motionLogger = new MotionLogger (this);
-  }
-
-  scanner = NULL;
-  if (runWiFiScanner) {
-    scanner = new Scanner (this, localizer, binder);
+  if (runMovementDetector && SpeedSensor::haveAccelerometer()) {
+    m_scanQueue = new ScanQueue(this, m_localizer);
+  } else {
+    // since we are not detecting motion, only use this many scans
+    // for localization
+    const int maxActiveQueueLength = 12;
+    m_scanQueue = new ScanQueue(this, m_localizer, maxActiveQueueLength);
   }
 
-  connect (this, SIGNAL(aboutToQuit()), SLOT(handle_quit()));
+  m_binder = new Binder(this, m_localizer, m_scanQueue);
+  m_localServer = new LocalServer(this, m_localizer, m_binder, port);
 
+  m_speedSensor = 0;
+  if (runMovementDetector && SpeedSensor::haveAccelerometer())
+    m_speedSensor = new SpeedSensor(this, m_scanQueue);
+
+  m_scanner = 0;
+  if (runWiFiScanner)
+    m_scanner = new Scanner(this, m_scanQueue, m_binder);
+
+  connect(this, SIGNAL(aboutToQuit()), SLOT(handle_quit()));
 }
 
-void Core::handle_quit () {
-  qWarning () << "Stopping mole daemon...";
+void Core::handle_quit()
+{
+  qWarning() << "Stopping mole daemon...";
 
-  if (scanner)
-    delete scanner;
-  if (speedsensor)
-    delete speedsensor;
-  if (motionLogger)
-    delete motionLogger;
-  delete localizer;
-  delete binder;
+  delete m_scanQueue;
+  if (m_scanner)
+    delete m_scanner;
+  if (m_speedSensor)
+    delete m_speedSensor;
+  delete m_localizer;
+  delete m_localServer;
+  delete m_binder;
 
-  qWarning () << "Stopped mole daemon";
+  qWarning() << "Stopped mole daemon";
 }
 
-Core::~Core () {
-  
+Core::~Core()
+{
 }
 
-int Core::run () {
-  return exec ();
+int Core::run()
+{
+  return exec();
 }
 
 int main(int argc, char *argv[])
 {
-  printf ("Mole Daemon Starting\n");
+  qDebug("Mole Daemon Starting");
 
-  Core *app = new Core (argc, argv);
+  Core *app = new Core(argc, argv);
   return app->run();
 }
 
 void daemonize()
 {
-    if (::getppid() == 1) 
-	return;  // Already a daemon if owned by init
+    if (::getppid() == 1)
+      return;  // Already a daemon if owned by init
 
     int i = fork();
     if (i < 0) exit(1); // Fork error
     if (i > 0) exit(0); // Parent exits
-    
+
     ::setsid();  // Create a new process group
 
     ::close(0);
     ::open("/dev/null", O_RDONLY);  // Stdin
 
-
     int lfp = ::open(qPrintable(pidfile), O_RDWR|O_CREAT, 0640);
-    if (lfp<0)
-	qFatal("Cannot open pidfile %s\n", qPrintable(pidfile));
-    if (lockf(lfp, F_TLOCK, 0)<0)
-	qFatal("Can't get a lock on %s - another instance may be running\n", qPrintable(pidfile));
+    if (lfp < 0)
+      qFatal("Cannot open pidfile %s\n", qPrintable(pidfile));
+
+    if (lockf(lfp, F_TLOCK, 0) < 0)
+      qFatal("Can't get a lock on %s - another instance may be running\n", qPrintable(pidfile));
     QByteArray ba = QByteArray::number(::getpid());
     ::write(lfp, ba.constData(), ba.size());
 
@@ -281,28 +232,21 @@ void daemonize()
     ::signal(SIGTTIN,SIG_IGN);
 }
 
-//using namespace std;
+void usage()
+{
 
-void usage () {
-  // d n a w
-  // c s f l r p
+  qCritical() << "moled usage\n"
+              << "-h print usage\n"
+              << "-d debug\n"
+              << "-n run in foreground\n"
+              << "-s map server URL [" << DEFAULT_MAP_SERVER_URL << "] \n"
+              << "-f fingerprint (static) server [" << DEFAULT_STATIC_SERVER_URL << "]\n"
+              << "-l log file [" << DEFAULT_LOG_FILE << "]\n"
+              << "-r root path [" << DEFAULT_ROOT_PATH << "]"
+              << " (app data stored here)\n"
+              << "-p local port [" << DEFAULT_LOCAL_PORT << "]\n"
+              << "--no-accelerometer turn off movement detection\n"
+              << "--no-wifi turn off wifi scanner\n";
 
-  qCritical () << "moled\n"
-	       << "-h print usage\n"
-	       << "-d debug\n"
-	       << "-n run in foreground\n"
-    //<< "-c config file [" << DEFAULT_CONFIG_FILE << "]"
-    //<< " (overridden by cmd line parameters)\n"
-	       << "-s map server URL [" << DEFAULT_MAP_SERVER_URL << "] \n"
-	       << "-f fingerprint (static) server [" << DEFAULT_STATIC_SERVER_URL << "]\n"
-	       << "-l log file [" << DEFAULT_LOG_FILE << "]\n"
-	       << "-r root path [" << DEFAULT_ROOT_PATH << "]"
-	       << " (app data stored here)\n"
-	       << "-p local port [" << DEFAULT_LOCAL_PORT << "]\n"
-	       << "-a run movement detection ourselves (requires accelerometer)\n"
-	       << "-A trace all accelerometer data\n"
-	       << "-w run wifi scanner ourselves\n";
-
-  exit (0);
-
+  exit(0);
 }

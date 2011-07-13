@@ -22,71 +22,20 @@
 
 #include "../../common/sig.h"
 
-//Q_DECLARE_METATYPE(Sig)
-
-class MacDesc : public Sig {
+class APDesc : public Sig {
+ friend QDebug operator<<(QDebug dbg, const APDesc &apDesc);
  public:
-  MacDesc ();
-  
-  void add_reading (int rssi);
-  void drop_reading (int rssi);
-  int get_count();
-
- public:
-  int max;
-  //double mean_rssi;
-  //double stddev_rssi;
-  //double weight;
-
-  void size();
-  void set_weight(double _weight);
-
- private:
-  void recalculate_stats ();
-  void clear ();
-  QList<int> rssi_list;
-
-};
-
-class AP_Reading {
-
- public:
-
-  AP_Reading (QString _bssid, QString _ssid, quint32 _frequency, quint32 _level);
-  AP_Reading (AP_Reading *reading);
-  const QString bssid;
+  APDesc (QString _mac, QString _ssid, qint16 _frequency) 
+    : mac(_mac), ssid(_ssid), frequency (_frequency) { count = 0; }
+  const QString mac;
   const QString ssid;
-  const quint32 frequency;
-  const quint32 level;
-
-};
-
-class AP_Scan {
- public:
-
-  AP_Scan (QList<AP_Reading*> *_readings, QDateTime *_stamp);
-  AP_Scan (AP_Scan *scan);
-  ~AP_Scan ();
-
-  bool is_same_scan (AP_Scan *scan);
-
-  void add_active_macs (QMap<QString,MacDesc*> *active_macs);
-  void remove_inactive_macs (QMap<QString,MacDesc*> *active_macs);
-
-  QList<AP_Reading*> *readings;
-  QDateTime *stamp;
-
-  QMap<QString,quint32> *readings_map;
-
-  int size();
-
+  const qint16 frequency;
+  void incrementUse () { count++; }
+  void decrementUse () { count--; Q_ASSERT(count >= 0); }
+  qint16 getUseCount () { return count; }
  private:
-  int id;
-  void recalculate_weights (QMap<QString,MacDesc*> *active_macs);
-
+  qint16 count;
 };
 
-QDebug operator<<(QDebug dbg, const AP_Reading &reading);
-QDebug operator<<(QDebug dbg, const AP_Scan &scan);
 
 #endif

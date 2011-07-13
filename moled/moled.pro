@@ -1,5 +1,5 @@
 # Mole (Mobile Organic Localization Engine)
-# Copyright Nokia 2010.
+# Copyright Nokia 2010-2011.
 # All rights reserved.
 
 TEMPLATE = app
@@ -11,42 +11,46 @@ OBJECTS_DIR = obj
 UI_DIR = obj
 
 QT += core xml network
-CONFIG += qdbus mobility debug
+QT -= gui
+CONFIG += mobility
+#CONFIG += release
 MOBILITY += sensors systeminfo
 
-maemo5 {
-  CONFIG += icd2 link_pkgconfig
-  PKGCONFIG += glib-2.0 icd2
-  HEADERS += src/scanner-maemo.h  src/scan-maemo.h
-  SOURCES += src/scanner-maemo.cpp
-}
+HEADERS += \
+    src/binder.h \
+    src/core.h \
+    src/localizer.h \
+    src/localServer.h \
+    src/moled.h \
+    src/scan.h \
+    src/scanQueue.h \
+    src/speedsensor.h \
+    ../common/dbus.h \
+    ../common/mole.h \
+    ../common/network.h \
+    ../common/overlap.h \
+    ../common/sig.h \
+    ../common/util.h
 
-!maemo5 {
-  HEADERS += src/scanner.h
-  SOURCES += src/scanner.cpp
-}
+#src/bayes.cpp \
 
+SOURCES += \
+    src/binder.cpp \
+    src/core.cpp \
+    src/localizer.cpp \
+    src/localServer.cpp \
+    src/localizer_statistics.cpp \
+    src/scan.cpp \
+    src/scanQueue.cpp \
+    src/space_parser.cpp \
+    src/speedsensor.cpp \
+    ../common/mole.cpp \
+    ../common/network.cpp \
+    ../common/overlap.cpp \
+    ../common/sig.cpp \
+    ../common/util.cpp
 
-# MOBILITY += systeminfo bearer
-
-HEADERS += src/binder.h ../common/util.h src/scan.h src/localizer.h src/core.h src/speedsensor.h ../common/overlap.h ../common/network.h ../common/sig.h src/moled.h ../common/mole.h 
-SOURCES += src/binder.cpp ../common/util.cpp src/scan.cpp src/localizer.cpp src/core.cpp src/speedsensor.cpp ../common/overlap.cpp ../common/network.cpp ../common/sig.cpp ../common/mole.cpp 
-
-
-FORMS += 
-RESOURCES +=
-
-symbian {
-    TARGET.UID3 = 0xe689ea0d
-    # TARGET.CAPABILITY +=
-    TARGET.EPOCSTACKSIZE = 0x14000
-    TARGET.EPOCHEAPSIZE = 0x020000 0x800000
-}
-
-
-
-LIBS += -L/usr/lib -lqjson
-
+unix:LIBS += -L/usr/lib -lqjson
 
 OTHER_FILES += \
     debian/changelog \
@@ -55,22 +59,43 @@ OTHER_FILES += \
     debian/copyright \
     debian/README
 
+maemo5 {
+    CONFIG += icd2 link_pkgconfig
+    PKGCONFIG += glib-2.0 icd2
+    HEADERS += src/scanner-maemo.h  src/scan-maemo.h
+    SOURCES += src/scanner-maemo.cpp
+}
 
-unix:!symbian {
-    maemo5 {
-        target.path = /opt/usr/sbin
-    } else {
-        target.path = /usr/local/sbin
-    }
-    INSTALLS += target
+!maemo5 {
+    HEADERS += src/scanner-nm.h
+    SOURCES += src/scanner-nm.cpp
 }
 
 unix:!symbian {
+    QT += dbus
+
+    isEmpty(PREFIX) {
+      PREFIX = "/usr"
+    }
+    DATADIR=$$PREFIX/share
+
     desktopfile.files = data/$${TARGET}.desktop
     maemo5 {
-        desktopfile.path = /usr/share/applications/hildon
+        target.path = $$PREFIX/sbin
+        desktopfile.path = $$DATADIR/applications/hildon
     } else {
-        desktopfile.path = /usr/share/applications
+        target.path = $$PREFIX/local/sbin
+        desktopfile.path = $$DATADIR/applications
     }
-    INSTALLS += desktopfile
+    service.files = data/$${TARGET}.service
+    service.path = $$DATADIR/dbus-1/services
+
+    INSTALLS += target desktopfile service
+}
+
+symbian {
+    TARGET.UID3 = 0xe689ea0d
+    TARGET.CAPABILITY += NetworkServices
+    TARGET.EPOCSTACKSIZE = 0x14000
+    TARGET.EPOCHEAPSIZE = 0x020000 0x800000
 }

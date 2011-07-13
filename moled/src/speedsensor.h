@@ -22,11 +22,10 @@
 //#include <QFeedbackEffect>
 //#include <QRotationReading>
 // #include <QCompassReading>
-#include <QtGui>
 #include <QtDBus>
 
-#include "localizer.h"
-#include "binder.h"
+#include "scanQueue.h"
+//#include "binder.h"
 
 //#include <qmobilityglobal.h>
 
@@ -45,15 +44,17 @@ QTM_USE_NAMESPACE
 #define MAG                 3
 #define ACC_READING_COLUMNS 4
 
-#define DELTA               0
-#define STREAK              1
-#define META_READING_COLUMNS 2
+//#define DELTA               0
+//#define STREAK              1
+//#define META_READING_COLUMNS 2
 
-#define RISING              1
-#define NO_CHG              0
-#define FALLING            -1
+//#define RISING              1
+//#define NO_CHG              0
+//#define FALLING            -1
 
 #define MAX_READING_COUNT 100
+
+#define MOTION_HISTORY_SIZE 3 // must be >= 3
 
 class SpeedSensor : public QObject, public QAccelerometerFilter
 {
@@ -61,54 +62,40 @@ class SpeedSensor : public QObject, public QAccelerometerFilter
  
     public:
  
-  SpeedSensor(QObject* parent = 0, Localizer *localizer = 0,
-	      Binder *binder = 0,
-	      int samplingPeriod = 500, int dutyCycle = 9500);
+  SpeedSensor(QObject* parent = 0, ScanQueue *scanQueue = 0,
+	      int samplingPeriod = 250, int dutyCycle = 4500);
   void shutdown();
+
+  static bool haveAccelerometer ();
  
   private slots:
  
   // Override of QAcclerometerFilter::filter(QAccelerometerReading*)
   bool filter(QAccelerometerReading* reading);
-  void updateSpeedStreak();
-  void updateSpeedShafer();
+  //void updateSpeedStreak();
+  Motion updateSpeedShafer();
+  Motion updateSpeedVariance();
   void handleTimeout ();
-  void emitMotion ();
+  void emitMotion (Motion motion);
+  //void emitMotionToOthers ();
  
  private:
+  //bool tellOthersAgain;
   QAccelerometer* sensor;
-  Localizer *localizer;
-  Binder *binder;
+  ScanQueue *scanQueue;
   bool on;
-  Motion motion;
+  Motion motionHistory[MOTION_HISTORY_SIZE];
   QTimer timer;
   int readingCount;
   qreal reading[MAX_READING_COUNT][ACC_READING_COLUMNS];
-  int   metaReading[MAX_READING_COUNT][META_READING_COLUMNS];
+  //int   metaReading[MAX_READING_COUNT][META_READING_COLUMNS];
 
   const int samplingPeriod;
   const int dutyCycle;
 
-};
+  static bool testedForAccelerometer;
+  static bool accelerometerExists;
 
-
-class MotionLogger : public QObject, public QAccelerometerFilter
-{
-  Q_OBJECT
- 
-    public:
- 
-  MotionLogger(QObject* parent = 0);
- 
- private slots:
- 
-  bool filter(QAccelerometerReading* reading);
- 
- private:
- 
-  QAccelerometer* sensor;
-  //QTextStream logStream;
-  //QFile *logFile;
 };
 
 

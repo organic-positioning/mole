@@ -47,13 +47,13 @@ DBUS_TYPE_INT32               signal value in dB; use signal strength above
                            unless you know what you are doing
 */
 
-class Scan : public QObject
+class ICDScan : public QObject
 {
     Q_OBJECT
 public:
 
-    Scan() {};
-    ~Scan() {};
+    ICDScan() {};
+    ~ICDScan() {};
 
     // print??
     void print(void) { qDebug() << "Scan details: to be implemented";}

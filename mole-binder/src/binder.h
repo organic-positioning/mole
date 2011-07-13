@@ -1,13 +1,13 @@
 /*
  * Mole - Mobile Organic Localisation Engine
  * Copyright 2010 Nokia Corporation.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,111 +18,94 @@
 #ifndef BINDER_H
 #define BINDER_H
 
-#include <QtGui>
-#include <QtDBus>
 #include <QWidget>
 
 #include "common.h"
-#include "places.h"
-#include "settings.h"
 
-enum SubmitState { DISPLAY, CORRECT};
+enum SubmitState {DISPLAY, CORRECT};
+
+class PlaceEdit;
+class Settings;
 
 class Binder : public QWidget
 {
     Q_OBJECT
 public:
     explicit Binder(QWidget *parent = 0);
-    ~Binder ();
-
-signals:
+    ~Binder();
 
 public slots:
-  void handle_quit();
+  void handleQuit();
 
 private:
-  bool online;
-  SubmitState submit_state;
-  QTimer *bind_timer;
-  QTimer *request_location_timer;
-  QTimer *walking_timer;
+  bool m_online;
+  int m_requestLocationEstimateCounter;
+  SubmitState m_submitState;
+  QTimer *m_bindTimer;
+  QTimer *m_requestLocationTimer;
+  QTimer *m_walkingTimer;
+  Settings *m_settingsDialog;
 
-  void build_ui ();
-  void set_places_enabled (bool isEnabled);
-  void reset_bind_timer();
-  void set_walking_label (bool);
+  QPushButton *submitButton;
 
-  QToolButton *about_button;
-  QToolButton *feedback_button;
-  QToolButton *help_button;
-  QToolButton *settings_button;
-  QPushButton *submit_button;
+  QNetworkReply *m_feedbackReply;
 
-  QNetworkReply *feedback_reply;
+  PlaceEdit *countryEdit;
+  PlaceEdit *regionEdit;
+  PlaceEdit *cityEdit;
+  PlaceEdit *areaEdit;
+  PlaceEdit *spaceNameEdit;
+  QLineEdit *tagsEdit;
 
-  Settings *settings_dialog;
+  QString countryEstimate;
+  QString regionEstimate;
+  QString cityEstimate;
+  QString areaEstimate;
+  QString spaceNameEstimate;
+  QString tagsEstimate;
 
-  PlaceEdit *country_edit;
-  PlaceEdit *region_edit;
-  PlaceEdit *city_edit;
-  PlaceEdit *area_edit;
-  PlaceEdit *space_name_edit;
-  QLineEdit *tags_edit;
+  QLabel *walkingLabel;
+  ColoredLabel *netLabel;
+  ColoredLabel *daemonLabel;
+  QLabel *scanCountLabel;
+  QLabel *cacheSpacesLabel;
+  QLabel *scanRateLabel;
+  QLabel *overlapMaxLabel;
+  QLabel *churnLabel;
 
-  QString country_estimate;
-  QString region_estimate;
-  QString city_estimate;
-  QString area_estimate;
-  QString space_name_estimate;
-  QString tags_estimate;
-
-  void refresh_last_estimate ();
-  void send_bind_msg ();
-  void set_submit_state (SubmitState _submit_state);
-
-  QLabel *walking_label;
-  ColoredLabel *net_label;
-  ColoredLabel *daemon_label;
-  QLabel *scan_count_label;
-  //QLabel *cache_size_label;
-  QLabel *cache_spaces_label;
-  QLabel *scan_rate_label;
-  QLabel *overlap_max_label;
-  QLabel *churn_label;
-
-  int request_location_estimate_counter;
-  void handle_daemon_change (bool online);
+  void buildUI();
+  void setPlacesEnabled(bool);
+  void resetBindTimer();
+  void setWalkingLabel(bool);
+  void refreshLastEstimate();
+  void sendBindMsg();
+  void setSubmitState(SubmitState);
+  void setDaemonLabel(bool);
 
 private slots:
-  void handle_clicked_about();
-  void handle_clicked_feedback();
-  void handle_clicked_help();
-  void handle_clicked_settings();
+  void onAboutClicked();
+  void onFeedbackClicked();
+  void onHelpClicked();
+  void onSettingsClicked();
 
-  void handle_send_feedback_finished ();
-  void handle_place_changed ();
+  void onSettingsClosed();
 
-  void handle_clicked_submit ();
-  void handle_bind_timer();
-  void handle_location_estimate(QString fq_name, bool online);
-  void request_location_estimate();
+  void onSendFeedbackFinished();
+  void onPlaceChanged();
 
-  void handle_walking_timer();
-  void handle_speed_estimate(int motion);
-  void handle_online_change (bool online);
+  void onSubmitClicked();
+  void onBindTimeout();
+  void handleLocationEstimate(QString, bool);
+  void requestLocationEstimate();
 
-  /*
-  void handle_location_stats
-    (QString fq_name, QDateTime, int,int,int,int,int,int,int,
-     double,double,double,double,double,double);
-  */
+  void onWalkingTimeout();
+  void onSpeedStatusChanged(int);
+  void onNetworkStatusChanged(bool);
 
-  void handle_location_stats
+  void handleLocationStats
     (QString fq_name, QDateTime start_time,
      int,int,int,int,int,int,int,
      double,double,double,double,double,double);
-
-
 };
 
 #endif // BINDER_H

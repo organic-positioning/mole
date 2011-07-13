@@ -20,7 +20,6 @@
 
 #include <csignal>
 #include <QtCore>
-#include <QtDBus>
 #include <QCoreApplication>
 #include <QNetworkRequest>
 #include <QNetworkReply>
@@ -28,10 +27,13 @@
 #include "qglobal.h"
 #define QT_FATAL_ASSERT 1
 
+#include "dbus.h"
+
 extern QString MOLE_ORGANIZATION;
 extern QString MOLE_APPLICATION;
 extern QString MOLE_DOMAIN;
 extern int     MOLE_VERSION;
+extern QString MOLE_ICON_PATH;
 
 // d3f1ftrfyzkx8f.cloudfront.net <=> mole-static.research.nokia.com
 

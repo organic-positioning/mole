@@ -20,17 +20,89 @@
 
 #include <QtCore>
 
-class Sig {
+class DynamicHistogram;
 
- public:
-  Sig ();
-  Sig (double, double, double);
+class Histogram {
 
-  double mean;
-  double stddev;
-  double weight;
+  public:
+  Histogram() {}
+  Histogram(QString);
+  Histogram(DynamicHistogram *h);
+    virtual ~Histogram();
+
+    float at (int index) const ;
+
+    int min () const { return pMin; }
+    int max () const { return pMax; }
+    float* getNormalizedValues() { return pNormalizedValues; } 
+
+    static float computeOverlap (Histogram *a, Histogram *b);
+    static void normalizeValues (float *inHistogram, float *outHistogram, float factor);
+    static void addKernelizedValue (qint8 index, float *histogram);
+    static void removeKernelizedValue (qint8 index, float *histogram);
+
+  protected:
+    float *pNormalizedValues;
+    int pMin;
+    int pMax;
+
+    void parseHistogram(const QString &, float *kernelizedValues, int &countTotal);
+
+    static bool inBounds (int index);
 
 };
+
+QDebug operator<<(QDebug dbg, const Histogram &histogram);
+
+class DynamicHistogram : public Histogram {
+ friend QDebug operator<<(QDebug dbg, const DynamicHistogram &histogram);
+ public:
+  DynamicHistogram ();
+  ~DynamicHistogram ();
+  float *getKernelizedValues () { return pKernelizedValues; }
+  void increment () { pCount++; }
+  void decrement () { pCount--; Q_ASSERT(pCount >= 0); }
+  int getCount () const { return pCount; } 
+
+ private:
+  float *pKernelizedValues;
+  int pCount;
+
+};
+
+
+
+class Sig {
+friend QDebug operator<<(QDebug dbg, const Sig &sig);
+
+  public:
+    Sig();
+    Sig(Sig *other);
+    Sig(float, float, float, QString);
+    ~Sig();
+
+    void addSignalStrength (qint8 strength);
+    void removeSignalStrength (qint8 strength);
+    bool isEmpty ();
+    void normalizeHistogram ();
+    void setWeight (int totalHistogramCount);
+
+    int loudest () const { return pHistogram->min (); }
+
+    float mean () const { return pMean; }
+    float stddev () const { return pStddev; }
+    float weight () const { return pWeight; }
+
+    static float computeHistOverlap (Sig *a, Sig *b);
+
+  private:
+    float pMean;
+    float pStddev;
+    float pWeight;
+    Histogram *pHistogram;
+
+};
+
 
 
 #endif /* SIG_H_ */

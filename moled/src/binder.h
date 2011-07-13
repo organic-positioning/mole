@@ -18,46 +18,35 @@
 #ifndef BINDER_H_
 #define BINDER_H_
 
-//#include <QNetworkAccessManager>
-//#include <QNetworkReply>
-//#include <QDebug>
-//#include <QNetworkRequest>
-//#include <QUrl>
-//#include <QtDBus> 
-
 #include "moled.h"
-#include "scan.h"
+#include "scanQueue.h"
 #include "localizer.h"
 
-// 2.5 minutes
-const int EXPIRE_SECS = 180;
+// five minutes
+const int EXPIRE_SECS = 300;
 
 class Binder : public QObject {
   Q_OBJECT
 
 public:
-  Binder(QObject *parent = 0, Localizer *localizer = 0);
+  Binder(QObject *parent = 0, Localizer *localizer = 0, ScanQueue *scanQueue = 0);
   ~Binder ();
 
   void set_location_estimate
     (QString estimated_space_name, double estimated_space_score);
-
-  void set_device_desc (QString _device_desc);
+  
+  //void set_device_desc (QString _device_desc);
   void set_wifi_desc (QString _wifi_desc);
-  void handle_speed_estimate(int motion);
+  //void handle_speed_estimate(int motion);
 
 public slots:
-  void handle_bind_request
+  QString handleBindRequest
     (QString country, QString region, QString city, QString area, 
      QString space_name, QString tags);
-
-  void add_scan (AP_Scan *new_scan);
 
   //void handle_quit ();
 
 private slots:
-  void clean_scan_list (int expire_secs = EXPIRE_SECS);
-  //void handle_json_test ();
   void handle_bind_response ();
 
   void xmit_bind ();
@@ -70,20 +59,20 @@ private:
   QString wifi_desc;
   QString device_desc;
 
-  QTimer *clean_scan_list_timer;
-  QTimer *xmit_bind_timer;
-  //QDateTime last_reset_stamp;
+  QTimer xmit_bind_timer;
+  QDateTime oldestValidScan;
 
   //QNetworkAccessManager *bind_network_manager;
   QNetworkReply *reply;
 
-  QList<AP_Scan*> *scan_list;
+  //QList<AP_Scan*> *scan_list;
 
   //QString estimated_space_name;
   //double estimated_space_score;
 
   QMap<QString,QString> bfn2area;
   Localizer *localizer;
+  ScanQueue *scanQueue;
 
 };
 

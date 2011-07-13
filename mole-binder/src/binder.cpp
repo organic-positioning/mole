@@ -1,13 +1,13 @@
 /*
  * Mole - Mobile Organic Localisation Engine
  * Copyright 2010 Nokia Corporation.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,700 +15,652 @@
  * limitations under the License.
  */
 
-
 #include "binder.h"
+
+#include "places.h"
+#include "settings.h"
 
 // TODO show coverage of local area in color
 // TODO have tags come from server
 
-QString display_str = "Incorrect Estimate?";
-QString correct_str = "Submit Correction";
-
-
-Binder::Binder(QWidget *parent) :
-    QWidget(parent)
+Binder::Binder(QWidget *parent)
+  : QWidget(parent)
+  , m_online(true)
+  , m_requestLocationEstimateCounter(0)
+  , m_bindTimer(new QTimer())
+  , m_requestLocationTimer(new QTimer())
+  , m_walkingTimer(new QTimer())
+  , m_feedbackReply(0)
 {
-  online = true;
-  request_location_estimate_counter = 0;
-  submit_state = DISPLAY;
 
-  build_ui ();
+  buildUI();
 
-  bind_timer = new QTimer ();
-  connect (bind_timer, SIGNAL(timeout()), SLOT(handle_bind_timer()));
+  connect(m_bindTimer, SIGNAL(timeout()), SLOT(onBindTimeout()));
 
-  set_submit_state (DISPLAY);
+  setSubmitState(DISPLAY);
 
-  settings_dialog = new Settings (this);
-  settings_dialog->hide();
+  connect(m_requestLocationTimer, SIGNAL(timeout()), SLOT(requestLocationEstimate()));
+  m_requestLocationTimer->start(2000);
 
-
-  request_location_timer = new QTimer ();
-  connect (request_location_timer, SIGNAL(timeout()), SLOT(request_location_estimate()));
-  request_location_timer->start(2000);
-
-  walking_timer = new QTimer ();
-  connect (walking_timer, SIGNAL(timeout()), SLOT(handle_walking_timer()));
+  connect(m_walkingTimer, SIGNAL(timeout()), SLOT(onWalkingTimeout()));
 
   QDBusConnection::sessionBus().connect
-    (QString(), QString(), "com.nokia.moled", "LocationStats", this, 
-     SLOT(handle_location_stats(QString,QDateTime,int,int,int,int,int,int,int,double,double,double,double,double,double)));
+    (QString(), QString(), "com.nokia.moled", "LocationStats", this,
+     SLOT(handleLocationStats(QString,QDateTime,int,int,int,int,int,
+                              int,int,double,double,double,double,double,double)));
 
+  QDBusConnection::sessionBus().connect
+    (QString(), QString(), "com.nokia.moled", "LocationEstimate", this,
+     SLOT(handleLocationEstimate(QString, bool)));
 
-  QDBusConnection::sessionBus().connect(QString(), QString(), "com.nokia.moled", "LocationEstimate", this, SLOT(handle_location_estimate(QString, bool)));
-
-  QDBusConnection::sessionBus().connect(QString(), QString(), "com.nokia.moled", "MotionEstimate", this, SLOT(handle_speed_estimate(int)));
-
+  QDBusConnection::sessionBus().connect
+    (QString(), QString(), "com.nokia.moled", "MotionEstimate", this,
+     SLOT(onSpeedStatusChanged(int)));
 }
 
-void Binder::handle_quit() {
-  qDebug () << "Binder: aboutToQuit";
-
+void Binder::handleQuit()
+{
+  qDebug() << "Binder: aboutToQuit";
+  delete m_bindTimer;
+  delete m_requestLocationTimer;
+  delete m_walkingTimer;
 }
 
-Binder::~Binder() {
-  qDebug () << "Binder: destructor";
+Binder::~Binder()
+{
+  qDebug() << "Binder: destructor";
 }
 
-void Binder::build_ui () {
-  
+void Binder::buildUI()
+{
   // LINUX
-  // 
-  resize (QSize(UI_WIDTH, UI_HEIGHT).expandedTo(minimumSizeHint()));
+  resize(QSize(UI_WIDTH, UI_HEIGHT).expandedTo(minimumSizeHint()));
 
+  QGridLayout *layout = new QGridLayout();
 
-  QGridLayout *layout = new QGridLayout ();
-
-  QGroupBox *button_box = new QGroupBox ("", this);
-  //button_box->setStyleSheet("QGroupBox { border: 1px; } QToolButton { border: 0px; padding 0px; }");
-  QGridLayout *button_layout = new QGridLayout ();
-
+  QGroupBox *buttonBox = new QGroupBox("", this);
+  QGridLayout *buttonLayout = new QGridLayout();
 
   // about
-  about_button = new QToolButton (button_box);
-  about_button->setIcon (QIcon(icon_root+"about.png"));
-  about_button->setToolTip ("About");
-  about_button->setIconSize (QSize(icon_size_reg,icon_size_reg));
-  connect (about_button, SIGNAL(clicked()), SLOT(handle_clicked_about()));
-  
+  QToolButton *aboutButton = new QToolButton(buttonBox);
+  aboutButton->setIcon(QIcon(MOLE_ICON_PATH + "about.png"));
+  aboutButton->setToolTip(tr("About"));
+  aboutButton->setIconSize(QSize(ICON_SIZE_REG, ICON_SIZE_REG));
+  connect(aboutButton, SIGNAL(clicked()), SLOT(onAboutClicked()));
 
   // feedback
-  feedback_button = new QToolButton (button_box);
-  feedback_button->setIcon (QIcon(icon_root+"email.png"));
-  feedback_button->setToolTip ("Send Feedback");
-  feedback_button->setIconSize (QSize(icon_size_reg,icon_size_reg));
-  connect (feedback_button, SIGNAL(clicked()), SLOT(handle_clicked_feedback()));
+  QToolButton *feedbackButton = new QToolButton(buttonBox);
+  feedbackButton->setIcon(QIcon(MOLE_ICON_PATH + "email.png"));
+  feedbackButton->setToolTip(tr("Send Feedback"));
+  feedbackButton->setIconSize(QSize(ICON_SIZE_REG, ICON_SIZE_REG));
+  connect(feedbackButton, SIGNAL(clicked()), SLOT(onFeedbackClicked()));
 
   // help
-  help_button = new QToolButton (button_box);
-  help_button->setIcon (QIcon(icon_root+"help.png"));
-  help_button->setToolTip ("Help");
-  help_button->setIconSize (QSize(icon_size_reg,icon_size_reg));
-  connect (help_button, SIGNAL(clicked()), SLOT(handle_clicked_help()));
+  QToolButton *helpButton = new QToolButton(buttonBox);
+  helpButton->setIcon(QIcon(MOLE_ICON_PATH + "help.png"));
+  helpButton->setToolTip(tr("Help"));
+  helpButton->setIconSize(QSize(ICON_SIZE_REG, ICON_SIZE_REG));
+  connect(helpButton, SIGNAL(clicked()), SLOT(onHelpClicked()));
 
   // settings
-  settings_button = new QToolButton (button_box);
-  settings_button->setIcon (QIcon(icon_root+"settings.png"));
-  settings_button->setToolTip ("Settings");
-  settings_button->setIconSize (QSize(icon_size_reg,icon_size_reg));
-  connect (settings_button, SIGNAL(clicked()), SLOT(handle_clicked_settings()));
+  QToolButton *settingsButton = new QToolButton(buttonBox);
+  settingsButton->setIcon(QIcon(MOLE_ICON_PATH + "settings.png"));
+  settingsButton->setToolTip(tr("Settings"));
+  settingsButton->setIconSize(QSize(ICON_SIZE_REG, ICON_SIZE_REG));
+  connect(settingsButton, SIGNAL(clicked()), SLOT(onSettingsClicked()));
 
   //////////////////////////////////////////////////////////
 
-  button_layout->setRowStretch (5, 2);
-  button_layout->addWidget (about_button, 1, 0);
-  button_layout->addWidget (settings_button, 2, 0);
-  button_layout->addWidget (help_button, 3, 0);
-  button_layout->addWidget (feedback_button, 4, 0);
-  button_box->setLayout (button_layout);
-  
-  QString estimate_title = tr ("Estimate");
-  QGroupBox *estimate_box = new QGroupBox (estimate_title, this);
-  country_edit = new PlaceEdit (NULL, 0, "Country", estimate_box);
-  country_edit->setMaxLength (3);
-  country_edit->setInputMask (">AAA");
+  buttonLayout->setRowStretch(5, 2);
+  buttonLayout->addWidget(aboutButton, 1, 0);
+  buttonLayout->addWidget(settingsButton, 2, 0);
+  buttonLayout->addWidget(helpButton, 3, 0);
+  buttonLayout->addWidget(feedbackButton, 4, 0);
+  buttonBox->setLayout(buttonLayout);
 
+  QGroupBox *estimateBox = new QGroupBox(tr("Estimate"), this);
+  countryEdit = new PlaceEdit(NULL, 0, tr("Country"), estimateBox);
+  countryEdit->setMaxLength(3);
+  countryEdit->setInputMask(">AAA");
 
-  region_edit = new PlaceEdit (country_edit, 1, "Region/State", estimate_box);
-  city_edit = new PlaceEdit (region_edit, 2, "City", estimate_box);
-  area_edit = new PlaceEdit (city_edit, 3, "Area/Blg", estimate_box);
-  space_name_edit = new PlaceEdit (area_edit, 4, "Room", estimate_box);
+  regionEdit = new PlaceEdit(countryEdit, 1, tr("Region/State"), estimateBox);
+  cityEdit = new PlaceEdit(regionEdit, 2, tr("City"), estimateBox);
+  areaEdit = new PlaceEdit(cityEdit, 3, tr("Area/Blg"), estimateBox);
+  spaceNameEdit = new PlaceEdit(areaEdit, 4, tr("Room"), estimateBox);
 
-  tags_edit = new QLineEdit (estimate_box);
-  MultiCompleter *tags_completer = new MultiCompleter(this);
-  tags_completer->setSeparator (QLatin1String(","));
-  tags_completer->setCaseSensitivity (Qt::CaseInsensitive);
+  tagsEdit = new QLineEdit(estimateBox);
+  MultiCompleter *tagsCompleter = new MultiCompleter(this);
+  tagsCompleter->setSeparator(QLatin1String(","));
+  tagsCompleter->setCaseSensitivity(Qt::CaseInsensitive);
 
-  country_edit->setToolTip ("Country");
-  region_edit->setToolTip ("Region");
-  city_edit->setToolTip ("City");
-  area_edit->setToolTip ("Area");
-  space_name_edit->setToolTip ("Space");
-  tags_edit->setToolTip ("Tags");
+  countryEdit->setToolTip(tr("Country"));
+  regionEdit->setToolTip(tr("Region"));
+  cityEdit->setToolTip(tr("City"));
+  areaEdit->setToolTip(tr("Area"));
+  spaceNameEdit->setToolTip(tr("Space"));
+  tagsEdit->setToolTip(tr("Tags"));
 
-  qDebug () << "rootDir " << rootDir;
-  QString tags_file = rootDir.absolutePath().append ("/map/tags.txt");
-  QString url_str = mapServerURL;
-  QUrl tags_url (url_str.append("/map/tags.txt"));
-  UpdatingFileModel *tag_model = new UpdatingFileModel (tags_file, tags_url, tags_completer);
+  qDebug() << "rootDir " << rootDir;
+  QString tagsFile = rootDir.absolutePath().append("/map/tags.txt");
+  QString urlStr = mapServerURL;
+  QUrl tagsUrl(urlStr.append("/map/tags.txt"));
+  UpdatingFileModel *tagModel = new UpdatingFileModel(tagsFile, tagsUrl, tagsCompleter);
 
-  tags_completer->setModel (tag_model);
-  tags_completer->setCaseSensitivity(Qt::CaseInsensitive);
-  tags_edit->setCompleter(tags_completer);  
+  tagsCompleter->setModel(tagModel);
+  tagsCompleter->setCaseSensitivity(Qt::CaseInsensitive);
+  tagsEdit->setCompleter(tagsCompleter);
 
-  tags_edit->setMaxLength (80);
-  
-  tags_edit->setPlaceholderText ("Tags...");
+  tagsEdit->setMaxLength(80);
+  tagsEdit->setPlaceholderText(tr("Tags..."));
 
+  connect(countryEdit, SIGNAL(textChanged(QString)),
+          SLOT(onPlaceChanged()));
+  connect(regionEdit, SIGNAL(textChanged(QString)),
+          SLOT(onPlaceChanged()));
+  connect(cityEdit, SIGNAL(textChanged(QString)),
+          SLOT(onPlaceChanged()));
+  connect(areaEdit, SIGNAL(textChanged(QString)),
+          SLOT(onPlaceChanged()));
+  connect(spaceNameEdit, SIGNAL(textChanged(QString)),
+          SLOT(onPlaceChanged()));
+  connect(tagsEdit, SIGNAL(textChanged(QString)),
+          SLOT(onPlaceChanged()));
 
-  connect (country_edit, SIGNAL(textChanged(QString)),
-	   SLOT (handle_place_changed()));
-  connect (region_edit, SIGNAL(textChanged(QString)),
-	   SLOT (handle_place_changed()));
-  connect (city_edit, SIGNAL(textChanged(QString)),
-	   SLOT (handle_place_changed()));
-  connect (area_edit, SIGNAL(textChanged(QString)),
-	   SLOT (handle_place_changed()));
-  connect (space_name_edit, SIGNAL(textChanged(QString)),
-	   SLOT (handle_place_changed()));
-  connect (tags_edit, SIGNAL(textChanged(QString)),
-	   SLOT (handle_place_changed()));
-  
   // TODO focus
-  //connect (country_edit, SIGNAL(focusInEvent()),
-  //SLOT (handle_place_changed()));
 
-  connect (country_edit, SIGNAL(cursorPositionChanged(int,int)),
-	   SLOT (handle_place_changed()));
-  connect (region_edit, SIGNAL(cursorPositionChanged(int,int)),
-	   SLOT (handle_place_changed()));
-  connect (city_edit, SIGNAL(cursorPositionChanged(int,int)),
-	   SLOT (handle_place_changed()));
-  connect (area_edit, SIGNAL(cursorPositionChanged(int,int)),
-	   SLOT (handle_place_changed()));
-  connect (space_name_edit, SIGNAL(cursorPositionChanged(int,int)),
-	   SLOT (handle_place_changed()));
-  connect (tags_edit, SIGNAL(cursorPositionChanged(int,int)),
-	   SLOT (handle_place_changed()));
+  connect(countryEdit, SIGNAL(cursorPositionChanged(int,int)),
+          SLOT(onPlaceChanged()));
+  connect(regionEdit, SIGNAL(cursorPositionChanged(int,int)),
+          SLOT(onPlaceChanged()));
+  connect(cityEdit, SIGNAL(cursorPositionChanged(int,int)),
+          SLOT(onPlaceChanged()));
+  connect(areaEdit, SIGNAL(cursorPositionChanged(int,int)),
+          SLOT(onPlaceChanged()));
+  connect(spaceNameEdit, SIGNAL(cursorPositionChanged(int,int)),
+          SLOT(onPlaceChanged()));
+  connect(tagsEdit, SIGNAL(cursorPositionChanged(int,int)),
+          SLOT(onPlaceChanged()));
+  connect(countryEdit->model(), SIGNAL(network_change(bool)),
+          SLOT(onNetworkStatusChanged(bool)));
 
-  connect (country_edit->get_model(), SIGNAL(network_change(bool)),
-	   SLOT (handle_online_change(bool)));
+  submitButton = new QPushButton(tr("Incorrect Estimate?"), estimateBox);
+  submitButton->setToolTip(tr("Correct the current position estimate if"
+                               "it is not showing where you are."));
+  connect(submitButton, SIGNAL(clicked()), SLOT(onSubmitClicked()));
 
+  QGridLayout *estimateLayout = new QGridLayout();
 
-  submit_button = new QPushButton (display_str, estimate_box);
-  connect (submit_button, SIGNAL(clicked()),
-	   SLOT(handle_clicked_submit()));
-  submit_button->setToolTip ("Correct the current position estimate if it is not showing where you are.");
+  QLabel *slashA = new QLabel("/", estimateBox);
+  QLabel *slashB = new QLabel("/", estimateBox);
+  QLabel *slashC = new QLabel("/", estimateBox);
 
-  QGridLayout *estimate_layout = new QGridLayout ();
+  estimateLayout->addWidget(areaEdit, 1, 1);
+  estimateLayout->addWidget(slashA, 1, 2);
+  estimateLayout->addWidget(spaceNameEdit, 1, 3, 1, 3);
 
+  estimateLayout->addWidget(cityEdit, 2, 1);
+  estimateLayout->addWidget(slashB, 2, 2);
+  estimateLayout->addWidget(regionEdit, 2, 3);
+  estimateLayout->addWidget(slashC, 2, 4);
+  estimateLayout->addWidget(countryEdit, 2, 5);
 
-  QLabel *slashA = new QLabel ("/", estimate_box);
-  QLabel *slashB = new QLabel ("/", estimate_box);
-  QLabel *slashC = new QLabel ("/", estimate_box);
+  estimateLayout->addWidget(tagsEdit, 3, 1);
 
-  estimate_layout->addWidget (area_edit, 1, 1);
-  estimate_layout->addWidget (slashA, 1, 2);
-  estimate_layout->addWidget (space_name_edit, 1, 3, 1, 3);
+  estimateLayout->addWidget(submitButton, 3, 3, 1, 3);
 
-  estimate_layout->addWidget (city_edit, 2, 1);
-  estimate_layout->addWidget (slashB, 2, 2);
-  estimate_layout->addWidget (region_edit, 2, 3);
-  estimate_layout->addWidget (slashC, 2, 4);
-  estimate_layout->addWidget (country_edit, 2, 5);
- 
-  estimate_layout->addWidget (tags_edit, 3, 1);
+  estimateLayout->setColumnStretch(1,16);
+  estimateLayout->setColumnStretch(2,0);
+  estimateLayout->setColumnStretch(3,12);
+  estimateLayout->setColumnStretch(4,0);
+  estimateLayout->setColumnStretch(5,6);
 
-  estimate_layout->addWidget (submit_button, 3, 3, 1, 3);
-
-  //estimate_layout->setColumnStretch (0,8);
-  estimate_layout->setColumnStretch (1,16);
-  estimate_layout->setColumnStretch (2,0);
-  estimate_layout->setColumnStretch (3,12);
-  estimate_layout->setColumnStretch (4,0);
-  estimate_layout->setColumnStretch (5,6);
-
-  estimate_box->setLayout (estimate_layout);
+  estimateBox->setLayout(estimateLayout);
 
   //////////////////////////////////////////////////////////
-  QString statistics_title = tr ("Statistics");
-  QGroupBox *stats_box = new QGroupBox (statistics_title, this);
-  QGridLayout *stats_layout = new QGridLayout ();
+  QGroupBox *statsBox = new QGroupBox(tr("Statistics"), this);
+  QGridLayout *statsLayout = new QGridLayout();
   // grey  235 233 216  EB E9 D8
   // blue  000 051 204  00 33 CC
   // green 068 165 028  44 A5 1C
-  // border: 0px; padding 0px; 
+  // border: 0px; padding 0px;
 
   // network connectivity
-  QLabel *net_info_label = new QLabel ("Net:", stats_box);
-  net_label = new ColoredLabel ("OK", stats_box);
+  QLabel *netInfoLabel = new QLabel(tr("Net:"), statsBox);
+  netLabel = new ColoredLabel(tr("OK"), statsBox);
 
-  QString net_info_tooltip ("Network Connectivity Status.\nCan we talk to the network?");
-  net_info_label->setToolTip (net_info_tooltip);
-  net_label->setToolTip (net_info_tooltip);
+  QString netInfoTooltip(tr("Network Connectivity Status.\nCan we talk to the network?"));
+  netInfoLabel->setToolTip(netInfoTooltip);
+  netLabel->setToolTip(netInfoTooltip);
 
   // daemon connectivity
-  QLabel *daemon_info_label = new QLabel ("Daemon:", stats_box);
-  daemon_label = new ColoredLabel ("OK", stats_box);
-  QString daemon_info_tooltip ("Daemon Status.  Is the positioning daemon started?");
-  daemon_info_label->setToolTip (daemon_info_tooltip);
-  daemon_label->setToolTip (daemon_info_tooltip);
-
+  QLabel *daemonInfoLabel = new QLabel(tr("Daemon:"), statsBox);
+  daemonLabel = new ColoredLabel(tr("OK"), statsBox);
+  QString daemonInfoTooltip(tr("Daemon Status.  Is the positioning daemon started?"));
+  daemonInfoLabel->setToolTip(daemonInfoTooltip);
+  daemonLabel->setToolTip(daemonInfoTooltip);
 
   // scans used
-  QLabel *scan_count_info_label = new QLabel ("Scans/APs:", stats_box);
-  scan_count_label = new QLabel ("0/0   ", stats_box);
-  //scan_count_label->setFixedWidth (scan_count_label->width());
-  QString scan_count_tooltip ("Number of scans and access points the daemon is using to compute your position.");
-  scan_count_info_label->setToolTip (scan_count_tooltip);
-  scan_count_label->setToolTip (scan_count_tooltip);
-
+  QLabel *scanCountInfoLabel = new QLabel(tr("Scans/APs:"), statsBox);
+  scanCountLabel = new QLabel("0/0   ", statsBox);
+  QString scanCountTooltip(tr("Number of scans and access points the daemon is using to compute your position."));
+  scanCountInfoLabel->setToolTip(scanCountTooltip);
+  scanCountLabel->setToolTip(scanCountTooltip);
 
   // scans rate
-  QLabel *scan_rate_info_label = new QLabel ("Scan Rate:", stats_box);
-  scan_rate_label = new QLabel ("   0s", stats_box);
-  QString scan_rate_tooltip ("How often is the daemon using a new scan?");
-  scan_rate_info_label->setToolTip (scan_rate_tooltip);
-  scan_rate_label->setToolTip (scan_rate_tooltip);
-
+  QLabel *scanRateInfoLabel = new QLabel(tr("Scan Rate:"), statsBox);
+  scanRateLabel = new QLabel("   0s", statsBox);
+  QString scanRateTooltip(tr("How often is the daemon using a new scan?"));
+  scanRateInfoLabel->setToolTip(scanRateTooltip);
+  scanRateLabel->setToolTip(scanRateTooltip);
 
   // walking?
-  QLabel *walking_info_label = new QLabel ("Moving?", stats_box);
-  walking_label = new QLabel ("No", stats_box);
-  set_walking_label (false);
-  QString walking_tooltip ("Does the daemon think you are moving?");
-  walking_info_label->setToolTip (walking_tooltip);
-  walking_label->setToolTip (walking_tooltip);
+  QLabel *walkingInfoLabel = new QLabel(tr("Moving?"), statsBox);
+  walkingLabel = new QLabel(tr("No"), statsBox);
+  setWalkingLabel(false);
+  QString walkingTooltip(tr("Does the daemon think you are moving?"));
+  walkingInfoLabel->setToolTip(walkingTooltip);
+  walkingLabel->setToolTip(walkingTooltip);
 
-  // gps
-  //QLabel *gps_info_label = new QLabel ("GPS:", stats_box);
-  //QLabel *gps_label = new QLabel ("Off", stats_box);
-  //gps_label->setStyleSheet ("QLabel { color: gray }");
-
-  // cache / memory usage?
-  //QLabel *cache_info_label = new QLabel ("<b>Cache</b>");
-  //QLabel *cache_size_info_label = new QLabel ("Cache Size:", stats_box);
-  //cache_size_label = new QLabel ("0 Kb");
-  QLabel *cache_spaces_info_label = new QLabel ("Bld/Room:", stats_box);
-  cache_spaces_label = new QLabel ("0/0   ");
-  //cache_spaces_label->setFixedWidth (cache_spaces_label->width());
-  QString cache_spaces_tooltip ("Number of buildings locally cached /\nNumber of resulting candidate rooms");
-  cache_spaces_info_label->setToolTip (cache_spaces_tooltip);
-  cache_spaces_label->setToolTip (cache_spaces_tooltip);
-
+  QLabel *cacheSpacesInfoLabel = new QLabel(tr("Bld/Room:"), statsBox);
+  cacheSpacesLabel = new QLabel("0/0   ");
+  QString cacheSpacesTooltip(tr("Number of buildings locally cached /\nNumber of resulting candidate rooms"));
+  cacheSpacesInfoLabel->setToolTip(cacheSpacesTooltip);
+  cacheSpacesLabel->setToolTip(cacheSpacesTooltip);
 
   // overlap algorithm
-  QLabel *overlap_max_info_label = new QLabel ("Overlap Max:", stats_box);
-  overlap_max_label = new QLabel ("0.0  ", stats_box);
-  //overlap_max_label->setFixedWidth (overlap_max_label->width());
-  QString overlap_max_tooltip ("Internal score of top estimated space (1=max)");
-  overlap_max_info_label->setToolTip (overlap_max_tooltip);
-  overlap_max_label->setToolTip (overlap_max_tooltip);
+  QLabel *overlapMaxInfoLabel = new QLabel(tr("Overlap Max:"), statsBox);
+  overlapMaxLabel = new QLabel("0.0  ", statsBox);
+  QString overlapMaxTooltip(tr("Internal score of top estimated space (1=max)"));
+  overlapMaxInfoLabel->setToolTip(overlapMaxTooltip);
+  overlapMaxLabel->setToolTip(overlapMaxTooltip);
+
+  QLabel *churnInfoLabel = new QLabel(tr("Churn:"), statsBox);
+  churnLabel = new QLabel("0s  ", statsBox);
+  QString churnTooltip(tr("Rate at which the room estimate is changing"));
+  churnInfoLabel->setToolTip(churnTooltip);
+  churnLabel->setToolTip(churnTooltip);
+
+  statsLayout->addWidget(netInfoLabel, 0, 1);
+  statsLayout->addWidget(netLabel, 0, 2);
+
+  statsLayout->addWidget(scanCountInfoLabel, 1, 1);
+  statsLayout->addWidget(scanCountLabel, 1, 2);
+
+  statsLayout->addWidget(scanRateInfoLabel, 2, 1);
+  statsLayout->addWidget(scanRateLabel, 2, 2);
+
+  statsLayout->addWidget(cacheSpacesInfoLabel, 0, 4);
+  statsLayout->addWidget(cacheSpacesLabel, 0, 5);
+
+  statsLayout->addWidget(walkingInfoLabel, 1, 4);
+  statsLayout->addWidget(walkingLabel, 1, 5);
+
+  statsLayout->addWidget(daemonInfoLabel, 2, 4);
+  statsLayout->addWidget(daemonLabel, 2, 5);
 
 
-  QLabel *churn_info_label = new QLabel ("Churn:", stats_box);
-  churn_label = new QLabel ("0s  ", stats_box);
-  QString churn_tooltip ("Rate at which the room estimate is changing");
-  churn_info_label->setToolTip (churn_tooltip);
-  churn_label->setToolTip (churn_tooltip);
+  statsLayout->addWidget(overlapMaxInfoLabel, 0, 7);
+  statsLayout->addWidget(overlapMaxLabel, 0, 8);
 
+  statsLayout->addWidget(churnInfoLabel, 1, 7);
+  statsLayout->addWidget(churnLabel, 1, 8);
 
-  stats_layout->addWidget (net_info_label, 0, 1);
-  stats_layout->addWidget (net_label, 0, 2);
+  QFrame *statFrameA = new QFrame(statsBox);
+  statFrameA->setFrameStyle(QFrame::VLine | QFrame::Sunken);
+  statsLayout->addWidget(statFrameA, 0, 3, 3, 1);
 
-  stats_layout->addWidget (scan_count_info_label, 1, 1);
-  stats_layout->addWidget (scan_count_label, 1, 2);
+  QFrame *statFrameB = new QFrame(statsBox);
+  statFrameB->setFrameStyle(QFrame::VLine | QFrame::Sunken);
+  statsLayout->addWidget(statFrameB, 0, 6, 3, 1);
 
-  stats_layout->addWidget (scan_rate_info_label, 2, 1);
-  stats_layout->addWidget (scan_rate_label, 2, 2);
+  statsLayout->setColumnStretch(9, 2);
 
-  stats_layout->addWidget (cache_spaces_info_label, 0, 4);
-  stats_layout->addWidget (cache_spaces_label, 0, 5);
-
-  stats_layout->addWidget (walking_info_label, 1, 4);
-  stats_layout->addWidget (walking_label, 1, 5);
-
-  stats_layout->addWidget (daemon_info_label, 2, 4);
-  stats_layout->addWidget (daemon_label, 2, 5);
-
-
-  stats_layout->addWidget (overlap_max_info_label, 0, 7);
-  stats_layout->addWidget (overlap_max_label, 0, 8);
-
-  stats_layout->addWidget (churn_info_label, 1, 7);
-  stats_layout->addWidget (churn_label, 1, 8);
-
-  QFrame *stat_frameA = new QFrame (stats_box);
-  stat_frameA->setFrameStyle ( QFrame::VLine | QFrame::Sunken);
-  stats_layout->addWidget (stat_frameA, 0, 3, 3, 1);
-
-  QFrame *stat_frameB = new QFrame (stats_box);
-  stat_frameB->setFrameStyle ( QFrame::VLine | QFrame::Sunken);
-  stats_layout->addWidget (stat_frameB, 0, 6, 3, 1);
-
-  stats_layout->setColumnStretch (9, 2);
-
-  stats_box->setLayout (stats_layout);
+  statsBox->setLayout(statsLayout);
 
   //////////////////////////////////////////////////////////
-  layout->addWidget (estimate_box, 0, 0);
-  layout->addWidget (button_box, 0, 1, 3, 1);
-  layout->addWidget (stats_box, 1, 0);
+  layout->addWidget(estimateBox, 0, 0);
+  layout->addWidget(buttonBox, 0, 1, 3, 1);
+  layout->addWidget(statsBox, 1, 0);
 
-  layout->setRowStretch (0, 10);
-  layout->setRowStretch (1, 1);
-  layout->setRowStretch (2, 1);
+  layout->setRowStretch(0, 10);
+  layout->setRowStretch(1, 1);
+  layout->setRowStretch(2, 1);
 
   // MAEMO
-  layout->setColumnStretch (0, 10);
-  layout->setColumnStretch (1, 1);
+  layout->setColumnStretch(0, 10);
+  layout->setColumnStretch(1, 1);
 
-
-
-  setLayout (layout);
-
-
+  setLayout(layout);
 }
 
-void Binder::handle_clicked_about() {
-  qDebug () << "handle_clicked_about";
+void Binder::onAboutClicked()
+{
+  qDebug() << "handle clicked about";
 
   // TODO get rid of done button
   // TODO problem in title
 
-  //QString version = "About "+mole;
-  QString version = "About Organic Indoor Positioning";
+  QString version = tr("About Organic Indoor Positioning");
 
-  QString about = 
-    "<h2>Organic Indoor Positioning 0.2</h2>"
-       "<p>Copyright &copy; 2010 Nokia Inc."
-       "<p>Organic Indoor Positioning is a joint development from Massachusetts Institute of Technology and Nokia Research."
-	"<p>By using this software, you accept its <a href=\"http://oil.nokiaresearch.com/privacy.html\">Privacy Policy</a> and <a href=\"http://oil.nokiaresearch.com/terms.html\">Terms of Service</a>.";
+  QString about =
+    tr("<h2>Organic Indoor Positioning 0.4</h2>"
+       "<p>Copyright &copy; 2011 Nokia Inc."
+       "<p>Organic Indoor Positioning is a joint development from Massachusetts Institute of Technology and Nokia Research. "
+       "By using this software, you accept its <a href=\"http://mole.research.nokia.com/policy/privacy.html\">Privacy Policy </a>"
+       "and <a href=\"http://mole.research.nokia.com/policy/terms.html\">Terms of Service</a>.");
 
   // TODO check links
-  //about.setOpenExternalLinks(true);
 
-  QMessageBox::about 
-       (this, version, about);
-
+  QMessageBox::about(this, version, about);
 }
 
-void Binder::handle_clicked_feedback() {
-  qDebug () << "handle_clicked_feedback";
+void Binder::onFeedbackClicked()
+{
+  qDebug() << "handle clicked feedback";
   bool ok;
 
   // TODO turn into multiline box
 
-  QString text = QInputDialog::getText 
+  QString text = QInputDialog::getText
     (this, tr("Send Feedback to Developers"),
      NULL, QLineEdit::Normal, NULL, &ok);
+
   if (ok && !text.isEmpty()) {
-    qDebug () << "feedback " << text;
+    qDebug() << "feedback " << text;
 
     // TODO truncate - make sure text does not exceed some max length
-
     QNetworkRequest request;
-    QString url_str = mapServerURL;
-    QUrl url(url_str.append("/feedback"));
+    QString urlStr = mapServerURL;
+    QUrl url(urlStr.append("/feedback"));
     request.setUrl(url);
-    set_network_request_headers (request);
-    feedback_reply = networkAccessManager->post (request, text.toUtf8());
-    connect (feedback_reply, SIGNAL(finished()), 
-	     SLOT (handle_send_feedback_finished()));
-
+    set_network_request_headers(request);
+    m_feedbackReply = networkAccessManager->post(request, text.toUtf8());
+    connect(m_feedbackReply, SIGNAL(finished()), SLOT(onSendFeedbackFinished()));
   }
 }
 
-void Binder::handle_send_feedback_finished () {
-  feedback_reply->deleteLater();
-  if (feedback_reply->error() != QNetworkReply::NoError) {
+void Binder::onSendFeedbackFinished()
+{
+  m_feedbackReply->deleteLater();
+  if (m_feedbackReply->error() != QNetworkReply::NoError) {
     qWarning() << "sending feedback failed "
-	       << feedback_reply->errorString()
-      	       << " url " << feedback_reply->url();
+               << m_feedbackReply->errorString()
+               << " url " << m_feedbackReply->url();
   } else {
     qDebug() << "sending feedback succeeded";
   }
-
 }
 
+void Binder::onHelpClicked()
+{
+  qDebug() << "handle clicked help";
 
-void Binder::handle_clicked_help() {
-  qDebug () << "handle_clicked_help";
+  QString help =
+    tr("<p>Help grow Organic Indoor Positioning by <b>binding</b> your current location. "
+       "Each bind links the name you pick with an RF signature.  When other Organic Indoor "
+       "Positioning users are in the same place, they will see the same name.");
 
-  QString help = 
-    tr("<p>Help grow Organic Indoor Positioning by <b>binding</b> your current location.  Each bind links the name you pick with an RF signature.  When other Organic Indoor Positioning users are in the same place, they will see the same name.");
-
-  QMessageBox::information
-       (this, tr ("Why Bind?"), help);
-
+  QMessageBox::information(this, tr("Why Bind?"), help);
 }
 
-void Binder::handle_clicked_settings() {
-  qDebug () << "handle_clicked_settings";
-  settings_dialog->show();
+void Binder::onSettingsClicked()
+{
+  qDebug() << "handle clicked settings";
+  m_settingsDialog = new Settings(this);
+  m_settingsDialog->show();
+
+  connect(m_settingsDialog, SIGNAL(rejected()), this, SLOT(onSettingsClosed()));
 }
 
-void Binder::set_places_enabled (bool isEnabled) {
-  country_edit->setEnabled(isEnabled);
-  region_edit->setEnabled(isEnabled);
-  city_edit->setEnabled(isEnabled);
-  area_edit->setEnabled(isEnabled);
-  space_name_edit->setEnabled(isEnabled);
-  tags_edit->setEnabled(isEnabled);
+void Binder::onSettingsClosed()
+{
+  qDebug() << "handle closed settings";
+  m_settingsDialog->disconnect();
+  delete m_settingsDialog;
 }
 
-void Binder::set_submit_state (SubmitState _submit_state) {
+void Binder::setPlacesEnabled(bool isEnabled)
+{
+  countryEdit->setEnabled(isEnabled);
+  regionEdit->setEnabled(isEnabled);
+  cityEdit->setEnabled(isEnabled);
+  areaEdit->setEnabled(isEnabled);
+  spaceNameEdit->setEnabled(isEnabled);
+  tagsEdit->setEnabled(isEnabled);
+}
 
-  qDebug () << "set_submit_state"
-	    << " current " << submit_state
-	    << " new " << _submit_state;
-  submit_state = _submit_state;
+void Binder::setSubmitState(SubmitState _submit_state)
+{
+  qDebug() << "set submit state"
+           << " current " << m_submitState
+           << " new " << _submit_state;
+  m_submitState = _submit_state;
 
-  switch (submit_state) {
+  switch (m_submitState) {
   case DISPLAY:
-    submit_button->setText (display_str);
-    set_places_enabled (false);
-    refresh_last_estimate ();
-    bind_timer->stop ();
+    submitButton->setText(tr("Incorrect Estimate?"));
+    setPlacesEnabled(false);
+    refreshLastEstimate();
+    m_bindTimer->stop();
     break;
   case CORRECT:
-    submit_button->setText (correct_str);
-    set_places_enabled (true);
-    reset_bind_timer ();
+    submitButton->setText(tr("Submit Correction"));
+    setPlacesEnabled(true);
+    resetBindTimer();
     break;
   }
 }
 
-void Binder::handle_place_changed () {
-  qDebug () << "handle_place_changed ";
+void Binder::onPlaceChanged()
+{
+  qDebug() << "handle place changed ";
 
-  reset_bind_timer ();
-
+  resetBindTimer();
 }
 
-void Binder::handle_online_change (bool _online) {
-  qDebug () << "handle_online_change " << _online;
+void Binder::onNetworkStatusChanged(bool _online)
+{
+  qDebug() << "network status changed " << _online;
 
-  if (online != _online) {
-    online = _online;
-    if (online) {
-      net_label->setText ("OK");
-      net_label->setLevel (1);
+  if (m_online != _online) {
+    m_online = _online;
+    if (m_online) {
+      netLabel->setText(tr("OK"));
+      netLabel->setLevel(1);
     } else {
-      net_label->setText ("Not OK");
-      net_label->setLevel (-1);
+      netLabel->setText(tr("Not OK"));
+      netLabel->setLevel(-1);
     }
-
-
   }
-
 }
 
-void Binder::handle_daemon_change (bool daemon_online) {
-  qDebug () << "handle_daemon_change " << daemon_online;
+void Binder::setDaemonLabel(bool online)
+{
+  qDebug() << "set daemon label " << online;
 
-  if (daemon_online) {
-    daemon_label->setText ("OK");
-    daemon_label->setLevel (1);
+  if (online) {
+    daemonLabel->setText(tr("OK"));
+    daemonLabel->setLevel(1);
   } else {
-    daemon_label->setText ("Not OK");
-    daemon_label->setLevel (-1);
+    daemonLabel->setText(tr("Not OK"));
+    daemonLabel->setLevel(-1);
   }
 }
 
+void Binder::requestLocationEstimate()
+{
+  qDebug() << "Binder: request location estimate";
 
+  ++m_requestLocationEstimateCounter;
 
-void Binder::request_location_estimate() {
-  qDebug () << "Binder: request_location_estimate";
-
-  request_location_estimate_counter++;
-  if (request_location_estimate_counter > 5) {
-    handle_daemon_change (false);
-  }
+  if (m_requestLocationEstimateCounter > 5)
+    setDaemonLabel(false);
 
   QDBusMessage msg = QDBusMessage::createSignal("/", "com.nokia.moled", "GetLocationEstimate");
-  //msg << "foo";
   QDBusConnection::sessionBus().send(msg);
 }
 
-void Binder::handle_clicked_submit() {
+void Binder::onSubmitClicked()
+{
+  qDebug() << "handle clicked submit";
 
-  qDebug () << "handle_clicked_submit";
-
-  switch (submit_state) {
+  switch (m_submitState) {
   case DISPLAY:
-    set_submit_state (CORRECT);
-
+    setSubmitState(CORRECT);
     break;
   case CORRECT:
+    if (countryEdit->text().isEmpty() || regionEdit->text().isEmpty() ||
+        cityEdit->text().isEmpty() || areaEdit->text().isEmpty() ||
+        spaceNameEdit->text().isEmpty()) {
 
-    if (country_edit->text().isEmpty() ||
-	region_edit->text().isEmpty() ||
-	city_edit->text().isEmpty() ||
-	area_edit->text().isEmpty() ||
-	space_name_edit->text().isEmpty()) {
+      QString empty_fields =
+          tr("Please fill in all fields when adding or repairing a location estimate (Tags are optional).");
 
-      QString empty_fields = 
-	tr("Please fill in all fields when adding or repairing a location estimate (Tags are optional).");
-
-      QMessageBox::information
-	(this, tr ("Missing Fields"), empty_fields);
-
-
+      QMessageBox::information(this, tr("Missing Fields"), empty_fields);
     } else {
+      // confirm bind
+      QMessageBox bindBox;
+      bindBox.setText(tr("Are you here?"));
 
-      // confirm bind 
+      QString estStr = areaEdit->text() + " Rm: " + spaceNameEdit->text()
+                        + "\n" + cityEdit->text() + ", " + areaEdit->text() + ", "
+                        + countryEdit->text() + "\n" + "Tags: " + tagsEdit->text();
+      bindBox.setInformativeText(estStr);
+      bindBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
 
-      QMessageBox bind_box;
-      bind_box.setText ("Are you here?");
-
-      QString est_str = area_edit->text() + " Rm: " + space_name_edit->text()
-	+ "\n" + city_edit->text() + ", " + area_edit->text() + ", "
-	+ country_edit->text() + "\n" + "Tags: " + tags_edit->text();
-      bind_box.setInformativeText (est_str);
-      bind_box.setStandardButtons (QMessageBox::Yes | QMessageBox::No);
-
-      bind_box.setDefaultButton (QMessageBox::No);
-      int ret = bind_box.exec ();
+      bindBox.setDefaultButton(QMessageBox::No);
+      int ret = bindBox.exec();
       switch (ret) {
-      case (QMessageBox::Yes):
-	send_bind_msg ();
-	handle_bind_timer ();
-	break;
-      case (QMessageBox::No):
-	reset_bind_timer ();
-	break;
+      case QMessageBox::Yes:
+        sendBindMsg();
+        onBindTimeout();
+        break;
+      case QMessageBox::No:
+        resetBindTimer();
+        break;
       }
     }
     break;
   }
 }
 
-
-void Binder::handle_bind_timer() {
-  qDebug () << "handle_bind_timer";
-  set_submit_state (DISPLAY);
+void Binder::onBindTimeout()
+{
+  qDebug() << "handle bind timeout";
+  setSubmitState(DISPLAY);
 }
 
-void Binder::reset_bind_timer() {
-  qDebug () << "reset_bind_timer";
-  bind_timer->start (20000);
+void Binder::resetBindTimer()
+{
+  qDebug() << "reset bind timer";
+  m_bindTimer->start(20000);
 }
 
-
-void Binder::send_bind_msg () {
+void Binder::sendBindMsg()
+{
   QDBusMessage msg = QDBusMessage::createSignal("/", "com.nokia.moled", "Bind");
 
-  msg 
-    << country_edit->text()
-    << region_edit->text()
-    << city_edit->text()
-    << area_edit->text()
-    << space_name_edit->text()
-    << tags_edit->text();
-  QDBusConnection::sessionBus().send(msg);
+  msg
+    << countryEdit->text()
+    << regionEdit->text()
+    << cityEdit->text()
+    << areaEdit->text()
+    << spaceNameEdit->text()
+    << tagsEdit->text();
 
+  QDBusConnection::sessionBus().send(msg);
 }
 
-void Binder::handle_location_estimate(QString fq_name, bool _online) {
-  qDebug () << "handle_location_estimate " << fq_name
-	    << "online " << online;
+void Binder::handleLocationEstimate(QString fqName, bool online)
+{
+  qDebug() << "handle location estimate " << fqName
+            << "online " << m_online;
 
-  request_location_estimate_counter = 0;
-  handle_daemon_change (true);
+  m_requestLocationEstimateCounter = 0;
+  setDaemonLabel(true);
 
-  if (submit_state == DISPLAY) {
+  if (m_submitState == DISPLAY) {
+    QStringList estParts = fqName.split("/");
 
+    qDebug() << "size " << estParts.size();
+    qDebug() << "part " << estParts.at(0);
 
-    QStringList est_parts = fq_name.split ("/");
-
-    qDebug () << "size " << est_parts.size();
-    qDebug () << "part " << est_parts.at(0);
-
-    if (est_parts.size() == 5) {
-      country_estimate = est_parts.at(0);
-      region_estimate = est_parts.at(1);
-      city_estimate = est_parts.at(2);
-      area_estimate = est_parts.at(3);
-      space_name_estimate = est_parts.at(4);
+    if (estParts.size() == 5) {
+      countryEstimate = estParts.at(0);
+      regionEstimate = estParts.at(1);
+      cityEstimate = estParts.at(2);
+      areaEstimate = estParts.at(3);
+      spaceNameEstimate = estParts.at(4);
 
       // TODO set tags
-
-      refresh_last_estimate ();
+      refreshLastEstimate();
     }
-
-
-
   } else {
-    qDebug () << "not displaying new estimate because not in display mode";
+    qDebug() << "not displaying new estimate because not in display mode";
   }
 
-  request_location_timer->stop();
-  handle_online_change (_online);
-
+  m_requestLocationTimer->stop();
+  onNetworkStatusChanged(online);
 }
 
-void Binder::refresh_last_estimate () {
-    country_edit->setText (country_estimate);
-    region_edit->setText (region_estimate);
-    city_edit->setText (city_estimate);
-    area_edit->setText (area_estimate);
-    space_name_edit->setText (space_name_estimate);
-    tags_edit->setText (tags_estimate);
+void Binder::refreshLastEstimate()
+{
+  countryEdit->setText(countryEstimate);
+  regionEdit->setText(regionEstimate);
+  cityEdit->setText(cityEstimate);
+  areaEdit->setText(areaEstimate);
+  spaceNameEdit->setText(spaceNameEstimate);
+  tagsEdit->setText(tagsEstimate);
 }
 
-void Binder::handle_speed_estimate(int motion) {
-  qDebug () << "statistics got speed estimate" << motion;
+void Binder::onSpeedStatusChanged(int motion)
+{
+  qDebug() << "statistics got speed estimate" << motion;
 
   if (motion == MOVING) {
-    set_walking_label (true);
-    //walking_timer->start (5000);
+    setWalkingLabel(true);
   } else {
-    set_walking_label (false);
-  }
-
-}
-
-void Binder::set_walking_label (bool is_walking) {
-  if (is_walking) {
-    walking_label->setText ("Yes");
-    walking_label->setStyleSheet ("QLabel { color: green }");
-  } else {
-    walking_label->setText ("No");
-    walking_label->setStyleSheet ("QLabel { color: white }");
+    setWalkingLabel(false);
   }
 }
 
-void Binder::handle_walking_timer () {
-  walking_timer->stop ();
-  set_walking_label (false);
+void Binder::setWalkingLabel(bool isWalking)
+{
+  if (isWalking) {
+    walkingLabel->setText(tr("Yes"));
+    walkingLabel->setStyleSheet("QLabel { color: green }");
+  } else {
+    walkingLabel->setText(tr("No"));
+    walkingLabel->setStyleSheet("QLabel { color: white }");
+  }
 }
 
-void Binder::handle_location_stats
-(QString /*fq_name*/, QDateTime /*start_time*/,
- int scan_queue_size,int macs_seen_size,int total_area_count,int /*total_space_count*/,int /*potential_area_count*/,int potential_space_count,int /*movement_detected_count*/,double scan_rate_ms,double emit_new_location_sec,double /*network_latency*/,double network_success_rate,double overlap_max,double overlap_diff) {
+void Binder::onWalkingTimeout()
+{
+  qDebug() << "handle walking timeout";
+  m_walkingTimer->stop();
+  setWalkingLabel(false);
+}
 
-  qDebug () << "statistics";
+void Binder::handleLocationStats
+(QString /*fqName*/, QDateTime /*startTime*/,
+ int scanQueueSize,int macsSeenSize,int totalAreaCount,int /*totalSpaceCount*/,int /*potentialAreaCount*/,int potentialSpaceCount,int /*movementDetectedCount*/,double scanRateTime,double emitNewLocationSec,double /*networkLatency*/,double networkSuccessRate,double overlapMax,double overlapDiff)
+{
+  qDebug() << "statistics";
 
-    //qDebug () << "statistics got location stats queue=" << scan_queue_size
-    //<< " active_macs="<< active_macs;
-  // estimate_label->setText (fq_name);
+  scanCountLabel->setText(QString::number(scanQueueSize) +
+                            "/" + QString::number(macsSeenSize));
+  cacheSpacesLabel->setText(QString::number(totalAreaCount) +
+                             "/" + QString::number(potentialSpaceCount));
+  scanRateLabel->setText(QString::number((int)(round(scanRateTime/1000)))+"s");
 
-  scan_count_label->setText (QString::number(scan_queue_size) 
-			     + "/" + QString::number(macs_seen_size));
-  cache_spaces_label->setText (QString::number(total_area_count) 
-			     + "/" + QString::number(potential_space_count));
-  scan_rate_label->setText (QString::number((int)(round(scan_rate_ms/1000)))+"s");
+  overlapMaxLabel->setText(QString::number(overlapMax,'f', 4));
 
-  overlap_max_label->setText(QString::number(overlap_max,'f',4));
+  qDebug() << "emit new location sec " << emitNewLocationSec;
 
-  qDebug () << "emit_new_location_sec " << emit_new_location_sec;
+  churnLabel->setText(QString::number((int)(round(emitNewLocationSec)))+"s");
 
-  churn_label->setText (QString::number((int)(round(emit_new_location_sec)))+"s");
-
-  qDebug () << "overlap " << overlap_max << " diff " << overlap_diff;
-  qDebug () << "scan rate " << scan_rate_ms;
-
-  qDebug () << "network_success_rate " << network_success_rate;
-
+  qDebug() << "overlap " << overlapMax << " diff " << overlapDiff;
+  qDebug() << "scan rate " << scanRateTime;
+  qDebug() << "network_success_rate " << networkSuccessRate;
 }

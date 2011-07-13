@@ -15,39 +15,33 @@
  * limitations under the License.
  */
 
+
 #include <icd/dbus_api.h>
 #include "scanner-maemo.h"
 
-Scanner::Scanner(QObject *parent, Localizer *_localizer, Binder *_binder, Mode scan_mode):
+Scanner::Scanner(QObject *parent, ScanQueue *_scanQueue, Binder *binder, Mode scan_mode):
   QObject (parent),
   bus(QDBusConnection::connectToBus(QDBusConnection::SystemBus, "system")),
-  localizer (_localizer), binder (_binder),
+  scanQueue (_scanQueue),
   mode(scan_mode),
   scanning(false)
 
 {
 
-  // TODO use something from QtMobility to access the local device/driver name
   binder->set_wifi_desc ("N900");
 
-  readings = new QList<AP_Reading*> ();
+  interarrival.start ();
 
   // uncomment to echo scan results
-  //connect(this, SIGNAL(scannedAccessPoint(Scan *)),
-  //this, SLOT(print(Scan *)));
+  //connect(this, SIGNAL(scannedAccessPoint(ICDScan *)),
+  //this, SLOT(print(ICDScan *)));
 
-  connect(this, SIGNAL(scannedAccessPoint(Scan *)),
-	  this, SLOT(add_to_readings(Scan *)));
+  connect(this, SIGNAL(scannedAccessPoint(ICDScan *)),
+	  this, SLOT(addReadings(ICDScan *)));
 
-
-  emit_timer = new QTimer(this);
-  connect(emit_timer, SIGNAL(timeout()), this, SLOT(emit_current_readings()));
-
-
-  QTimer *start_timer = new QTimer(this);
-  start_timer->setSingleShot (true);
-  connect(start_timer, SIGNAL(timeout()), this, SLOT(start()));
-  start_timer->start(2500);
+  start_timer.setSingleShot (true);
+  connect(&start_timer, SIGNAL(timeout()), this, SLOT(start()));
+  start_timer.start(2500);
 
 }
 
@@ -62,7 +56,7 @@ void Scanner::scanResultHandler(const QDBusMessage &msg)//const QList<QVariant> 
     const QList<QVariant> args = msg.arguments();
 
     // parse the arguments received
-    Scan *item = new Scan();
+    ICDScan *item = new ICDScan();
 
     item->SetStatus(args.at(i++).toUInt());
     item->SetTimestamp(args.at(i++).toUInt());
@@ -225,7 +219,7 @@ bool Scanner::stop(void)
     return true;
 }
 
-void Scanner::print(Scan *network)
+void Scanner::print(ICDScan *network)
 {
     qDebug() << "WLAN AP:" << network->NetworkName();
     qDebug() << " signal strength" << network->SignalStrengthDb();
@@ -236,58 +230,27 @@ void Scanner::print(Scan *network)
     qDebug() << " net attr" << network->NetworkAttributes();
 }
 
-void Scanner::add_to_readings(Scan *network)
+void Scanner::addReadings(ICDScan *scan)
 {
 
-  // TODO use timestamp?
-  // TODO reject anything not WLAN_INFRA?  Are we getting anything not WLAN_INFRA?
+  // We do not seem to be getting anything WLAN_INFRA
+  // so we do not need to exclude them here.
+
+  if (scan->SignalStrengthDb() == 0 && scan->NetworkAttributes() == 0) {
+    scanQueue->scanCompleted ();
+    return;
+  }
 
   // flip the sign of each RSSI
   // rest of code works 0..100 (max->min)
-  int strength = -1 * network->SignalStrengthDb();
-  if (strength < 5) {
-    qDebug () << "rejecting too strong a signal";
-    return;
-  }
-  if (strength > 100) {
-    qDebug () << "rejecting too weak a signal";
-    return;
-  }
+  int strength = -1 * scan->SignalStrengthDb();
 
-  AP_Reading *reading = new AP_Reading 
-    (network->StationId(), network->NetworkName(),
-     network->NetworkAttributes(), strength);
+  scanQueue->addReading
+    (scan->StationId(), scan->NetworkName(),
+     (qint16)(scan->NetworkAttributes()), (qint8)strength);
 
-  readings->append (reading);
-
-  //qDebug() << "reading " << *reading;
-
-  // wait until the current scan (set of results) is over before we
-  // hand it to the other components
-  emit_timer->start (2500);
+  //qDebug() << "scanner elapsed " << interarrival.elapsed();
+  interarrival.restart();
 
 }
 
-void Scanner::emit_current_readings () {
-
-  emit_timer->stop ();
-
-  AP_Scan *scan = NULL;
-
-  if (readings->size() > 0) {
-
-    QDateTime *now = new QDateTime (QDateTime::currentDateTime().toUTC());
-    scan = new AP_Scan (readings, now);
-
-    readings = new QList<AP_Reading*> ();
-  } else {
-    qDebug () << "maemo scanner: emit_current_readings found no readings";
-  }
-
-  if (scan != NULL) {
-    //qDebug () << "maemo scanner: readings " << *scan;
-    binder->add_scan (scan);
-    localizer->add_scan (scan);
-  }
-
-}

@@ -28,6 +28,9 @@
 #include <QXmlInputSource>
 #include <QXmlSimpleReader>
 
+#include <QTcpSocket>
+#include <QAbstractSocket>
+
 #include "moled.h"
 #include "../../common/util.h"
 #include "../../common/network.h"
@@ -41,14 +44,18 @@ class SpaceDesc {
 
  public:
   SpaceDesc ();
+  SpaceDesc (QMap<QString,Sig*> *fingerprint);
   ~SpaceDesc ();
 
-  QSet<QString> *get_macs() { return macs; }
-  QMap<QString,Sig*>* get_sigs() { return sigs; }
+
+  //QSet<QString> *get_macs() { return macs; }
+  QMap<QString,Sig*>* getSignatures() { return sigs; }
+  QList<QString> getMacs () { return sigs->keys(); }
   //void update (QSet<QString> *macs);
+  //void insertMac (QString mac) { macs->insert (mac); }
 
  private:
-  QSet<QString> *macs;
+  //QSet<QString> *macs;
   QMap<QString,Sig*> *sigs;
 
 };
@@ -59,16 +66,18 @@ class AreaDesc {
   AreaDesc ();
   ~AreaDesc ();
 
-  QMap<QString,SpaceDesc*> *get_spaces ();
+  QMap<QString,SpaceDesc*> *getSpaces () { return spaces; }
 
-  QSet<QString> *get_macs();
+  //QSet<QString> *get_macs() { return macs; }
+  QList<QString> getMacs() { return macs->toList(); }
+  void insertMac (QString mac) { macs->insert (mac); }
   QDateTime get_last_update_time();
   QDateTime get_last_access_time();
   QDateTime get_last_modified_time();
   void set_last_update_time ();
   void set_last_modified_time (QDateTime last);
   void accessed();
-  int get_map_version();
+  int get_map_version() { return map_version; }
   void set_map_version (int version) { map_version = version; }
 
   void touch () { pTouch = true; }
@@ -126,6 +135,8 @@ class LocalizerStats : public QObject{
   void emit_statistics ();
   void emitted_new_location ();
   void received_scan ();
+
+  void getStatsAsMap (QVariantMap &map);
 
   // TODO battery usage?
   // TODO scan rate
@@ -199,22 +210,30 @@ public:
   ~Localizer ();
   //Localizer(QObject *parent = 0, Network *network = 0);
 
-  //void add_scan (AP_Scan *scan);
-
-  void add_scan (AP_Scan *scan);
+  void scanCompleted ();
   void touch (QString area_name);
-  QString get_location_estimate () { return max_space; }
-  void handle_speed_estimate(int motion);
+  QString getCurrentEstimate () { return currentEstimateSpace; }
 
-  //public slots:
+  void localize (int scanQueueSize);
+  QMap<QString,APDesc*>* fp() { return fingerprint; }  
+  void replaceFingerprint(QMap<QString,APDesc*> *newFP);
 
+  void movement_detected () { stats->movement_detected (); };
 
-  //void handle_quit ();
+  void queryCurrentEstimate
+    (QString &country, QString &region, QString &city, QString &area, 
+     QString &space, QString &tags, double &score);
+  LocalizerStats* getStats () { return stats; }
+  void addMonitor (QTcpSocket *socket);
+  QByteArray getEstimateAndStatsAsJson ();
+  void getEstimateAsMap (QVariantMap &placeMap);
+
+  void bind (QString fqArea, QString fqSpace);
 
 private:
 
   bool first_add_scan;
-  bool clear_queue;
+  //bool clear_queue;
   bool online;
 
   bool area_map_reply_in_flight;
@@ -223,16 +242,16 @@ private:
   QDir *map_root;
 
   Overlap *overlap;
-  QTime last_localized_time;
+  //QTime last_localized_time;
 
   int network_success_level;
   LocalizerStats *stats;
   //QTime emit_new_location_estimate_time;
+  QSet<QTcpSocket*> monitoringSockets;
 
+  double currentEstimateScore;
 
-  double current_estimated_space_score;
-
-  QQueue<AP_Scan *> *scan_queue;
+  //QQueue<AP_Scan *> *scan_queue;
 
   int area_fill_period;
   int map_fill_period;
@@ -241,23 +260,23 @@ private:
   QTimer *map_cache_fill_timer;
   //QTimer *localize_timer;
   // long time window
-  QMap<QString,MacDesc*> *active_macs;
-  // short time window (maybe just most recent scan)
-  //QMap<QString,MacDesc*> *recent_active_macs;
+  QMap<QString,APDesc*> *fingerprint;
 
-  QString max_space;
+  QString currentEstimateSpace;
 
+  QQueue<QNetworkRequest> areaMapRequests;
   QNetworkReply *area_map_reply;
   QNetworkReply *mac_reply;
-
 
   QMap<QString,AreaDesc*> *signal_maps;
 
   double mac_overlap_coefficient
-    (QMap<QString,MacDesc*> *macs_a, QSet<QString> *macs_b);
+    (const QMap<QString,APDesc*> *macs_a, const QList<QString> &macs_b);
 
-
-  void request_area_map (QString area_name, QDateTime last_update_time);
+  void enqueueAreaMapRequest (QString area_name, QDateTime last_update_time);
+  void issueAreaMapRequest ();
+  void requestAreaMap (QNetworkRequest request);
+  void handleAreaMapResponse ();
 
   QString get_loud_mac ();
 
@@ -268,11 +287,21 @@ private:
   void emit_statistics ();
 
   void emit_new_local_signature ();
+  void emitEstimateToMonitors ();
 
-  void clear_active_macs (QMap<QString,MacDesc*> *macs);
+  void make_overlap_estimate(QMap<QString,SpaceDesc*> &);
+  void make_overlap_estimate_with_hist(QMap<QString,SpaceDesc*> &, int penalty);
 
-  void make_overlap_estimate 
-    (QMap<QString,SpaceDesc*> &potential_spaces);
+  //Bayes
+  void make_bayes_estimate(QMap<QString,SpaceDesc*> &);
+  void make_bayes_estimate_with_hist(QMap<QString,SpaceDesc*> &);
+  QSet<QString> findSignatureApMacs(const QMap<QString,SpaceDesc*> &);
+  QSet<QString> findNovelApMacs(const QMap<QString, SpaceDesc*> &);
+  double probabilityEstimate(int rssi, const Sig &);
+  double probabilityEstimateWithHistogram(int rssi, const Sig &signature);
+  double probabilityXLessValue(double value, double mean, double std);
+  double erfcc (double x);
+
 
   //void check_network_state ();
 
@@ -280,7 +309,7 @@ private:
   //void location_data_changed ();
 
 private slots:
-  void localize ();
+
 
   void fill_area_cache();
   void fill_map_cache();
@@ -288,14 +317,15 @@ private slots:
   //void mac_to_areas_response(QNetworkReply*);
   void mac_to_areas_response();
   //void area_map_response(QNetworkReply*);
-  void area_map_response();
+  //void area_map_response();
+  void handleAreaMapResponseAndReissue ();
   bool parse_map (const QByteArray &map_as_byte_array,
 		  const QDateTime &last_modified);
   void save_map (QString path, const QByteArray &map_as_byte_array);
   void unlink_map (QString path);
   void load_maps();
 
-  QString handle_signature_request();
+  //QString handle_signature_request();
   void handle_location_estimate_request();
 
 
@@ -306,7 +336,7 @@ private slots:
 
 };
 
-extern QString current_estimated_space_name;
-extern QString unknown_space_name;
+extern QString currentEstimateSpace;
+extern QString unknownSpace;
 
 #endif /* LOCALIZER_H_ */

@@ -20,10 +20,13 @@
 
 QTM_USE_NAMESPACE
 
-Binder::Binder(QObject *parent, Localizer *_localizer) : 
-  QObject(parent), localizer (_localizer) {
+Binder::Binder(QObject *parent, Localizer *_localizer, ScanQueue *_scanQueue) : 
+  QObject(parent), localizer (_localizer), scanQueue (_scanQueue) {
 
-  //QDBusConnection::sessionBus().connect(QString(), QString(), "com.nokia.moled", "MotionEstimate", this, SLOT(handle_speed_estimate(int)));
+  // This keeps scans disjoint: it prevents a scan from being assigned
+  // to more than one bind.
+  oldestValidScan = QDateTime::currentDateTime();
+
   if (!rootDir.exists ("binds")) {
     bool ret = rootDir.mkdir ("binds");
 
@@ -49,10 +52,12 @@ Binder::Binder(QObject *parent, Localizer *_localizer) :
     local_wlan_mac = info.macAddress (QSystemNetworkInfo::WlanMode);
   */
 
+  // TODO use something from QtMobility to access the local device/driver name
+  // This is not available as of 4.7 and Mobility 1.2
+
   // on 4.7 seems to trigger this: QDBusObjectPath: invalid path ""
   // but gives right results...
   QSystemDeviceInfo *device = new QSystemDeviceInfo (parent);
-    //qDebug () << "imei  " << device.imei();
   qDebug () << "product name  " << device->productName().simplified();
   device_desc.append (device->productName().simplified());
   device_desc.append ("/");
@@ -61,45 +66,21 @@ Binder::Binder(QObject *parent, Localizer *_localizer) :
   device_desc.append ("/");
   qDebug () << "manu  " << device->manufacturer().simplified();
   device_desc.append (device->manufacturer().simplified());
-    //qDebug () << "sim   " << device->simStatus();
-
   delete device;
 
+#ifdef USE_MOLE_DBUS
   QDBusConnection::sessionBus().registerObject("/", this);
-  QDBusConnection::sessionBus().connect(QString(), QString(), "com.nokia.moled", "Bind", this, SLOT(handle_bind_request(QString,QString,QString,QString,QString,QString)));
+  QDBusConnection::sessionBus().connect(QString(), QString(), "com.nokia.moled", "Bind", this, SLOT(handleBindRequest(QString,QString,QString,QString,QString,QString)));
+#endif
 
-  clean_scan_list_timer = new QTimer(this);
-  connect(clean_scan_list_timer, SIGNAL(timeout()), 
-	  this, SLOT(clean_scan_list()));
-
-  // every minute
-  clean_scan_list_timer->start(60*1000);
-
-  xmit_bind_timer = new QTimer(this);
-  connect(xmit_bind_timer, SIGNAL(timeout()), 
+  connect(&xmit_bind_timer, SIGNAL(timeout()), 
 	  this, SLOT(xmit_bind()));
-  xmit_bind_timer->start (10000);
-
-  scan_list = new QList<AP_Scan*>;
-
-  //bind_network_manager = new QNetworkAccessManager (this);
-  //connect(bind_network_manager, SIGNAL(finished(QNetworkReply*)),
-  //SLOT(handle_bind_response(QNetworkReply*)));
-
+  xmit_bind_timer.start (10000);
 
 }
 
 Binder::~Binder () {
   qDebug () << "deleting binder";
-  delete clean_scan_list_timer;
-  delete xmit_bind_timer;
-  //delete bind_network_manager;
-  QListIterator<AP_Scan *> i (*scan_list);
-  while (i.hasNext()) {
-    AP_Scan *scan = i.next();
-    delete scan;
-  }
-  delete scan_list;
   delete binds_dir;
 
 }
@@ -112,11 +93,60 @@ void Binder::set_location_estimate
 }
 */
 
-void Binder::handle_bind_request
+QString Binder::handleBindRequest
 (QString country, QString region, QString city, QString area, 
- QString space_name, QString tags) {
+ QString space, QString tags) {
 
   QVariantMap bind_map;
+
+  const int MAX_NAME_LENGTH = 80;
+  // TODO validate params here
+  if (country.contains("/") || region.contains("/") || city.contains("/") ||
+      area.contains("/") || space.contains("/")) {
+    return "Error: place names cannot contains slashes";
+  }
+  if (country.length() > MAX_NAME_LENGTH) {
+    return "Error: country name too long";
+  }
+  if (region.length() > MAX_NAME_LENGTH) {
+    return "Error: region name too long";
+  }
+  if (city.length() > MAX_NAME_LENGTH) {
+    return "Error: city name too long";
+  }
+  if (area.length() > MAX_NAME_LENGTH) {
+    return "Error: area name too long";
+  }
+  if (space.length() > MAX_NAME_LENGTH) {
+    return "Error: space name name too long";
+  }
+  if (tags.length() > MAX_NAME_LENGTH) {
+    return "Error: tags too long";
+  }
+
+  if (space.isEmpty()) {
+    return "Error: space name is manditory";
+  }
+
+  // relative bind?
+  if (country.isEmpty() || region.isEmpty() || 
+      city.isEmpty() || area.isEmpty()) {
+    if (country.isEmpty() && region.isEmpty() && 
+	city.isEmpty() && area.isEmpty()) {
+      qDebug () << "relative bind";
+      QString spaceIgnored;
+      QString tagsIgnored;
+      double scoreIgnored;
+      localizer->queryCurrentEstimate 
+	(country, region, city, area, 
+	 spaceIgnored, tagsIgnored, scoreIgnored);
+      if (country == unknownSpace) {
+	return "Error: cannot perform relative bind because there is no current estimate";
+      }
+    } else {
+      return "Error: missing parts of full space name but not relative bind";
+    }
+  }
 
   QString full_space_name;
   full_space_name.append (country);
@@ -128,13 +158,13 @@ void Binder::handle_bind_request
   full_space_name.append (area);
   QString area_name = full_space_name;
   full_space_name.append ("/");
-  full_space_name.append (space_name);
+  full_space_name.append (space);
 
   QVariantMap location_map;
   location_map.insert ("full_space_name", full_space_name);
 
   QVariantMap est_location_map;
-  QString estimated_space_name = localizer->get_location_estimate ();
+  QString estimated_space_name = localizer->getCurrentEstimate ();
   qDebug () << "bind est_space_name=" << estimated_space_name;
   est_location_map.insert ("full_space_name", estimated_space_name);
 
@@ -147,31 +177,9 @@ void Binder::handle_bind_request
   bind_map.insert ("wifi_model", wifi_desc);
 
   QVariantList bind_scans_list;
-  QListIterator<AP_Scan *> i (*scan_list);
-  while (i.hasNext()) {
-    AP_Scan *scan = i.next();
-
-    QVariantList readings_list;
-    QListIterator<AP_Reading *> j (*(scan->readings));
-    while (j.hasNext()) {
-      AP_Reading *reading = j.next();
-      QVariantMap reading_map;
-      reading_map.insert ("bssid", reading->bssid);
-      reading_map.insert ("ssid", reading->ssid);
-      reading_map.insert ("frequency", reading->frequency);
-      reading_map.insert ("level", reading->level);
-      readings_list << reading_map;
-    }
-
-    QVariantMap ap_scan_map;
-    ap_scan_map.insert ("stamp", scan->stamp->toTime_t());
-    ap_scan_map.insert ("readings", readings_list);
-
-    bind_scans_list << ap_scan_map;
-  }
-
-  qDebug () << "bind scan_list size" << scan_list->size();
-
+  scanQueue->serialize (oldestValidScan, bind_scans_list);
+  
+  oldestValidScan = QDateTime::currentDateTime();
 
   bind_map.insert ("ap_scans", bind_scans_list);
 
@@ -208,18 +216,18 @@ void Binder::handle_bind_request
   stream << serialized;
   file.close ();
 
+  localizer->bind (area_name, full_space_name);
 
-  // delete up to last minute
-  clean_scan_list (60);
+  xmit_bind_timer.start (2500);
 
-  xmit_bind_timer->start (2500);
+  return "OK";
 
 }
  
 void Binder::xmit_bind () {
 
   // push the timer back a little
-  xmit_bind_timer->start (10000);
+  xmit_bind_timer.start (10000);
 
   // only send one bind at a time
   if (in_flight) {
@@ -242,7 +250,7 @@ void Binder::xmit_bind () {
   if (file_list.length() == 0) {
     // if not, switch off the timer
     qDebug () << "no binds to transmit";
-    xmit_bind_timer->stop ();
+    xmit_bind_timer.stop ();
     return;
   }
 
@@ -258,7 +266,7 @@ void Binder::xmit_bind () {
   // if so, send it
   if (!file.open (QIODevice::ReadOnly)) {
     qWarning () << "Could not read bind file: " << file.fileName();
-    xmit_bind_timer->stop ();
+    xmit_bind_timer.stop ();
     return;
   }
 
@@ -297,7 +305,7 @@ void Binder::handle_bind_response () {
     qWarning() << "handle_bind_response request failed "
 	       << reply->errorString()
       	       << " url " << reply->url();
-    xmit_bind_timer->stop ();
+    xmit_bind_timer.stop ();
 
   } else {
 
@@ -313,12 +321,14 @@ void Binder::handle_bind_response () {
       qDebug () << "file " << file.fileName();
 
       //QFile file (bind_file_name);
+
       if (file.exists()) {
 	file.remove();
 	qDebug () << "deleted sent bind file " << file.fileName();
       } else {
 	qWarning () << "sent bind file does not exist " << file.fileName();
       }
+
 
       QString area_name = bfn2area.take (bind_file_name);
       qDebug () << "handle_bind_response area_name" << area_name;
@@ -333,59 +343,19 @@ void Binder::handle_bind_response () {
 
 }
 
-void Binder::add_scan (AP_Scan *new_scan) {
-  scan_list->push_back (new_scan);
-  qDebug () << "binder add_scan list size=" << scan_list->size();
-}
-
-void Binder::clean_scan_list (int expire_secs) {
-  qDebug () << "binder clean_scan_list"
-	    << " expire_secs " << expire_secs;
-
-  QDateTime last_reset_stamp = QDateTime
-    (QDateTime::currentDateTime().addSecs(-1 * expire_secs).toUTC());
-
-  int old_size = scan_list->size();
-
-  QList<AP_Scan *> *new_scan_list = new QList<AP_Scan *>;
-  QListIterator<AP_Scan *> i (*scan_list);
-  while (i.hasNext()) {
-    AP_Scan *scan = i.next();
-    if (*scan->stamp > last_reset_stamp) {
-      new_scan_list->push_back (scan);
-    } else {
-      delete scan;
-    }
-  }
-
-  qDebug () << "clean_scan_list was: " << old_size 
-	    << " now: " << new_scan_list->size();
-
-  delete scan_list;
-  scan_list = new_scan_list;
-
-}
-
+/*
 void Binder::handle_speed_estimate(int motion) {
   qDebug () << "binder handle_speed_estimate" << motion;
 
-
   if (motion == MOVING) {
-    int old_size = scan_list->size();
-    QListIterator<AP_Scan *> i (*scan_list);
-    while (i.hasNext()) {
-      AP_Scan *scan = i.next();
-      delete scan;
-    }
-    qDebug () << "handle_speed_estimate was: " << old_size 
-	      << "now: " << scan_list->size();
-    delete scan_list;
-    scan_list = new QList<AP_Scan *>;
+    oldestValidScan = QDateTime::currentDateTime();
+    qDebug () << "handle_speed_estimate setting oldestValidScan";
   }
 }
-
+*/
 
 void Binder::set_wifi_desc (QString _wifi_desc) {
+  qDebug () << "Binder::set_wifi_desc " << _wifi_desc;
   wifi_desc = _wifi_desc;
 }
 

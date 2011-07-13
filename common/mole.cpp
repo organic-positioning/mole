@@ -20,7 +20,8 @@
 QString MOLE_ORGANIZATION = "Nokia";
 QString MOLE_APPLICATION  = "Mole";
 QString MOLE_DOMAIN       = "mole.research.nokia.com";
-int     MOLE_VERSION      = 30;
+int     MOLE_VERSION      = 40;
+QString MOLE_ICON_PATH    = "/usr/share/mole/icons/";
 
 bool debug = false;
 bool verbose = false;
@@ -63,15 +64,16 @@ void output_handler(QtMsgType type, const char *msg)
     }
     break;
   case QtWarningMsg:
-    *logStream << QDateTime::currentDateTime().toString() << " I: " << msg << "\n";
+    //QDateTime::currentDateTime().toString()
+    *logStream << QDateTime::currentMSecsSinceEpoch() << " I: " << msg << "\n";
     logStream->flush();
     break;
   case QtCriticalMsg:
-    *logStream << QDateTime::currentDateTime().toString() << " C: " << msg << "\n";
+    *logStream << QDateTime::currentMSecsSinceEpoch() << " C: " << msg << "\n";
     logStream->flush();
     break;
   case QtFatalMsg:
-    *logStream << QDateTime::currentDateTime().toString() << " F: " << msg << "\n";
+    *logStream << QDateTime::currentMSecsSinceEpoch() << " F: " << msg << "\n";
     logStream->flush();
     abort();
   }
@@ -122,4 +124,8 @@ void initCommon (QObject *parent, QString logFilename) {
 
   networkAccessManager = new QNetworkAccessManager (parent);
 
+  staticServerURL.trimmed();
+  rootPathname.trimmed();
+  mapServerURL.trimmed();
+  logFilename.trimmed();
 }

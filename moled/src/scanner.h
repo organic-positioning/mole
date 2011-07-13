@@ -18,6 +18,7 @@
 #ifndef SCANNER_H_
 #define SCANNER_H_
 
+/*
 #include <QtCore>
 #include <QtCore>
 #include <QtDBus>
@@ -25,6 +26,7 @@
 //#include <QSystemNetworkInfo>
 //#include <QNetworkConfigurationManager>
 #include <QNetworkInterface>
+*/
 
 #include "moled.h"
 #include "binder.h"
@@ -34,7 +36,7 @@ class Scanner : QObject {
   Q_OBJECT
 
 public:
-  Scanner(QObject *parent = 0, Localizer *localizer = 0, Binder *binder = 0);
+  Scanner(QObject *parent = 0);
   ~Scanner ();
 
   //public slots:
@@ -46,10 +48,7 @@ signals:
   void scanned_access_points (AP_Scan*);
 
  private:
-  Localizer *localizer;
-  Binder *binder;
   QTimer *timer;
-  AP_Scan *previous_scan;
   bool have_set_driver;
   QTime previous_scan_time;
 
@@ -59,7 +58,6 @@ private slots:
   //void slotReadyRead();
   //void finished (QNetworkReply *reply);
   void scan_access_points ();
-
 
 };
 

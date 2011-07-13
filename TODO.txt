@@ -1,0 +1,110 @@
+
+SPRINT 1: Low Hanging Fruit - Refactoring
+April 18-30; Completed 14 pts
++ daemonize code and start on install/restart; optify - 3pt
++ https -> http problem with amazon - 1pt
++ rm displayed client/server bits of username check-in - 1pt
++ Very basic client check that clock is > some current date - 1pt
++ Better server polling for changes in signature files: use
+  if-modified-since; and we only poll for places that we are actually
+  using or should be using according to our seen macs (using
+  touch/untouch) - 3pt
++ Binder clears its scan list as well when movement is detected (so
+  scans from another place are not included in the bind) - 1pt
++ walk detector experiment - 3pts
++ Do fetch soon after doing a bind - 1pt
+
+SPRINT 1.5:
++ on client when using local server: 
+  map in put in: /opt/var/lib/map/sachusetts/Cambridge/4\ Cambridge\
+  Center/sig.xml; USA/Ma is truncated - 1pt
++ Eliminate/merge duplicate MACs that are part of the same scan
+
+SPRINT 2: June 13 - July 7 (v0.4)
+- major rewrite of internals in order to reduce memory and cpu:
+   scanQueue and histogram rewrite - 11pt
+   Still to-do after seven days: 
+   + act after motion detected
+   + stats shown in UI
+   + binding: did short (9 scan) and long (60 scan) binds
+   + with maxActiveQueueLength
+   - clean out excess qDebugs
+   - re-check memory usage
+   - test vs existing version
++ Device/WiFi name sent properly - 1pt
++ icons: compass in/over a building?  over stata- 3pt
++ implement local socket API - 3pt
++ Filter bad client info: add regex filter for bad bssids sent to
+  server - 1pt
+
+SPRINT 3: (v0.5)
+- Command line mole-binder: bind (place=, tags=), query, stat; needs
+to respond if not; DO THIS SOON because no telnet on tablets
+- Apply binds to local database - 3pt
+- Test binding multiple nearby buildings
+- "unbind" to remove spaces
+- Web page with instructions - 3pt
++ Refactor DBus so that not included with Symbian - 1pt
+- Check again for memory leaks - 1pt
+
+ALPHA RELEASE 
+
+SPRINT 4:
+
+- Offline mode: sense if no network connection and stop network
+   activity if so; reactivate when changes - 3pt
+- Scan slower and stop network updates when idle - 3pt
+- Check again for memory leaks - 3pt
+
+
+POST-RELEASE
+- Better motion detection - 3pt
+- Periodic Statistics sent from client and recorded appropriately - 3pt
+- Comment out qDebug statements via some good method (#define ?) - 1pt
+- refactor client into like local socket daemon, but don't define API
+  yet - 3pt
+- Client should work in different network availability environments
+   Test binding when wifi turned off and only 3g is available
+
+
+SPRINT -Unassigned
+
+- Reliability and Alarms
+  As a user, the regular system should be available most of the time:
+  DOD: A server-side alert system is put in place to monitor the two
+  components - 5pt
+
+- Builder eliminates spaces (happens rarely)
+  In an INdT exp, after a bind, it appears that the builder only
+  outputted signatures for a subset of the spaces it should have.
+  Specifically, the correct space (R20) was transiently ommitted from
+  the area's set of signatures.  When another bind was done and the
+  signature map was created again, the correct space re-appeared and
+  the correct space was chosen.  The change is to put logging in the
+  Builder to watch for "forgetting" of a space.
+
+
+- Better icons, e.g. in control (package installer)
+
+- "fillAreaCache:631 - loop through results" -- we seem to be adding
+  and then dropping results too frequently - 3pt
+
+- Remove virtual APs / reduce each AP to one real one; see email from Jun-geun on hack for how to do this (May 4 2011) - 3pt
+- Screen out mobile/transient MACs as described in UCLA SenSys paper.
+  Looked briefly at this and mobile/transient MACs did not appear in
+  scan results, so maybe this doesn't need to happen - 1pt
+
+- User should be able to reset and clean cache
+  Cache should be placed in correct place in Ubuntu and Maemo
+  (optification)
+  Base this on a global configuration file - 1pt
+ 
+- Bigger feedback window - 1pt
+
+- Enforce clean entry submission
+  If you set the binder inputs to a value, then start activates, but
+  then if you delete the entry without hitting enter, you can still
+  click start and submit a blank entry - 3pt
+
+- Reflect local area coverage to user - 3pt
+

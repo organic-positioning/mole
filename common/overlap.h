@@ -35,8 +35,13 @@ public:
   double compare_sig_overlap (const QMap<QString,Sig*> *sig_a, 
 			      const QMap<QString,Sig*> *sig_b);
 
+  double compareHistOverlap(const QMap<QString,Sig*> *sig_a,
+                            const QMap<QString,Sig*> *sig_b, int penalty);
+
   double compute_overlap
     (double mean_1, double sigma_1, double mean_2, double sigma_2);
+
+  double computeHistOverlap(Histogram *hist1, Histogram *hist2);
 
   double ncdf (double x);
 

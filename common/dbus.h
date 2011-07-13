@@ -1,6 +1,6 @@
 /*
  * Mole - Mobile Organic Localisation Engine
- * Copyright 2010 Nokia Corporation.
+ * Copyright 2010-2011 Nokia Corporation.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,3 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#ifndef MOLE_DBUS_H_
+#define MOLE_DBUS_H_
+
+#ifdef Q_OS_SYMBIAN
+
+#else
+#include <QtDBus>
+#define USE_MOLE_DBUS 1
+#endif
+
+#endif /* MOLE_DBUS_H_ */

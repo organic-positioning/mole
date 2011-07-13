@@ -24,9 +24,6 @@
 #include "../../common/network.h"
 
 #define DEFAULT_LOG_FILE    "/var/log/moled.log"
-#define DEFAULT_LOCAL_PORT  7070
-
-#define MOLE_MAPSERVER_URL_CHOP 12
-// CHOP => number of characters between slash and end + 1 (this should be done programmatically....)
+#define DEFAULT_LOCAL_PORT  4411
 
 #endif /* MOLED_H_ */

@@ -19,18 +19,55 @@
 
 //const qreal GRAVITY = 9.82;
 
+bool SpeedSensor::accelerometerExists = true;
+bool SpeedSensor::testedForAccelerometer = false;
+
 void SpeedSensor::handleTimeout () {
-  qDebug () << "handleTimeout on="<<on;
+  //qDebug () << "speedsensor handleTimeout scanning="<<on;
   timer.stop ();
   if (on) {
     sensor->removeFilter(this);
     sensor->stop();
     on = false;
-    updateSpeedShafer ();
+
+    // sets 'motion' to current activity
+    //Motion motion = updateSpeedShafer ();
+    Motion motion = updateSpeedVariance ();
+
+    // examples
+    // MMS -> M
+    // SMS -> M
+    // SSM -> S
+    // HSM -> H
+
+    for (int i = MOTION_HISTORY_SIZE-2; i >= 0; i--) {
+      motionHistory[i+1] = motionHistory[i];
+    }
+    motionHistory[0] = motion;
+
+    /*
+    for (int i = 0; i < MOTION_HISTORY_SIZE; i++) {
+      qDebug () << "motionHistory " << i << motionHistory[i];
+    }
+    */
+
+    // keep emitting moving as long as we are walking
+    if (motionHistory[1] == MOVING || motionHistory[0] == MOVING) {
+      emitMotion (MOVING);
+    } else if (motionHistory[0] != motionHistory[1]) {
+      emitMotion (motionHistory[0]);
+    } else if (motionHistory[2] == MOVING &&
+	       motionHistory[0] != MOVING &&
+	       motionHistory[0] == motionHistory[1]) {
+      // handle case *after* we emit the extra motion
+      emitMotion (motionHistory[0]);
+    }
+
     timer.start (dutyCycle);
   } else {
     //magSum = 0;
     readingCount = 0;
+    /*
     for (int i = 0; i < MAX_READING_COUNT; i++) {
       for (int d = 0; d < ACC_READING_COLUMNS; d++) {
 	reading[i][d] = 0.;
@@ -39,6 +76,7 @@ void SpeedSensor::handleTimeout () {
 	metaReading[i][d] = 0;
       }
     }
+    */
 
     sensor->addFilter(this);
     sensor->start();
@@ -47,8 +85,8 @@ void SpeedSensor::handleTimeout () {
   }
 }
 
-SpeedSensor::SpeedSensor(QObject* parent, Localizer *_localizer, Binder *_binder, int _samplingPeriod, int _dutyCycle) :
-  QObject(parent), localizer (_localizer), binder (_binder),
+SpeedSensor::SpeedSensor(QObject* parent, ScanQueue *_scanQueue, int _samplingPeriod, int _dutyCycle) :
+  QObject(parent), scanQueue (_scanQueue),
   samplingPeriod (_samplingPeriod), dutyCycle (_dutyCycle) {
 
   qDebug () << "speedsensor samplingPeriod="<<samplingPeriod
@@ -59,7 +97,10 @@ SpeedSensor::SpeedSensor(QObject* parent, Localizer *_localizer, Binder *_binder
 
   connect (&timer, SIGNAL(timeout()), SLOT(handleTimeout()));
   on = false;
-  motion = STATIONARY;
+  for (int i = 0; i < MOTION_HISTORY_SIZE; i++) {
+    motionHistory[i] = STATIONARY;
+  }
+
   handleTimeout ();
 
   qDebug () << "starting speed sensor";
@@ -77,10 +118,10 @@ bool SpeedSensor::filter(QAccelerometerReading* accReading) {
   return false;
 }
 
-void SpeedSensor::updateSpeedShafer() {
+Motion SpeedSensor::updateSpeedShafer() {
 
   if (readingCount < 2) {
-    return;
+    return motionHistory[0];
   }
 
   qreal metric = 0.;
@@ -99,24 +140,59 @@ void SpeedSensor::updateSpeedShafer() {
   }
 
   qDebug () << "motion metric " << metric
-	    << "m/3" << (metric / 3.);
+	    << "m/3" << (metric / 3.)
+	    << "readings="<<readingCount;
 
-  Motion oldMotion = motion;
-  if (metric > 7) {
+  Motion motion;
+  if (metric > 2) {
     motion = MOVING;
   } else if (metric < 0.1) {
     motion = HIBERNATE;
   } else {
     motion = STATIONARY;
   }
-
-  if (motion != oldMotion) {
-    emitMotion ();
-    motion = oldMotion;
-  }
+  return motion;
 
 }
 
+Motion SpeedSensor::updateSpeedVariance() {
+
+  if (readingCount < 2) {
+    return motionHistory[0];
+  }
+
+  qreal magMean = 0.;
+  for (int i = 0; i < readingCount; i++) {
+    reading[i][MAG] = sqrt 
+      (reading[i][X]*reading[i][X] +
+       reading[i][Y]*reading[i][Y] +
+       reading[i][Z]*reading[i][Z]);
+    magMean += reading[i][MAG];
+  }
+  magMean /= readingCount;
+
+  qreal magVariance = 0.;
+  for (int i = 0; i < readingCount; i++) {
+    qreal variance = qAbs (magMean-reading[i][MAG]);
+    magVariance += variance;
+  }
+  magVariance /= readingCount;
+  
+  qDebug () << "mean variance " << magVariance;
+
+  Motion motion;
+  if (magVariance > 0.8) {
+    motion = MOVING;
+  } else if (magVariance < 0.1) {
+    motion = HIBERNATE;
+  } else {
+    motion = STATIONARY;
+  }
+  return motion;
+
+}
+
+/*
 void SpeedSensor::updateSpeedStreak() {
 
   if (readingCount == 0) {
@@ -199,7 +275,7 @@ void SpeedSensor::updateSpeedStreak() {
     // emit continuously when we are moving
     // emit once when we shift from moving to not moving
 
-  /*
+
     int emit_count = -1;
     if (moving_count > 5) {
       emit_count = moving_count;
@@ -217,62 +293,41 @@ void SpeedSensor::updateSpeedStreak() {
     }
 
   }
-  */
-}
 
-void SpeedSensor::emitMotion () {
+
+  // TODO
+  return;
+
+}
+*/
+
+#ifdef USE_MOLE_DBUS
+void SpeedSensor::emitMotion (Motion motion) {
   QDBusMessage msg = QDBusMessage::createSignal("/", "com.nokia.moled", "MotionEstimate");
   msg << motion;
-  localizer->handle_speed_estimate (motion);
-  binder->handle_speed_estimate (motion);
+  scanQueue->handleMotionEstimate (motion);
   QDBusConnection::sessionBus().send(msg);
   qDebug () << "emitMotion" << motion;
 }
+#else
+void SpeedSensor::emitMotion (Motion motion) {}
+#endif
 
 void SpeedSensor::shutdown() {
 }
 
-MotionLogger::MotionLogger(QObject* parent) :
-  QObject(parent) {
 
-  qDebug () << "motionLogger";
-
-  /*
-  if (logFilename == NULL || logFilename.isEmpty()) {
-    fprintf (stderr, "Invalid motion log filename.\n\n");
-    exit (-1);
+bool SpeedSensor::haveAccelerometer () {
+  if (!testedForAccelerometer) {
+    accelerometerExists = true;
+    QAccelerometer sensor;
+    //sensor.setActive (true);
+    qDebug () << "haveAccelerometer" << sensor.connectToBackend();
+    if (!sensor.connectToBackend()) {
+      accelerometerExists = false;
+    }
+    testedForAccelerometer = true;
+    //sensor.setActive (false);
   }
-
-  logFile = new QFile (logFilename);
-  if (logFile->open (QFile::WriteOnly | QFile::Append)) {
-    logStream = new QTextStream (logFile);
-
-  } else {
-    fprintf (stderr, "Could not open motion log file %s.\n\n", 
-	     logFilename.toAscii().data());
-    exit (-1);
-  }
-  */
-
-  sensor = new QAccelerometer(this);
-  sensor->addFilter(this);
-  sensor->start();
+  return accelerometerExists;
 }
-
-bool MotionLogger::filter(QAccelerometerReading* reading) {
-
-  if (reading != NULL) {
-    //qint64 stamp = QDateTime::currentMSecsSinceEpoch ();
-    qreal mag = sqrt ((reading->x() * reading->x()) + (reading->y() * reading->y()) + (reading->z() * reading->z()));
-
-    qDebug () << "acc x=" << reading->x() 
-	      << "y=" << reading->y() 
-	      << "z=" << reading->z() 
-	      << "mag=" << mag;
-  }
-  return false;
-}
-
-//MotionLogger::~MotionLogger () {
-//  logFile->close ();
-//}

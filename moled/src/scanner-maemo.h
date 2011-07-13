@@ -22,8 +22,9 @@
 #include <QtDBus>
 #include <QObject>
 #include "scan-maemo.h"
+
+#include "scanQueue.h"
 #include "binder.h"
-#include "localizer.h"
 
 class Scanner : public QObject {
 
@@ -34,39 +35,37 @@ class Scanner : public QObject {
 public:
     enum Mode { Active, Active_saved, Passive };
 
-    Scanner(QObject *parent = 0, Localizer *localizer = 0, Binder *binder = 0, 
-	    Mode scan_mode = Scanner::Passive);
+    Scanner(QObject *parent = 0, ScanQueue *scanQueue = 0, 
+	    Binder *binder = 0, Mode scan_mode = Scanner::Passive);
     ~Scanner ();
 
 
     bool stop(void);
 
 signals:
-    void scannedAccessPoint(Scan *network);
+    void scannedAccessPoint(ICDScan *network);
 
 private:
 
     QDBusConnection bus;
-
-    Localizer *localizer;
-    Binder *binder;
+    ScanQueue *scanQueue;
 
     Mode mode;
     bool scanning;
 
-    QTimer *emit_timer;
-    QList<AP_Reading*> *readings;
+    QTime interarrival;
+    QTimer start_timer;
 
 public slots:
     bool start(void);
 
     // void scanResultHandler(const QList<QVariant> &);
     void scanResultHandler(const QDBusMessage&);
-    void print(Scan *network);
+    void print(ICDScan *network);
 
 private slots:
-    void add_to_readings(Scan *network);
-    void emit_current_readings();
+    void addReadings(ICDScan *network);
+    //void emit_current_readings();
 
  };
 
