@@ -1,71 +1,69 @@
 /*
  * Mole - Mobile Organic Localisation Engine
  * Copyright 2010 Nokia Corporation.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "binder.h"
+
+#include "moled.h"
+#include "localizer.h"
+#include "scanQueue.h"
+
+#include <QNetworkReply>
+#include <QNetworkRequest>
 #include <QSystemDeviceInfo>
 
-#include "binder.h"
+#include <qjson/serializer.h>
 
 QTM_USE_NAMESPACE
 
-Binder::Binder(QObject *parent, Localizer *_localizer, ScanQueue *_scanQueue) : 
-  QObject(parent), localizer (_localizer), scanQueue (_scanQueue) {
-
+Binder::Binder(QObject *parent, Localizer *_localizer, ScanQueue *_scanQueue)
+  : QObject(parent)
+  , m_inFlight(false)
+  , m_localizer(_localizer)
+  , m_scanQueue(_scanQueue)
+{
   // This keeps scans disjoint: it prevents a scan from being assigned
   // to more than one bind.
-  oldestValidScan = QDateTime::currentDateTime();
+  m_oldestValidScan = QDateTime::currentDateTime();
 
-  if (!rootDir.exists ("binds")) {
-    bool ret = rootDir.mkdir ("binds");
+  if (!rootDir.exists("binds")) {
+    bool ret = rootDir.mkdir("binds");
 
-    qDebug () << "root " << rootDir.absolutePath();
+    qDebug() << "root " << rootDir.absolutePath();
 
     if (!ret) {
-      qFatal ("Failed to create binds directory. Exiting...");
-      QCoreApplication::exit (-1);
+      qFatal("Failed to create binds directory. Exiting...");
+      QCoreApplication::exit(-1);
     }
-    qDebug () << "created binds dir";
+    qDebug() << "created binds dir";
   }
 
-  bind_dir_name = rootDir.absolutePath();
-  bind_dir_name.append ("/binds");
+  m_bindDirName = rootDir.absolutePath();
+  m_bindDirName.append("/binds");
 
-  binds_dir = new QDir (bind_dir_name);
+  m_bindsDir = new QDir(m_bindDirName);
 
-  in_flight = false;
-  //last_reset_stamp = QDateTime::currentDateTime();
-
-  /*
-    QSystemNetworkInfo info (parent);
-    local_wlan_mac = info.macAddress (QSystemNetworkInfo::WlanMode);
-  */
-
-  // TODO use something from QtMobility to access the local device/driver name
-  // This is not available as of 4.7 and Mobility 1.2
-
-  // on 4.7 seems to trigger this: QDBusObjectPath: invalid path ""
-  // but gives right results...
-  QSystemDeviceInfo *device = new QSystemDeviceInfo (parent);
-  qDebug () << "product name  " << device->productName().simplified();
-  device_desc.append (device->productName().simplified());
-  device_desc.append ("/");
-  qDebug () << "model " << device->model ().simplified();
-  device_desc.append (device->model().simplified());
-  device_desc.append ("/");
-  qDebug () << "manu  " << device->manufacturer().simplified();
-  device_desc.append (device->manufacturer().simplified());
+  QSystemDeviceInfo *device = new QSystemDeviceInfo(parent);
+  qDebug() << "product name  " << device->productName().simplified();
+  m_deviceDesc.append(device->productName().simplified());
+  m_deviceDesc.append("/");
+  qDebug() << "model " << device->model().simplified();
+  m_deviceDesc.append(device->model().simplified());
+  m_deviceDesc.append("/");
+  qDebug() << "manufacturer  " << device->manufacturer().simplified();
+  m_deviceDesc.append(device->manufacturer().simplified());
   delete device;
 
 #ifdef USE_MOLE_DBUS
@@ -73,34 +71,29 @@ Binder::Binder(QObject *parent, Localizer *_localizer, ScanQueue *_scanQueue) :
   QDBusConnection::sessionBus().connect(QString(), QString(), "com.nokia.moled", "Bind", this, SLOT(handleBindRequest(QString,QString,QString,QString,QString,QString)));
 #endif
 
-  connect(&xmit_bind_timer, SIGNAL(timeout()), 
-	  this, SLOT(xmit_bind()));
-  xmit_bind_timer.start (10000);
+  connect(&m_xmitBindTimer, SIGNAL(timeout()), this, SLOT(xmitBind()));
+
+  if (networkConfigurationManager->isOnline())
+    m_xmitBindTimer.start(10000);
+
+  connect(networkConfigurationManager, SIGNAL(onlineStateChanged(bool)), this, SLOT(onlineStateChanged(bool)));
 
 }
 
-Binder::~Binder () {
+Binder::~Binder()
+{
   qDebug () << "deleting binder";
-  delete binds_dir;
-
+  delete m_bindsDir;
 }
 
-/*
-void Binder::set_location_estimate
-(QString _estimated_space_name, double _estimated_space_score) {
-  estimated_space_name = _estimated_space_name;
-  estimated_space_score = _estimated_space_score;
-}
-*/
-
-QString Binder::handleBindRequest
-(QString country, QString region, QString city, QString area, 
- QString space, QString tags) {
-
-  QVariantMap bind_map;
-
+QString Binder::handleBindRequest(QString country, QString region,
+                                  QString city, QString area,
+                                  QString space, QString tags)
+{
+  QVariantMap bindMap;
   const int MAX_NAME_LENGTH = 80;
-  // TODO validate params here
+
+ // TODO validate params here
   if (country.contains("/") || region.contains("/") || city.contains("/") ||
       area.contains("/") || space.contains("/")) {
     return "Error: place names cannot contains slashes";
@@ -129,144 +122,134 @@ QString Binder::handleBindRequest
   }
 
   // relative bind?
-  if (country.isEmpty() || region.isEmpty() || 
-      city.isEmpty() || area.isEmpty()) {
-    if (country.isEmpty() && region.isEmpty() && 
-	city.isEmpty() && area.isEmpty()) {
-      qDebug () << "relative bind";
+  if (country.isEmpty() || region.isEmpty() || city.isEmpty() || area.isEmpty()) {
+    if (country.isEmpty() && region.isEmpty() && city.isEmpty() && area.isEmpty()) {
+      qDebug() << "relative bind";
       QString spaceIgnored;
       QString tagsIgnored;
       double scoreIgnored;
-      localizer->queryCurrentEstimate 
-	(country, region, city, area, 
-	 spaceIgnored, tagsIgnored, scoreIgnored);
+      m_localizer->queryCurrentEstimate(country, region, city, area, spaceIgnored, tagsIgnored, scoreIgnored);
       if (country == unknownSpace) {
-	return "Error: cannot perform relative bind because there is no current estimate";
+        return "Error: cannot perform relative bind because there is no current estimate";
       }
     } else {
       return "Error: missing parts of full space name but not relative bind";
     }
   }
 
-  QString full_space_name;
-  full_space_name.append (country);
-  full_space_name.append ("/");
-  full_space_name.append (region);
-  full_space_name.append ("/");
-  full_space_name.append (city);
-  full_space_name.append ("/");
-  full_space_name.append (area);
-  QString area_name = full_space_name;
-  full_space_name.append ("/");
-  full_space_name.append (space);
+  QString fullSpaceName;
+  fullSpaceName.append(country);
+  fullSpaceName.append("/");
+  fullSpaceName.append(region);
+  fullSpaceName.append("/");
+  fullSpaceName.append(city);
+  fullSpaceName.append("/");
+  fullSpaceName.append(area);
+  QString areaName = fullSpaceName;
+  fullSpaceName.append("/");
+  fullSpaceName.append(space);
 
-  QVariantMap location_map;
-  location_map.insert ("full_space_name", full_space_name);
+  QVariantMap locationMap;
+  locationMap.insert("full_space_name", fullSpaceName);
 
-  QVariantMap est_location_map;
-  QString estimated_space_name = localizer->getCurrentEstimate ();
-  qDebug () << "bind est_space_name=" << estimated_space_name;
-  est_location_map.insert ("full_space_name", estimated_space_name);
+  QVariantMap estLocationMap;
+  QString estimatedSpaceName = m_localizer->currentEstimate();
+  qDebug() << "bind est_space_name=" << estimatedSpaceName;
+  estLocationMap.insert("full_space_name", estimatedSpaceName);
 
-  bind_map.insert ("location", location_map);
-  bind_map.insert ("est_location", est_location_map);
+  bindMap.insert("location", locationMap);
+  bindMap.insert("est_location", estLocationMap);
 
   // note: sends *seconds* not ms
-  bind_map.insert ("bind_stamp", QDateTime::currentDateTime().toTime_t());
-  bind_map.insert ("device_model", device_desc);
-  bind_map.insert ("wifi_model", wifi_desc);
+  bindMap.insert("bind_stamp", QDateTime::currentDateTime().toTime_t());
+  bindMap.insert("device_model", m_deviceDesc);
+  bindMap.insert("wifi_model", m_wifiDesc);
 
-  QVariantList bind_scans_list;
-  scanQueue->serialize (oldestValidScan, bind_scans_list);
-  
-  oldestValidScan = QDateTime::currentDateTime();
+  QVariantList bindScansList;
+  m_scanQueue->serialize(m_oldestValidScan, bindScansList);
 
-  bind_map.insert ("ap_scans", bind_scans_list);
+  m_oldestValidScan = QDateTime::currentDateTime();
 
-  bind_map.insert ("tags", tags);
-  bind_map.insert ("description", "none");
+  bindMap.insert("ap_scans", bindScansList);
+
+  bindMap.insert("tags", tags);
+  bindMap.insert("description", "none");
 
   // create a Serializer instance
   QJson::Serializer serializer;
-  const QByteArray serialized = serializer.serialize(bind_map);
-
-  //qDebug() << serialized;
+  const QByteArray serialized = serializer.serialize(bindMap);
 
   // write it to a file
-  QString file_name = binds_dir->absolutePath();
-  file_name.append ("/");
-  QString bind_file_name = "bind-";
-  bind_file_name.append (get_random_cookie(10));
-  bind_file_name.append (".txt");
-  file_name.append (bind_file_name);
-  qDebug () << "file_name" << file_name;
-  QFile file (file_name);
+  QString fileName = m_bindsDir->absolutePath();
+  fileName.append ("/");
+  QString bindFileName = "bind-";
+  bindFileName.append(getRandomCookie(10));
+  bindFileName.append(".txt");
+  fileName.append(bindFileName);
+  qDebug() << "file_name" << fileName;
+  QFile file(fileName);
 
   if (!file.open (QIODevice::WriteOnly | QIODevice::Truncate)) {
-    qFatal ("Could not open file to store bind data");
-    QCoreApplication::exit (-1);
+    qFatal("Could not open file to store bind data");
+    QCoreApplication::exit(-1);
   }
 
   // remember this area name so we can tell
   // the localizer to do a refresh when
   // we hear the bind was successful
-  bfn2area.insert (bind_file_name, area_name);
+  m_bfn2area.insert(bindFileName, areaName);
 
   QDataStream stream (&file);
   stream << serialized;
-  file.close ();
+  file.close();
 
-  localizer->bind (area_name, full_space_name);
+  m_localizer->bind(areaName, fullSpaceName);
 
-  xmit_bind_timer.start (2500);
+  m_xmitBindTimer.start(2500);
 
   return "OK";
 
 }
- 
-void Binder::xmit_bind () {
 
+void Binder::xmitBind()
+{
   // push the timer back a little
-  xmit_bind_timer.start (10000);
+  m_xmitBindTimer.start(10000);
 
   // only send one bind at a time
-  if (in_flight) {
-    qDebug () << "waiting to xmit_bind until current is done";
+  if (m_inFlight) {
+    qDebug() << "waiting to xmit_bind until current is done";
     return;
   }
-
-  //bool bind_file_exists = false;
-  // see if there is a bind to send
 
   // We seem to need to do this on maemo for the
   // dir listing to be refreshed properly...
-  QDir tmp_binds_dir (bind_dir_name);
+  QDir tmpBindsDir (m_bindDirName);
   QStringList filters;
   filters << "bind-*.txt";
-  tmp_binds_dir.setNameFilters(filters);
+  tmpBindsDir.setNameFilters(filters);
 
-  QStringList file_list = tmp_binds_dir.entryList ();
+  QStringList fileList = tmpBindsDir.entryList();
 
-  if (file_list.length() == 0) {
+  if (fileList.length() == 0) {
     // if not, switch off the timer
-    qDebug () << "no binds to transmit";
-    xmit_bind_timer.stop ();
+    qDebug() << "no binds to transmit";
+    m_xmitBindTimer.stop();
     return;
   }
 
-  QString bind_file_name = file_list.at(0);
-  qDebug () << "bfn " << bind_file_name;
+  QString bindFileName = fileList.at(0);
+  qDebug() << "bind file name " << bindFileName;
 
-  QFile file (tmp_binds_dir.filePath(bind_file_name));
+  QFile file(tmpBindsDir.filePath(bindFileName));
 
-  qDebug () << "file " << file.fileName();
+  qDebug() << "file " << file.fileName();
   QByteArray serialized;
 
-
   // if so, send it
-  if (!file.open (QIODevice::ReadOnly)) {
-    qWarning () << "Could not read bind file: " << file.fileName();
-    xmit_bind_timer.stop ();
+  if (!file.open(QIODevice::ReadOnly)) {
+    qWarning() << "Could not read bind file: " << file.fileName();
+    m_xmitBindTimer.stop();
     return;
   }
 
@@ -275,93 +258,74 @@ void Binder::xmit_bind () {
 
   file.close();
 
-  QString url_str = mapServerURL;
-  QUrl url(url_str.append("/bind"));
+  QString urlStr = mapServerURL;
+  QUrl url(urlStr.append("/bind"));
   QNetworkRequest request;
   request.setUrl(url);
-  set_network_request_headers (request);
+  setNetworkRequestHeaders(request);
 
-  request.setRawHeader ("Bind", bind_file_name.toAscii());
+  request.setRawHeader("Bind", bindFileName.toAscii());
 
-  reply = networkAccessManager->post (request, serialized);
-  connect (reply, SIGNAL(finished()), 
-	   SLOT (handle_bind_response()));
+  m_reply = networkAccessManager->post(request, serialized);
+  connect(m_reply, SIGNAL(finished()), SLOT (handleBindResponse()));
 
+  m_inFlight = true;
 
-  in_flight = true;
-
-  qDebug () << "transmitted bind";
-
-
+  qDebug() << "transmitted bind";
 
 }
 
 // response from MOLE server about our bind request
-void Binder::handle_bind_response () {
+void Binder::handleBindResponse()
+{
+  m_inFlight = false;
 
-  in_flight = false;
-
-  if (reply->error() != QNetworkReply::NoError) {
+  if (m_reply->error() != QNetworkReply::NoError) {
     qWarning() << "handle_bind_response request failed "
-	       << reply->errorString()
-      	       << " url " << reply->url();
-    xmit_bind_timer.stop ();
-
+               << m_reply->errorString()
+               << " url " << m_reply->url();
+    m_xmitBindTimer.stop();
   } else {
-
     qDebug() << "handle_bind_response request succeeded";
 
     // delete the file that we just transmitted
-    if (reply->request().hasRawHeader ("Bind")) {
-      QVariant bind_file_var = reply->request().rawHeader ("Bind");
-      QString bind_file_name = bind_file_var.toString();
+    if (m_reply->request().hasRawHeader("Bind")) {
+      QVariant bindFileVar = m_reply->request().rawHeader("Bind");
+      QString bindFileName = bindFileVar.toString();
 
-      qDebug () << "bfn " << bind_file_name;
-      QFile file (binds_dir->filePath(bind_file_name));
-      qDebug () << "file " << file.fileName();
-
-      //QFile file (bind_file_name);
+      qDebug() << "bind file name " << bindFileName;
+      QFile file(m_bindsDir->filePath(bindFileName));
+      qDebug() << "file " << file.fileName();
 
       if (file.exists()) {
-	file.remove();
-	qDebug () << "deleted sent bind file " << file.fileName();
+        file.remove();
+        qDebug() << "deleted sent bind file " << file.fileName();
       } else {
-	qWarning () << "sent bind file does not exist " << file.fileName();
+        qWarning() << "sent bind file does not exist " << file.fileName();
       }
 
-
-      QString area_name = bfn2area.take (bind_file_name);
-      qDebug () << "handle_bind_response area_name" << area_name;
-      if (!area_name.isEmpty()) {
-	localizer->touch (area_name);
-      }
-
+      QString areaName = m_bfn2area.take(bindFileName);
+      qDebug() << "handle_bind_response area_name" << areaName;
+      if (!areaName.isEmpty())
+        m_localizer->touch(areaName);
     }
-
   }
-  reply->deleteLater();
+  m_reply->deleteLater();
 
 }
 
-/*
-void Binder::handle_speed_estimate(int motion) {
-  qDebug () << "binder handle_speed_estimate" << motion;
+void Binder::onlineStateChanged(bool online)
+{
+  qDebug() << "binder onlineStateChanged" << online;
 
-  if (motion == MOVING) {
-    oldestValidScan = QDateTime::currentDateTime();
-    qDebug () << "handle_speed_estimate setting oldestValidScan";
-  }
-}
-*/
-
-void Binder::set_wifi_desc (QString _wifi_desc) {
-  qDebug () << "Binder::set_wifi_desc " << _wifi_desc;
-  wifi_desc = _wifi_desc;
+  m_xmitBindTimer.stop();
+  if (online)
+    m_xmitBindTimer.start(10000);
 }
 
-
-// void Binder::set_device_desc (QString _device_desc) {
-//   device_desc = _device_desc;
-// }
-
+void Binder::setWifiDesc(QString _wifi_desc)
+{
+  qDebug() << "Binder::set_wifi_desc " << _wifi_desc;
+  m_wifiDesc = _wifi_desc;
+}
 

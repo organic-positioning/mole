@@ -1,13 +1,13 @@
 /*
  * Mole - Mobile Organic Localisation Engine
  * Copyright 2010-2011 Nokia Corporation.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,184 +17,158 @@
 
 #include "localizer.h"
 
-#define ALPHA                   0.20
+const qreal ALPHA = 0.20;
 
 // periodically put a line in the log file
-void LocalizerStats::log_statistics () {
-  qWarning () << "stats: "
-	      << "net_ok " << network_success_rate
-	      << "churn " << emit_new_location_sec
-	      << "scan_ms " << scan_rate_ms
-	      << "scans " << scan_queue_size
-	      << "macs " << macs_seen_size;
+void LocalizerStats::logStatistics()
+{
+  qWarning() << "stats: "
+             << "net_ok " << m_networkSuccessRate
+             << "churn " << m_emitNewLocationSec
+             << "scan_ms " << m_scanRateMs
+             << "scans " << m_scanQueueSize
+             << "macs " << m_macsSeenSize;
 }
 
 #ifdef USE_MOLE_DBUS
-void LocalizerStats::emit_statistics () {
-
-  int uptime = start_time.secsTo (QDateTime::currentDateTime());
-  if (emit_new_location_count > 0) {
-    emit_new_location_sec = (double) uptime / (double) emit_new_location_count;
+void LocalizerStats::emitStatistics()
+{
+  int uptime = m_startTime.secsTo(QDateTime::currentDateTime());
+  if (m_emitNewLocationCount > 0) {
+    m_emitNewLocationSec = (double) uptime / (double) m_emitNewLocationCount;
   } else {
-    emit_new_location_sec = 0;
+    m_emitNewLocationSec = 0;
   }
 
-  qDebug () << "emit_statistics "
-	    << "network_success_rate " << network_success_rate
-	    << "emit_new_location_sec " << emit_new_location_sec
-	    << "scan_rate_ms " << scan_rate_ms;
+  qDebug() << "emit_statistics "
+           << "network_success_rate " << m_networkSuccessRate
+           << "emit_new_location_sec " << m_emitNewLocationSec
+           << "scan_rate_ms " << m_scanRateMs;
 
   QString empty = "";
 
-  QDBusMessage stats_msg = QDBusMessage::createSignal("/", "com.nokia.moled", "LocationStats");
-  stats_msg << empty
+  QDBusMessage statsMsg = QDBusMessage::createSignal("/", "com.nokia.moled", "LocationStats");
+  statsMsg << empty
 
     // convert to GMT for network recording
-	    << start_time
+          << m_startTime
 
     // integers
-	    << scan_queue_size
-	    << macs_seen_size
+          << m_scanQueueSize
+          << m_macsSeenSize
 
-	    << total_area_count
-	    << total_space_count
-	    << potential_area_count
-	    << potential_space_count
+          << m_totalAreaCount
+          << m_totalSpaceCount
+          << m_potentialAreaCount
+          << m_potentialSpaceCount
 
-	    << movement_detected_count
-
+          << m_movementDetectedCount
 
     // doubles
-	    << scan_rate_ms
-	    << emit_new_location_sec
+         << m_scanRateMs
+         << m_emitNewLocationSec
 
-	    << network_latency
-	    << network_success_rate
+         << m_networkLatency
+         << m_networkSuccessRate
 
-	    << overlap_max
-	    << overlap_diff;
+         << m_overlapMax
+         << m_overlapDiff;
 
-
-  QDBusConnection::sessionBus().send(stats_msg);
+  QDBusConnection::sessionBus().send(statsMsg);
 }
 #else
-void LocalizerStats::emit_statistics () { }
+void LocalizerStats::emitStatistics()
+{
+}
 #endif
 
-void LocalizerStats::getStatsAsMap (QVariantMap &map) {
-  map.insert("LocalizerQueueSize", scan_queue_size);
-  map.insert("MacsSeenSize", macs_seen_size);
-  map.insert("TotalAreaCount", total_area_count);
-  map.insert("PotentialSpaceCount", potential_space_count);
-  map.insert("ScanRate", (int)(round(scan_rate_ms/1000)));
-  map.insert("NetworkSuccessRate", network_success_rate);
-  map.insert("NetworkLatency", network_latency);
-  map.insert("OverlapMax", overlap_max);
-  map.insert("OverlapDiff", overlap_diff);
-  map.insert("Churn", (int)(round(emit_new_location_sec)));
+void LocalizerStats::statsAsMap(QVariantMap &map)
+{
+  map.insert("LocalizerQueueSize", m_scanQueueSize);
+  map.insert("MacsSeenSize", m_macsSeenSize);
+  map.insert("TotalAreaCount", m_totalAreaCount);
+  map.insert("PotentialSpaceCount", m_potentialSpaceCount);
+  map.insert("ScanRate", (int)(round(m_scanRateMs/1000)));
+  map.insert("NetworkSuccessRate", m_networkSuccessRate);
+  map.insert("NetworkLatency", m_networkLatency);
+  map.insert("OverlapMax", m_overlapMax);
+  map.insert("OverlapDiff", m_overlapDiff);
+  map.insert("Churn", (int)(round(m_emitNewLocationSec)));
 }
 
-LocalizerStats::LocalizerStats (QObject *parent) : QObject(parent) {
-  start_time = QDateTime::currentDateTime();
+LocalizerStats::LocalizerStats(QObject *parent)
+  : QObject(parent)
+  , m_scanQueueSize(0)
+  , m_macsSeenSize(0)
+  , m_totalAreaCount(0)
+  , m_totalSpaceCount(0)
+  , m_potentialAreaCount(0)
+  , m_potentialSpaceCount(0)
+  , m_networkLatency(0)
+  , m_networkSuccessRate(0.8)
+  , m_apPerSigCount(0)
+  , m_apPerScanCount(0)
+  , m_scanRateMs(0)
+  , m_emitNewLocationSec(0)
+  , m_emitNewLocationCount(0)
+  , m_overlapMax(0.)
+  , m_overlapDiff(0.)
+  , m_movementDetectedCount(0)
+{
+  m_startTime = QDateTime::currentDateTime();
+  m_lastEmitLocation = QTime::currentTime();
+  m_lastScanTime = QTime::currentTime();
 
-  emit_new_location_count = 0;
-  last_emit_location = QTime::currentTime();
-  last_scan_time = QTime::currentTime();
-
-  scan_queue_size = 0;
-  macs_seen_size = 0;
-
-  network_latency = 0;
-  network_success_rate = 0.8;
-  ap_per_sig_count = 0;
-  ap_per_scan_count = 0;
-  total_area_count = 0;
-  total_space_count = 0;
-  potential_area_count = 0;
-  potential_space_count = 0;
-
-  // TODO this is not accurate because it only gets updated when there is a change, not when there isn't
-  // should be updates per time
-  emit_new_location_sec = 0;
-  scan_rate_ms = 0;
-  movement_detected_count = 0;
-
-  overlap_diff = 0.;
-  overlap_max = 0.;
-
-  log_timer = new QTimer (this);
-  connect (log_timer, SIGNAL (timeout()),
-	   SLOT (log_statistics ()));
-  log_timer->start (30000);
+  m_logTimer = new QTimer(this);
+  connect(m_logTimer, SIGNAL(timeout()), SLOT(logStatistics()));
+  m_logTimer->start(30000);
 }
 
-void LocalizerStats::add_network_latency(int value){
-  network_latency = update_ewma (network_latency, value);
-}
-void LocalizerStats::add_network_success_rate(int value){ 
-  network_success_rate = update_ewma (network_success_rate, value);
-  qDebug () << "net success " << network_success_rate;
+void LocalizerStats::addNetworkLatency(int value)
+{
+  m_networkLatency = updateEwma(m_networkLatency, value);
 }
 
-void LocalizerStats::emitted_new_location () {
-  emit_new_location_count++;
-
-  // TODO do this in a more sensible way:
-  // i.e. what is the *recent* update rate
-  //emit_new_location_ms = 
-  //update_ewma (emit_new_location_ms, last_emit_location.elapsed());
-  //last_emit_location = QTime::currentTime();
-
-  // computed in emit_statistics
-
+void LocalizerStats::addNetworkSuccessRate(int value)
+{
+  m_networkSuccessRate = updateEwma(m_networkSuccessRate, value);
+  qDebug() << "net success " << m_networkSuccessRate;
 }
 
-void LocalizerStats::received_scan () {
-  qDebug () << "received_scan "
-	    << "rate " << scan_rate_ms
-	    << "elapsed " << last_scan_time.elapsed();
-  scan_rate_ms = last_scan_time.elapsed();
+void LocalizerStats::receivedScan()
+{
+  qDebug() << "received_scan "
+           << "rate " << m_scanRateMs
+           << "elapsed " << m_lastScanTime.elapsed();
+  m_scanRateMs = m_lastScanTime.elapsed();
   // TODO make this the average of the last e.g. ten minutes
-  //update_ewma (scan_rate_ms, last_scan_time.elapsed());
-  last_scan_time = QTime::currentTime();
+  m_lastScanTime = QTime::currentTime();
 }
 
-void LocalizerStats::add_ap_per_sig_count(int count) { 
-  ap_per_sig_count = update_ewma (ap_per_sig_count, count);
+void LocalizerStats::addApPerSigCount(int count)
+{
+  m_apPerSigCount = updateEwma(m_apPerSigCount, count);
 }
 
-void LocalizerStats::add_ap_per_scan_count(int count){ 
-  ap_per_scan_count = update_ewma (ap_per_scan_count, count);
+void LocalizerStats::addApPerScanCount(int count)
+{
+  m_apPerScanCount = updateEwma(m_apPerScanCount, count);
 }
 
-void LocalizerStats::add_overlap_diff(double value){ 
-  overlap_diff = update_ewma (overlap_diff, value);
+void LocalizerStats::addOverlapDiff(double value)
+{
+  m_overlapDiff = updateEwma(m_overlapDiff, value);
 }
 
-void LocalizerStats::add_overlap_max(double value){ 
-  qDebug () << "overlap "
-	    << "max " << overlap_max
-	    << "value " << value;
-  overlap_max = update_ewma (overlap_max, value);
+void LocalizerStats::addOverlapMax(double value)
+{
+  qDebug() << "overlap "
+           << "max " << m_overlapMax
+           << "value " << value;
+  m_overlapMax = updateEwma(m_overlapMax, value);
 }
 
-
-void LocalizerStats::movement_detected () {
-  movement_detected_count++;
-}
-
-/*
-  void LocalizerStats::add_total_area_count(int){ }
-  void LocalizerStats::add_total_space_count(int){ }
-  void LocalizerStats::add_potential_area_count(int){ }
-  void LocalizerStats::add_potential_space_count(int){ }
-  void LocalizerStats::add_emit_new_location_sec(int){ }
-*/
-
-double LocalizerStats::update_ewma(double current, int value){
-  return (ALPHA*(double)value + ((1.0-ALPHA)*current));
-}
-
-double LocalizerStats::update_ewma(double current, double value){
-  return (ALPHA*(double)value + ((1.0-ALPHA)*current));
+double LocalizerStats::updateEwma(double current, double value)
+{
+  return (ALPHA * (double)value + ((1.0 - ALPHA) * current));
 }

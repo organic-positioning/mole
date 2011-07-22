@@ -1,13 +1,13 @@
 /*
  * Mole - Mobile Organic Localisation Engine
  * Copyright 2010 Nokia Corporation.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,20 +18,19 @@
 #ifndef MODELS_H_
 #define MODELS_H_
 
-#include <QtCore>
+#include <QDateTime>
 #include <QNetworkReply>
-#include <QNetworkRequest>
-#include <QNetworkAccessManager>
 #include <QStandardItemModel>
+#include <QUrl>
 
-#include "mole.h"
-#include "timer.h"
+class AdjustingTimer;
 
 // Periodically update the model using the url.
 // Assumes that the data from the url contains a list of entries.
 // The url is changeable and results from urls are cached.
 
-class UpdatingModel : public QStandardItemModel {
+class UpdatingModel : public QStandardItemModel
+{
   Q_OBJECT
 
  public:
@@ -43,43 +42,42 @@ class UpdatingModel : public QStandardItemModel {
   bool online;
   QUrl url;
   AdjustingTimer *timer;
-  void updateFromNetwork ();
   QNetworkReply *reply;
-  QDateTime last_modified;
-  QMap<QUrl,QList<QString>*> *url2list_cache;
+  QDateTime lastModified;
+  QMap<QUrl,QList<QString>*> *url2listCache;
 
-  void set_url (const QUrl& _url);
-  void stop_refill ();
-  void initialize ();
-  void emit_network_state (bool _online);
+  void updateFromNetwork();
+  void setUrl(const QUrl& _url);
+  void stopRefill();
+  void initialize();
+
+  void emitNetworkState(bool _online);
 
  signals:
-  void network_change (bool online);
+  void networkChange(bool online);
 
  protected slots:
-  void start_refill ();
-  void finish_refill ();
-
+  void startRefill();
+  void finishRefill();
 };
 
 // load up a model from a file, with one entry per line
 // and
 // periodically update the model using the file at the url
-class UpdatingFileModel : public UpdatingModel {
+class UpdatingFileModel : public UpdatingModel
+{
   Q_OBJECT
 
  public:
   UpdatingFileModel(const QString& fileName = 0, const QUrl& url = QUrl(), QObject *parent = 0);
 
  protected slots:
-  void finish_refill ();
+  void finishRefill();
 
  protected:
   const QString fileName;
-  void loadModelFromFile ();
-  void saveModelToFile ();
-
+  void loadModelFromFile();
+  void saveModelToFile();
 };
-
 
 #endif /* MODELS_H_ */

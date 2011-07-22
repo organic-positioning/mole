@@ -1,13 +1,13 @@
 /*
  * Mole - Mobile Organic Localisation Engine
  * Copyright 2010 Nokia Corporation.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,11 +18,11 @@
 #ifndef LOCALIZER_H_
 #define LOCALIZER_H_
 
-//#include <QtCore>
-//#include <QNetworkReply>
-//#include <QNetworkRequest>
-//#include <QUrl>
-//#include <QNetworkAccessManager>
+#include "moled.h"
+#include "../../common/util.h"
+#include "../../common/network.h"
+#include "../../common/overlap.h"
+#include "scan.h"
 
 #include <QXmlDefaultHandler>
 #include <QXmlInputSource>
@@ -31,308 +31,245 @@
 #include <QTcpSocket>
 #include <QAbstractSocket>
 
-#include "moled.h"
-#include "../../common/util.h"
-#include "../../common/network.h"
-#include "../../common/overlap.h"
-#include "scan.h"
-
-//#include "binder.h"
 class Binder;
 
-class SpaceDesc {
-
+class SpaceDesc
+{
  public:
-  SpaceDesc ();
-  SpaceDesc (QMap<QString,Sig*> *fingerprint);
-  ~SpaceDesc ();
+  SpaceDesc();
+  SpaceDesc(QMap<QString,Sig*> *fingerprint);
+  ~SpaceDesc();
 
-
-  //QSet<QString> *get_macs() { return macs; }
-  QMap<QString,Sig*>* getSignatures() { return sigs; }
-  QList<QString> getMacs () { return sigs->keys(); }
-  //void update (QSet<QString> *macs);
-  //void insertMac (QString mac) { macs->insert (mac); }
+  QMap<QString,Sig*>* signatures() { return m_sigs; }
+  QList<QString> macs() { return m_sigs->keys(); }
 
  private:
-  //QSet<QString> *macs;
-  QMap<QString,Sig*> *sigs;
+  QMap<QString,Sig*> *m_sigs;
 
 };
 
-class AreaDesc {
-
+class AreaDesc
+{
  public:
-  AreaDesc ();
-  ~AreaDesc ();
+  AreaDesc();
+  ~AreaDesc();
 
-  QMap<QString,SpaceDesc*> *getSpaces () { return spaces; }
+  QMap<QString,SpaceDesc*> *spaces() const { return m_spaces; }
+  QList<QString> macs() const { return m_macs->toList(); }
+  void insertMac(QString mac) { m_macs->insert(mac); }
+  QDateTime lastUpdateTime() const { return m_lastUpdateTime; }
+  QDateTime lastAccessTime() const { return m_lastAccessTime; }
+  QDateTime lastModifiedTime() const { return m_lastModifiedTime; }
+  void setLastUpdateTime() { m_lastUpdateTime = QDateTime::currentDateTime(); }
+  void setLastModifiedTime(QDateTime time) { m_lastModifiedTime = time; }
+  void accessed() { m_lastModifiedTime = QDateTime::currentDateTime(); }
+  int mapVersion() const { return m_mapVersion; }
+  void setMapVersion(int version) { m_mapVersion = version; }
 
-  //QSet<QString> *get_macs() { return macs; }
-  QList<QString> getMacs() { return macs->toList(); }
-  void insertMac (QString mac) { macs->insert (mac); }
-  QDateTime get_last_update_time();
-  QDateTime get_last_access_time();
-  QDateTime get_last_modified_time();
-  void set_last_update_time ();
-  void set_last_modified_time (QDateTime last);
-  void accessed();
-  int get_map_version() { return map_version; }
-  void set_map_version (int version) { map_version = version; }
-
-  void touch () { pTouch = true; }
-  bool isTouched () { return pTouch; }
-  void untouch () { pTouch = false; }
+  void touch() { m_touch = true; }
+  bool isTouched() const { return m_touch; }
+  void untouch() { m_touch = false; }
 
  private:
-  QSet<QString> *macs;
-  QMap<QString,SpaceDesc*> *spaces;
+  QSet<QString> *m_macs;
+  QMap<QString,SpaceDesc*> *m_spaces;
   // according to our local clock
-  QDateTime last_update_time;
-  QDateTime last_access_time;
+  QDateTime m_lastUpdateTime;
+  QDateTime m_lastAccessTime;
   // according to the server
-  QDateTime last_modified_time;
-  int map_version;
-  bool pTouch;
+  QDateTime m_lastModifiedTime;
+  int m_mapVersion;
+  bool m_touch;
 
 };
 
-class MapParser : public QXmlDefaultHandler {
-public:
-  bool startDocument();
-  bool endElement (const QString&, const QString&, const QString &name);
+class MapParser : public QXmlDefaultHandler
+{
+ public:
+  bool startDocument() { return true; }
+  bool endElement(const QString&, const QString&, const QString&) { return true; }
+  bool startElement(const QString&, const QString&, const QString&, const QXmlAttributes&);
+  bool endDocument() { return true; }
 
-  bool startElement (const QString&, const QString&, const QString &name,
-		     const QXmlAttributes &attributes);
-
-  bool endDocument();
-
-  AreaDesc* get_area_desc ();
-
-  //int get_map_version () { return map_version; }
-
-  QString get_fq_area () { return fq_area; }
+  AreaDesc* areaDesc() const { return m_areaDesc; }
+  QString fqArea() const { return m_fqArea; }
 
  private:
-  AreaDesc *area_desc;
-  SpaceDesc *current_space_desc;
-  QString fq_area;
-  //int map_version;
-  int builder_version;
-  //void reset ();
+  AreaDesc *m_areaDesc;
+  SpaceDesc *m_currentSpaceDesc;
+  QString m_fqArea;
+  int m_builderVersion;
 
 };
 
-class LocalizerStats : public QObject{
+class LocalizerStats : public QObject
+{
   Q_OBJECT
 
   // send cookie along with this
 
  public:
+  LocalizerStats(QObject *parent);
 
-  LocalizerStats (QObject *parent);
+  void emitStatistics();
+  void emittedNewLocation() { ++m_emitNewLocationCount; }
+  void receivedScan();
 
-  void emit_statistics ();
-  void emitted_new_location ();
-  void received_scan ();
-
-  void getStatsAsMap (QVariantMap &map);
+  void statsAsMap(QVariantMap &map);
 
   // TODO battery usage?
   // TODO scan rate
   // TODO rate of change between spaces
-  void add_network_latency(int);
-  void add_network_success_rate(int);
-  void add_ap_per_sig_count(int);
-  void add_ap_per_scan_count(int);
+  void addNetworkLatency(int);
+  void addNetworkSuccessRate(int);
+  void addApPerSigCount(int);
+  void addApPerScanCount(int);
 
-  void add_overlap_max(double value);
-  void add_overlap_diff(double value);
+  void addOverlapMax(double value);
+  void addOverlapDiff(double value);
 
-  void movement_detected ();
+  void movementDetected() { ++m_movementDetectedCount; }
 
-  // void add_total_area_count(int);
-  //void add_total_space_count(int);
-  //void add_potential_area_count(int);
-  //void add_potential_space_count(int);
-  //void add_emit_new_location_sec(int);
+  void setScanQueueSize(int v) { m_scanQueueSize = v; }
+  void setMacsSeenSize(int v) { m_macsSeenSize = v; }
 
-  void set_scan_queue_size (int v) { scan_queue_size = v; }
-  void set_macs_seen_size (int v) { macs_seen_size = v; }
-
-  void set_total_area_count (int v) { total_area_count = v; }
-  void set_total_space_count (int v) { total_space_count = v; }
-  void set_potential_area_count (int v) { potential_area_count = v; }
-  void set_potential_space_count (int v) { potential_space_count = v; }
+  void setTotalAreaCount(int v) { m_totalAreaCount = v; }
+  void setTotalSpaceCount(int v) { m_totalSpaceCount = v; }
+  void setPotentialAreaCount(int v) { m_potentialAreaCount = v; }
+  void setPotentialSpaceCount(int v) { m_potentialSpaceCount = v; }
 
  private:
+  QTimer *m_logTimer;
+  int m_scanQueueSize;
+  int m_macsSeenSize;
 
-  QTimer *log_timer;
-  int scan_queue_size;
-  int macs_seen_size;
+  int m_totalAreaCount;
+  int m_totalSpaceCount;
+  int m_potentialAreaCount;
+  int m_potentialSpaceCount;
 
-  int total_area_count;
-  int total_space_count;
-  int potential_area_count;
-  int potential_space_count;
+  double m_networkLatency;
+  double m_networkSuccessRate;
 
-  double network_latency;
-  double network_success_rate;
+  double m_apPerSigCount;
+  double m_apPerScanCount;
 
-  double ap_per_sig_count;
-  double ap_per_scan_count;
+  double m_scanRateMs;
+  double m_emitNewLocationSec;
+  int m_emitNewLocationCount;
 
-  double scan_rate_ms;
-  double emit_new_location_sec;
-  int emit_new_location_count;
+  double m_overlapMax;
+  double m_overlapDiff;
+  int m_movementDetectedCount;
 
-  double overlap_max;
-  double overlap_diff;
-  int movement_detected_count;
+  QDateTime m_startTime;
+  QTime m_lastScanTime;
+  QTime m_lastEmitLocation;
 
-  QDateTime start_time;
-  QTime last_scan_time;
-  QTime last_emit_location;
-
-  double update_ewma(double current, int value);
-  double update_ewma(double current, double value);
+  double updateEwma(double current, int value) { return updateEwma(current, (double)value); }
+  double updateEwma(double current, double value);
 
 private slots:
-  void log_statistics ();
+  void logStatistics();
 
 };
 
-class Localizer : public QObject {
+class Localizer : public QObject
+{
   Q_OBJECT
 
 public:
   Localizer(QObject *parent = 0);
-  ~Localizer ();
-  //Localizer(QObject *parent = 0, Network *network = 0);
+  ~Localizer();
 
-  void scanCompleted ();
-  void touch (QString area_name);
-  QString getCurrentEstimate () { return currentEstimateSpace; }
+  void scanCompleted();
+  void touch(QString area_name);
+  QString currentEstimate() const { return currentEstimateSpace; }
 
-  void localize (int scanQueueSize);
-  QMap<QString,APDesc*>* fp() { return fingerprint; }  
+  void localize(int scanQueueSize);
+  QMap<QString,APDesc*> *fingerprint() const { return m_fingerprint; }
   void replaceFingerprint(QMap<QString,APDesc*> *newFP);
 
-  void movement_detected () { stats->movement_detected (); };
+  void movementDetected() { m_stats->movementDetected(); }
 
-  void queryCurrentEstimate
-    (QString &country, QString &region, QString &city, QString &area, 
-     QString &space, QString &tags, double &score);
-  LocalizerStats* getStats () { return stats; }
-  void addMonitor (QTcpSocket *socket);
-  QByteArray getEstimateAndStatsAsJson ();
-  void getEstimateAsMap (QVariantMap &placeMap);
+  void queryCurrentEstimate(QString&, QString&, QString&, QString&,
+                            QString&, QString&, double&);
 
-  void bind (QString fqArea, QString fqSpace);
+  LocalizerStats* stats() const { return m_stats; }
+  void addMonitor(QTcpSocket *socket);
+  QByteArray estimateAndStatsAsJson();
+  void estimateAsMap(QVariantMap &placeMap);
+
+  void bind(QString fqArea, QString fqSpace);
 
 private:
+  bool m_firstAddScan;
 
-  bool first_add_scan;
-  //bool clear_queue;
-  bool online;
-
-  bool area_map_reply_in_flight;
-  bool mac_reply_in_flight;
-
-  QDir *map_root;
-
-  Overlap *overlap;
-  //QTime last_localized_time;
-
-  int network_success_level;
-  LocalizerStats *stats;
-  //QTime emit_new_location_estimate_time;
-  QSet<QTcpSocket*> monitoringSockets;
-
+  bool m_areaMapReplyInFlight;
+  bool m_macReplyInFlight;
+  QDir *m_mapRoot;
+  Overlap *m_overlap;
+  //int m_networkSuccessLevel;
+  LocalizerStats *m_stats;
+  QSet<QTcpSocket*> m_monitoringSockets;
   double currentEstimateScore;
+  //int m_areaFillPeriod;
 
-  //QQueue<AP_Scan *> *scan_queue;
-
-  int area_fill_period;
-  int map_fill_period;
-
-  QTimer *area_cache_fill_timer;
-  QTimer *map_cache_fill_timer;
-  //QTimer *localize_timer;
-  // long time window
-  QMap<QString,APDesc*> *fingerprint;
+  QTimer *m_areaCacheFillTimer;
+  QTimer *m_mapCacheFillTimer;
+  QMap<QString,APDesc*> *m_fingerprint;
 
   QString currentEstimateSpace;
 
-  QQueue<QNetworkRequest> areaMapRequests;
-  QNetworkReply *area_map_reply;
-  QNetworkReply *mac_reply;
+  QQueue<QNetworkRequest> m_areaMapRequests;
+  QNetworkReply *m_areaMapReply;
+  QNetworkReply *m_macReply;
 
-  QMap<QString,AreaDesc*> *signal_maps;
+  QMap<QString,AreaDesc*> *m_signalMaps;
 
-  double mac_overlap_coefficient
-    (const QMap<QString,APDesc*> *macs_a, const QList<QString> &macs_b);
+  double macOverlapCoefficient(const QMap<QString,APDesc*> *macs_a,
+                               const QList<QString> &macs_b);
 
-  void enqueueAreaMapRequest (QString area_name, QDateTime last_update_time);
-  void issueAreaMapRequest ();
-  void requestAreaMap (QNetworkRequest request);
-  void handleAreaMapResponse ();
+  void enqueueAreaMapRequest(QString areaName, QDateTime lastUpdateTime);
+  void issueAreaMapRequest();
+  void requestAreaMap(QNetworkRequest request);
+  void handleAreaMapResponse();
 
-  QString get_loud_mac ();
+  QString loudMac();
 
+  void emitNewLocationEstimate(QString estimatedSpaceName,
+                               double estimatedSpaceScore);
+  void emitLocationEstimate();
+  void emitStatistics();
 
-  void emit_new_location_estimate 
-    (QString estimated_space_name, double estimated_space_score);
-  void emit_location_estimate ();
-  void emit_statistics ();
+  void emitNewLocalSignature();
+  void emitEstimateToMonitors();
 
-  void emit_new_local_signature ();
-  void emitEstimateToMonitors ();
-
-  void make_overlap_estimate(QMap<QString,SpaceDesc*> &);
-  void make_overlap_estimate_with_hist(QMap<QString,SpaceDesc*> &, int penalty);
+  void makeOverlapEstimate(QMap<QString,SpaceDesc*> &);
+  void makeOverlapEstimateWithHist(QMap<QString,SpaceDesc*> &, int penalty);
 
   //Bayes
-  void make_bayes_estimate(QMap<QString,SpaceDesc*> &);
-  void make_bayes_estimate_with_hist(QMap<QString,SpaceDesc*> &);
+  void makeBayesEstimate(QMap<QString,SpaceDesc*> &);
+  void makeBayesEstimateWithHist(QMap<QString,SpaceDesc*> &);
   QSet<QString> findSignatureApMacs(const QMap<QString,SpaceDesc*> &);
   QSet<QString> findNovelApMacs(const QMap<QString, SpaceDesc*> &);
-  double probabilityEstimate(int rssi, const Sig &);
-  double probabilityEstimateWithHistogram(int rssi, const Sig &signature);
+  double probabilityEstimate(int rssi, const Sig&);
+  double probabilityEstimateWithHistogram(int rssi, const Sig&);
   double probabilityXLessValue(double value, double mean, double std);
-  double erfcc (double x);
-
-
-  //void check_network_state ();
-
-  //signals:
-  //void location_data_changed ();
+  double erfcc(double x);
 
 private slots:
+  void fillAreaCache();
+  void fillMapCache();
 
+  void macToAreasResponse();
+  void handleAreaMapResponseAndReissue();
+  bool parseMap(const QByteArray &mapAsByteArray, const QDateTime &lastModified);
+  void saveMap(QString path, const QByteArray &mapAsByteArray);
+  void unlinkMap(QString path);
+  void loadMaps();
 
-  void fill_area_cache();
-  void fill_map_cache();
-
-  //void mac_to_areas_response(QNetworkReply*);
-  void mac_to_areas_response();
-  //void area_map_response(QNetworkReply*);
-  //void area_map_response();
-  void handleAreaMapResponseAndReissue ();
-  bool parse_map (const QByteArray &map_as_byte_array,
-		  const QDateTime &last_modified);
-  void save_map (QString path, const QByteArray &map_as_byte_array);
-  void unlink_map (QString path);
-  void load_maps();
-
-  //QString handle_signature_request();
-  void handle_location_estimate_request();
-
-
-  //signals:
-  //void parsed_area (QString fq_area);
-  //void added_scan ();
-  //void new_location_estimate (QString fq_space_name, double score);
+  void handleLocationEstimateRequest();
 
 };
 

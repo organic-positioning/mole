@@ -29,8 +29,9 @@
 #include "scanner-nm.h"
 #endif
 
-#include <iostream>
+#include <csignal>
 #include <fcntl.h>
+#include <iostream>
 
 const QString pidfile = "/var/run/mole.pid";
 
@@ -143,7 +144,7 @@ Core::Core(int argc, char *argv[])
   // end create map directory
 
   // reset session cookie on MOLEd restart
-  reset_session_cookie();
+  resetSessionCookie();
 
   m_localizer = new Localizer(this);
 
@@ -234,7 +235,6 @@ void daemonize()
 
 void usage()
 {
-
   qCritical() << "moled usage\n"
               << "-h print usage\n"
               << "-d debug\n"

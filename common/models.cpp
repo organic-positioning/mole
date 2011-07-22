@@ -1,13 +1,13 @@
 /*
  * Mole - Mobile Organic Localisation Engine
  * Copyright 2010 Nokia Corporation.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,254 +17,228 @@
 
 #include "models.h"
 
-UpdatingFileModel::UpdatingFileModel 
-(const QString& _fileName, const QUrl& _url, QObject *parent) :
-  UpdatingModel (_url, parent), fileName (_fileName) {
+#include "mole.h"
+#include "timer.h"
 
-  loadModelFromFile ();
+#include <QNetworkRequest>
+
+UpdatingFileModel::UpdatingFileModel(const QString& _fileName, const QUrl& _url, QObject *parent)
+  : UpdatingModel(_url, parent)
+  , fileName(_fileName)
+{
+  loadModelFromFile();
 }
 
-
-
-UpdatingModel::UpdatingModel 
-(const QUrl& _url, QObject *parent) :
-  QStandardItemModel (parent) {
-  initialize ();
-  set_url (_url);
+UpdatingModel::UpdatingModel(const QUrl& _url, QObject *parent)
+  : QStandardItemModel(parent)
+{
+  initialize();
+  setUrl(_url);
 }
 
-UpdatingModel::UpdatingModel 
-(QObject *parent) : QStandardItemModel (parent) {
-  initialize ();
+UpdatingModel::UpdatingModel(QObject *parent)
+  : QStandardItemModel(parent)
+{
+  initialize();
 }
 
-void UpdatingModel::initialize () {
+void UpdatingModel::initialize()
+{
   online = true;
-  timer = new AdjustingTimer (this);
-  connect (timer, SIGNAL(timeout()), SLOT(start_refill()));
-  url2list_cache = new QMap<QUrl,QList<QString>*> () ;
+  timer = new AdjustingTimer(this);
+  connect(timer, SIGNAL(timeout()), SLOT(startRefill()));
+  url2listCache = new QMap<QUrl,QList<QString>*> () ;
   dirty = true;
 }
 
-void UpdatingModel::set_url
-(const QUrl& _url) {
-
-  qDebug () << "model set_url " 
-	    << "old " << url	    << "new " << _url;
+void UpdatingModel::setUrl(const QUrl& _url)
+{
+  qDebug() << "model set_url " << "old " << url << "new " << _url;
 
   if (_url != url) {
-  
     url = _url;
-
-    qDebug () << "cleared model";
+    qDebug() << "cleared model";
     clear();
 
-    if (settings->contains(url.toString())) {
-      last_modified = settings->value(url.toString()).toDateTime();
-    }
+    if (settings->contains(url.toString()))
+      lastModified = settings->value(url.toString()).toDateTime();
 
     // attempt to fill from cache
-    if (url2list_cache->contains(url)) {
-      qDebug () << "pulling from cache " << url;
+    if (url2listCache->contains(url)) {
+      qDebug() << "pulling from cache " << url;
 
-      QList<QString> *item_list = url2list_cache->value(url);
-      QListIterator<QString> i (*item_list);
+      QList<QString> *itemList = url2listCache->value(url);
+      QListIterator<QString> i (*itemList);
       while (i.hasNext()) {
-	appendRow (new QStandardItem (i.next()));
+        appendRow(new QStandardItem(i.next()));
       }
-      sort (0);
+      sort(0);
 
     } else {
       // fire the timer now
-      timer->start (50);
+      timer->start(50);
     }
-
   }
 }
 
-
-void UpdatingModel::stop_refill () {
-  qDebug () << "stop_refill " << url;
-  timer->stop ();
+void UpdatingModel::stopRefill()
+{
+  qDebug() << "stopRefill " << url;
+  timer->stop();
 }
 
-void UpdatingModel::start_refill () {
-  qDebug () << "start_refill " << url;
-  timer->stop ();
+void UpdatingModel::startRefill()
+{
+  qDebug() << "startRefill " << url;
+  timer->stop();
 
   QNetworkRequest request;
-  request.setUrl (url);
-  qDebug () << "url " << url
-	    << "net " << networkAccessManager;
-  reply = networkAccessManager->get (request);
-  connect (reply, SIGNAL(finished()), 
-	   SLOT (finish_refill()));
+  request.setUrl(url);
+  qDebug() << "url " << url << "net " << networkAccessManager;
+  reply = networkAccessManager->get(request);
+  connect(reply, SIGNAL(finished()), SLOT(finishRefill()));
 }
 
-void UpdatingFileModel::finish_refill () {
-  UpdatingModel::finish_refill ();
+void UpdatingFileModel::finishRefill()
+{
+  UpdatingModel::finishRefill();
   if (dirty) {
     // note: I/O access
-    saveModelToFile ();
+    saveModelToFile();
     dirty = false;
   }
 }
 
-void UpdatingModel::emit_network_state (bool _online) {
+void UpdatingModel::emitNetworkState(bool _online)
+{
   if (online != _online) {
     online = _online;
-    this->network_change (online);
+    networkChange(online);
   }
 }
 
 // assumes models are not very long, as we just do a linear insertion
-void UpdatingModel::finish_refill () {
-
+void UpdatingModel::finishRefill()
+{
   dirty = false;
-  reply->deleteLater ();
+  reply->deleteLater();
 
   if (reply->error() != QNetworkReply::NoError) {
-    qWarning() << "finish_refill request failed " << reply->errorString();
-    timer->restart (false);
-    emit_network_state (false);
+    qWarning() << "finishRefill request failed " << reply->errorString();
+    timer->restart(false);
+    emitNetworkState(false);
     return;
   }
 
+  qDebug() << "finishRefill request succeeded";
+  QDateTime modified = (reply->header(QNetworkRequest::LastModifiedHeader)).toDateTime();
 
-  qDebug() << "finish_refill request succeeded";
-  QDateTime modified = 
-    (reply->header(QNetworkRequest::LastModifiedHeader)).toDateTime();
-
-  if (modified != last_modified ||
-      !url2list_cache->contains(reply->url())) {
-    last_modified = modified;
+  if (modified != lastModified || !url2listCache->contains(reply->url())) {
+    lastModified = modified;
 
     // TODO might be a problem is something is replaced
     // when the user has an item selected
 
-    const int buffer_size = 256;
+    const int bufferSize = 256;
 
-    QList<QString> *item_list = new QList<QString>();
+    QList<QString> *itemList = new QList<QString>();
 
-    /*
-    QString blank = "";
-    QList<QStandardItem*> items = findItems (blank);
-    if (items.size() == 0) {
-      appendRow (new QStandardItem (blank));
-      item_list->append (blank);
-      qDebug () << "appended blank";
-    }
-    */
+    QByteArray data = reply->readLine(bufferSize);
+    while (!data.isEmpty()) {
+      QString itemName(data);
+      itemName = itemName.trimmed();
 
-    QByteArray data = reply->readLine(buffer_size);
-    while  (!data.isEmpty()) {
-      QString item_name (data);
-      item_name = item_name.trimmed();
-
-      QList<QStandardItem*> items = findItems (item_name);
-      if (items.size() == 0) {
-	appendRow (new QStandardItem (item_name));
-	item_list->append (item_name);
-	qDebug () << "appended " << item_name;
+      QList<QStandardItem*> items = findItems(itemName);
+      if (items.isEmpty()) {
+        appendRow(new QStandardItem(itemName));
+        itemList->append(itemName);
+        qDebug() << "appended " << itemName;
       }
 
-      qDebug() << "refill item_name " << item_name;
-
-      data = reply->readLine(buffer_size);
+      qDebug() << "refill itemName " << itemName;
+      data = reply->readLine(bufferSize);
     }
 
-    sort (0);
+    sort(0);
 
-    if (url2list_cache->contains(reply->url())) {
-      QList<QString> *old_item_list = 
-	url2list_cache->value(reply->url());
-	delete old_item_list;
-      }
-    url2list_cache->insert (reply->url(), item_list);
-    qDebug () << " insert into cache " << reply->url() 
-	      << " size " << item_list->size();
+    if (url2listCache->contains(reply->url())) {
+      QList<QString> *oldItemList = url2listCache->value(reply->url());
+      delete oldItemList;
+    }
+    url2listCache->insert(reply->url(), itemList);
+    qDebug() << " insert into cache " << reply->url() << " size " << itemList->size();
 
     dirty = true;
 
-    settings->setValue(url.toString(), last_modified);
-    timer->restart (true);
+    settings->setValue(url.toString(), lastModified);
+
+    timer->restart(true);
   } else {
-    qDebug () << "finish_refill unchanged";
-    timer->restart (false);
+    qDebug() << "finishRefill unchanged";
+    timer->restart(false);
   }
 
-  emit_network_state (true);
+  emitNetworkState(true);
 
 }
 
-void UpdatingFileModel::loadModelFromFile ()
- {
-     QFile file(fileName);
-     if (!file.open(QFile::ReadOnly)) {
-       qWarning () << "Cannot load model from file" << fileName;
-       return;
-     }
+void UpdatingFileModel::loadModelFromFile()
+{
+  QFile file(fileName);
+  if (!file.open(QFile::ReadOnly)) {
+    qWarning() << "Cannot load model from file" << fileName;
+    return;
+  }
 
-     // #ifndef QT_NO_CURSOR
-     //     QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-     //#endif
-     QStringList words;
+  QStringList words;
 
-     QVector<QStandardItem *> parents(10);
-     parents[0] = invisibleRootItem();
+  QVector<QStandardItem *> parents(10);
+  parents[0] = invisibleRootItem();
 
-     while (!file.atEnd()) {
-         QString line = file.readLine();
-         QString trimmedLine = line.trimmed();
-         if (line.isEmpty() || trimmedLine.isEmpty())
-             continue;
+  while (!file.atEnd()) {
+    QString line = file.readLine();
+    QString trimmedLine = line.trimmed();
+    if (line.isEmpty() || trimmedLine.isEmpty())
+      continue;
 
-         QRegExp re("^\\s+");
-         int nonws = re.indexIn(line);
-         int level = 0;
-         if (nonws == -1) {
-             level = 0;
-         } else {
-             if (line.startsWith("\t")) {
-                 level = re.cap(0).length();
-             } else {
-                 level = re.cap(0).length()/4;
-             }
-         }
+    QRegExp re("^\\s+");
+    int nonws = re.indexIn(line);
+    int level = 0;
+    if (nonws == -1) {
+      level = 0;
+    } else if (line.startsWith("\t")) {
+             level = re.cap(0).length();
+    } else {
+             level = re.cap(0).length() / 4;
+    }
 
-         if (level+1 >= parents.size())
-             parents.resize(parents.size()*2);
+    if ((level + 1) >= parents.size())
+      parents.resize(parents.size() * 2);
 
-         QStandardItem *item = new QStandardItem;
-         item->setText(trimmedLine);
-         parents[level]->appendRow(item);
-         parents[level+1] = item;
-     }
-
-     // #ifndef QT_NO_CURSOR
-     //QApplication::restoreOverrideCursor();
-     // #endif
-
- }
-
+    QStandardItem *item = new QStandardItem;
+    item->setText(trimmedLine);
+    parents[level]->appendRow(item);
+    parents[level + 1] = item;
+  }
+}
 
 // assumes model is not modified while we are writing it out
-void UpdatingFileModel::saveModelToFile ()
- {
-     QFile file(fileName);
-     if (!file.open(QFile::WriteOnly | QIODevice::Text)) {
-       qWarning () << "Cannot load model from file" << fileName;
-       return;
-     }
-     QTextStream out (&file);
+void UpdatingFileModel::saveModelToFile()
+{
+  QFile file(fileName);
+  if (!file.open(QFile::WriteOnly | QIODevice::Text)) {
+    qWarning() << "Cannot load model from file" << fileName;
+    return;
+  }
 
-     QStandardItem* root = invisibleRootItem();
-     int r = root->rowCount();
-     for (int i = 0; i < r; i++) {
-       QStandardItem* it = root->child (i);
-       out << it->data(Qt::DisplayRole).toString() << "\n";
-     }
+  QTextStream out(&file);
 
-     file.close ();
+  QStandardItem* root = invisibleRootItem();
+  int r = root->rowCount();
+  for (int i = 0; i < r; ++i) {
+    QStandardItem* it = root->child(i);
+    out << it->data(Qt::DisplayRole).toString() << "\n";
+  }
 
- }
+  file.close();
+}
