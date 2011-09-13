@@ -18,12 +18,10 @@
 #ifndef SCANQUEUE_H_
 #define SCANQUEUE_H_
 
-#include "../../common/sig.h"
+#include <QtCore>
 
-#include "moled.h"
-
-#define MAX_SCANQUEUE_READINGS 50
-#define MAX_SCANQUEUE_SCANS    60
+const int MAX_SCANQUEUE_READINGS = 50;
+const int MAX_SCANQUEUE_SCANS = 60;
 
 class APDesc;
 class Localizer;
@@ -74,8 +72,9 @@ class ScanQueue : public QObject
   bool addReading(QString mac, QString ssid, qint16 frequency, qint8 strength);
   bool scanCompleted();
   void serialize(QDateTime oldestValidScan, QVariantList &scanList);
-  const int maxActiveQueueLength;
   void handleMotionEstimate(int motion);
+
+  const int maxActiveQueueLength;
 
  private:
   Localizer *m_localizer;
@@ -89,10 +88,9 @@ class ScanQueue : public QObject
   QSet<QString> m_seenMacs;
   QSet<APDesc*> m_dirtyAPs;
 
-  Scan scans[MAX_SCANQUEUE_SCANS];
+  Scan m_scans[MAX_SCANQUEUE_SCANS];
 
   APDesc* getAP(QString mac, QString ssid, qint16 frequency);
-  QString getAPString(QString mac, QString ssid, qint16 frequency);
 
   void truncate();
   void clear(int ignoreScan);

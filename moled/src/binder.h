@@ -1,6 +1,6 @@
 /*
  * Mole - Mobile Organic Localisation Engine
- * Copyright 2010 Nokia Corporation.
+ * Copyright 2010-2011 Nokia Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,8 +39,8 @@ class Binder : public QObject
   void setWifiDesc(QString wifiDesc);
 
  public slots:
-  QString handleBindRequest(QString country, QString region,
-                            QString city, QString area,
+  QString handleBindRequest(QString source, QString country, QString region,
+                            QString city, QString area, int floor,
                             QString space_name, QString tags);
 
  private slots:

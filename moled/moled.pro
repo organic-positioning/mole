@@ -13,7 +13,7 @@ UI_DIR = obj
 QT += core xml network
 QT -= gui
 CONFIG += mobility
-#CONFIG += release
+CONFIG += debug
 MOBILITY += sensors systeminfo
 
 HEADERS += \
@@ -30,7 +30,8 @@ HEADERS += \
     ../common/network.h \
     ../common/overlap.h \
     ../common/sig.h \
-    ../common/util.h
+    ../common/util.h \
+    ../common/version.h
 
 #src/bayes.cpp \
 

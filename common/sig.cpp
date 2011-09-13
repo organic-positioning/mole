@@ -167,8 +167,12 @@ void Sig::normalizeHistogram()
 void Sig::setWeight(int totalHistogramCount)
 {
   int c = ((DynamicHistogram*)m_histogram)->getCount();
-  if (c >= totalHistogramCount)
-    qFatal("totalHistogramCount is larger than a single histogram");
+  if (c > totalHistogramCount) {
+    qFatal("totalHistogramCount is larger than a single histogram total %d c %d", totalHistogramCount, c);
+  }
+  if (c == totalHistogramCount) {
+    qDebug() << "totalHistogramCount equals single histogram total c" << c;
+  }
 
   m_weight = c / (float)totalHistogramCount;
 }
@@ -223,7 +227,7 @@ Histogram::Histogram(DynamicHistogram *h)
   m_max = h->m_max;
   m_min = h->m_min;
   for (int i = 0; i < length; ++i)
-    m_normalizedValues[i] = h->m_normalizedValues[m_min - MIN_HISTOGRAM_INDEX + 1];
+    m_normalizedValues[i] = h->m_normalizedValues[m_min - MIN_HISTOGRAM_INDEX + i];
 }
 
 Histogram::~Histogram()
@@ -293,9 +297,11 @@ QDebug operator << (QDebug dbg, const Histogram &histogram)
 {
   dbg.nospace() << "[";
   for (int i = histogram.min(); i <= histogram.max(); ++i) {
-    dbg.nospace() << i << "=" << histogram.at(i);
-    if (i <= histogram.max() - 1)
-      dbg.nospace() << " ";
+    if (histogram.at(i) > 0) {
+      dbg.nospace() << i << "=" << histogram.at(i);
+      if (i <= histogram.max() - 1)
+	dbg.nospace() << " ";
+    }
   }
   dbg.nospace() << "]";
 

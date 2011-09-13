@@ -22,7 +22,8 @@
 
 #include "common.h"
 
-enum SubmitState {DISPLAY, CORRECT};
+#define MIN_SCANS_TO_BIND 10
+enum SubmitState {SCANNING, DISPLAY, EDITING};
 
 class PlaceEdit;
 class Settings;
@@ -38,15 +39,19 @@ public slots:
   void handleQuit();
 
 private:
-  bool m_online;
-  int m_requestLocationEstimateCounter;
+  bool m_daemonOnline;
+  //int m_requestLocationEstimateCounter;
   SubmitState m_submitState;
-  QTimer *m_bindTimer;
-  QTimer *m_requestLocationTimer;
-  QTimer *m_walkingTimer;
+  QTimer m_bindTimer;
+  QTimer m_requestLocationTimer;
+  QTimer m_walkingTimer;
+  QTimer m_daemonHeartbeatTimer;
   Settings *m_settingsDialog;
 
   QPushButton *submitButton;
+  QPushButton *rankMsgBoxButton;
+
+  QMessageBox *rankMsgBox;
 
   QNetworkReply *m_feedbackReply;
 
@@ -54,6 +59,7 @@ private:
   PlaceEdit *regionEdit;
   PlaceEdit *cityEdit;
   PlaceEdit *areaEdit;
+  PlaceEdit *floorEdit;
   PlaceEdit *spaceNameEdit;
   QLineEdit *tagsEdit;
 
@@ -61,6 +67,7 @@ private:
   QString regionEstimate;
   QString cityEstimate;
   QString areaEstimate;
+  QString floorEstimate;
   QString spaceNameEstimate;
   QString tagsEstimate;
 
@@ -79,8 +86,9 @@ private:
   void setWalkingLabel(bool);
   void refreshLastEstimate();
   void sendBindMsg();
-  void setSubmitState(SubmitState);
+  void setSubmitState(SubmitState state, int scanCount = 0);
   void setDaemonLabel(bool);
+  void receivedDaemonMsg ();
 
 private slots:
   void onAboutClicked();
@@ -94,18 +102,22 @@ private slots:
   void onPlaceChanged();
 
   void onSubmitClicked();
+  void onRankMsgBoxButtonClicked();
   void onBindTimeout();
-  void handleLocationEstimate(QString, bool);
+  void handleLocationEstimate(QString);
   void requestLocationEstimate();
+
 
   void onWalkingTimeout();
   void onSpeedStatusChanged(int);
-  void onNetworkStatusChanged(bool);
+  void onlineStateChanged(bool);
+  void onDaemonTimerTimeout ();
+  
 
   void handleLocationStats
     (QString fq_name, QDateTime start_time,
      int,int,int,int,int,int,int,
-     double,double,double,double,double,double);
+     double,double,double,double,double,double,QVariantMap);
 };
 
 #endif // BINDER_H

@@ -1,6 +1,6 @@
 /*
  * Mole - Mobile Organic Localisation Engine
- * Copyright 2010 Nokia Corporation.
+ * Copyright 2010,2011 Nokia Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,35 +25,35 @@
 
 Binder::Binder(QWidget *parent)
   : QWidget(parent)
-  , m_online(true)
-  , m_requestLocationEstimateCounter(0)
-  , m_bindTimer(new QTimer())
-  , m_requestLocationTimer(new QTimer())
-  , m_walkingTimer(new QTimer())
+  , m_daemonOnline(false)
   , m_feedbackReply(0)
 {
 
   buildUI();
 
-  connect(m_bindTimer, SIGNAL(timeout()), SLOT(onBindTimeout()));
+  connect(&m_bindTimer, SIGNAL(timeout()), SLOT(onBindTimeout()));
 
-  setSubmitState(DISPLAY);
+  setSubmitState(SCANNING);
 
-  connect(m_requestLocationTimer, SIGNAL(timeout()), SLOT(requestLocationEstimate()));
-  m_requestLocationTimer->start(2000);
+  connect(&m_requestLocationTimer, SIGNAL(timeout()), SLOT(requestLocationEstimate()));
+  m_requestLocationTimer.start(2000);
 
-  connect(m_walkingTimer, SIGNAL(timeout()), SLOT(onWalkingTimeout()));
+  connect(&m_walkingTimer, SIGNAL(timeout()), SLOT(onWalkingTimeout()));
 
-  QDBusConnection::sessionBus().connect
+  connect(&m_daemonHeartbeatTimer, SIGNAL(timeout()), SLOT(onDaemonTimerTimeout()));
+  m_daemonHeartbeatTimer.start(15000);
+
+  QDBusConnection::systemBus().connect
     (QString(), QString(), "com.nokia.moled", "LocationStats", this,
      SLOT(handleLocationStats(QString,QDateTime,int,int,int,int,int,
-                              int,int,double,double,double,double,double,double)));
+                              int,int,double,double,double,double,double,
+			      double,QVariantMap)));
 
-  QDBusConnection::sessionBus().connect
+  QDBusConnection::systemBus().connect
     (QString(), QString(), "com.nokia.moled", "LocationEstimate", this,
-     SLOT(handleLocationEstimate(QString, bool)));
+     SLOT(handleLocationEstimate(QString)));
 
-  QDBusConnection::sessionBus().connect
+  QDBusConnection::systemBus().connect
     (QString(), QString(), "com.nokia.moled", "MotionEstimate", this,
      SLOT(onSpeedStatusChanged(int)));
 }
@@ -61,9 +61,6 @@ Binder::Binder(QWidget *parent)
 void Binder::handleQuit()
 {
   qDebug() << "Binder: aboutToQuit";
-  delete m_bindTimer;
-  delete m_requestLocationTimer;
-  delete m_walkingTimer;
 }
 
 Binder::~Binder()
@@ -73,8 +70,11 @@ Binder::~Binder()
 
 void Binder::buildUI()
 {
-  // LINUX
+
+#ifdef Q_WS_MAEMO_5
+  // not sure if these is needed
   resize(QSize(UI_WIDTH, UI_HEIGHT).expandedTo(minimumSizeHint()));
+#endif
 
   QGridLayout *layout = new QGridLayout();
 
@@ -83,6 +83,7 @@ void Binder::buildUI()
 
   // about
   QToolButton *aboutButton = new QToolButton(buttonBox);
+  qDebug () << "icon " << MOLE_ICON_PATH << "about.png";
   aboutButton->setIcon(QIcon(MOLE_ICON_PATH + "about.png"));
   aboutButton->setToolTip(tr("About"));
   aboutButton->setIconSize(QSize(ICON_SIZE_REG, ICON_SIZE_REG));
@@ -126,7 +127,11 @@ void Binder::buildUI()
   regionEdit = new PlaceEdit(countryEdit, 1, tr("Region/State"), estimateBox);
   cityEdit = new PlaceEdit(regionEdit, 2, tr("City"), estimateBox);
   areaEdit = new PlaceEdit(cityEdit, 3, tr("Area/Blg"), estimateBox);
-  spaceNameEdit = new PlaceEdit(areaEdit, 4, tr("Room"), estimateBox);
+  floorEdit = new PlaceEdit(areaEdit, 4, tr("Floor"), estimateBox);
+  // constrain these to be numbers
+  floorEdit->setMaxLength(3);
+  floorEdit->setInputMask("###");
+  spaceNameEdit = new PlaceEdit(floorEdit, 5, tr("Room"), estimateBox);
 
   tagsEdit = new QLineEdit(estimateBox);
   MultiCompleter *tagsCompleter = new MultiCompleter(this);
@@ -137,6 +142,7 @@ void Binder::buildUI()
   regionEdit->setToolTip(tr("Region"));
   cityEdit->setToolTip(tr("City"));
   areaEdit->setToolTip(tr("Area"));
+  floorEdit->setToolTip(tr("Floor"));
   spaceNameEdit->setToolTip(tr("Space"));
   tagsEdit->setToolTip(tr("Tags"));
 
@@ -161,6 +167,8 @@ void Binder::buildUI()
           SLOT(onPlaceChanged()));
   connect(areaEdit, SIGNAL(textChanged(QString)),
           SLOT(onPlaceChanged()));
+  connect(floorEdit, SIGNAL(textChanged(QString)),
+          SLOT(onPlaceChanged()));
   connect(spaceNameEdit, SIGNAL(textChanged(QString)),
           SLOT(onPlaceChanged()));
   connect(tagsEdit, SIGNAL(textChanged(QString)),
@@ -176,14 +184,17 @@ void Binder::buildUI()
           SLOT(onPlaceChanged()));
   connect(areaEdit, SIGNAL(cursorPositionChanged(int,int)),
           SLOT(onPlaceChanged()));
+  connect(floorEdit, SIGNAL(cursorPositionChanged(int,int)),
+          SLOT(onPlaceChanged()));
   connect(spaceNameEdit, SIGNAL(cursorPositionChanged(int,int)),
           SLOT(onPlaceChanged()));
   connect(tagsEdit, SIGNAL(cursorPositionChanged(int,int)),
           SLOT(onPlaceChanged()));
-  connect(countryEdit->model(), SIGNAL(network_change(bool)),
-          SLOT(onNetworkStatusChanged(bool)));
 
-  submitButton = new QPushButton(tr("Incorrect Estimate?"), estimateBox);
+  connect (networkConfigurationManager, SIGNAL(onlineStateChanged(bool)),
+	   this, SLOT(onlineStateChanged(bool)));
+
+  submitButton = new QPushButton(tr("Edit"), estimateBox);
   submitButton->setToolTip(tr("Correct the current position estimate if"
                                "it is not showing where you are."));
   connect(submitButton, SIGNAL(clicked()), SLOT(onSubmitClicked()));
@@ -193,15 +204,19 @@ void Binder::buildUI()
   QLabel *slashA = new QLabel("/", estimateBox);
   QLabel *slashB = new QLabel("/", estimateBox);
   QLabel *slashC = new QLabel("/", estimateBox);
+  QLabel *slashD = new QLabel("/", estimateBox);
 
   estimateLayout->addWidget(areaEdit, 1, 1);
   estimateLayout->addWidget(slashA, 1, 2);
-  estimateLayout->addWidget(spaceNameEdit, 1, 3, 1, 3);
+  estimateLayout->addWidget(floorEdit, 1, 3);
+  estimateLayout->addWidget(slashB, 1, 4);
+
+  estimateLayout->addWidget(spaceNameEdit, 1, 5, 1, 3);
 
   estimateLayout->addWidget(cityEdit, 2, 1);
-  estimateLayout->addWidget(slashB, 2, 2);
+  estimateLayout->addWidget(slashC, 2, 2);
   estimateLayout->addWidget(regionEdit, 2, 3);
-  estimateLayout->addWidget(slashC, 2, 4);
+  estimateLayout->addWidget(slashD, 2, 4);
   estimateLayout->addWidget(countryEdit, 2, 5);
 
   estimateLayout->addWidget(tagsEdit, 3, 1);
@@ -234,7 +249,7 @@ void Binder::buildUI()
 
   // daemon connectivity
   QLabel *daemonInfoLabel = new QLabel(tr("Daemon:"), statsBox);
-  daemonLabel = new ColoredLabel(tr("OK"), statsBox);
+  daemonLabel = new ColoredLabel(tr("??"), statsBox);
   QString daemonInfoTooltip(tr("Daemon Status.  Is the positioning daemon started?"));
   daemonInfoLabel->setToolTip(daemonInfoTooltip);
   daemonLabel->setToolTip(daemonInfoTooltip);
@@ -331,6 +346,14 @@ void Binder::buildUI()
   layout->setColumnStretch(1, 1);
 
   setLayout(layout);
+
+  rankMsgBox = new QMessageBox(this);
+  rankMsgBox->setVisible(false);
+  rankMsgBox->setWindowTitle (tr("Nearby Spaces"));
+  rankMsgBoxButton = new QPushButton(tr("Done"), rankMsgBox);
+  rankMsgBox->addButton (rankMsgBoxButton, QMessageBox::AcceptRole);
+  //connect(rankMsgBoxButton, SIGNAL(clicked()), SLOT(onRankMsgBoxButtonClicked()));
+
 }
 
 void Binder::onAboutClicked()
@@ -342,18 +365,37 @@ void Binder::onAboutClicked()
 
   QString version = tr("About Organic Indoor Positioning");
 
-  QString about =
-    tr("<h2>Organic Indoor Positioning 0.4</h2>"
-       "<p>Copyright &copy; 2011 Nokia Inc."
-       "<p>Organic Indoor Positioning is a joint development from Massachusetts Institute of Technology and Nokia Research. "
-       "By using this software, you accept its <a href=\"http://mole.research.nokia.com/policy/privacy.html\">Privacy Policy </a>"
-       "and <a href=\"http://mole.research.nokia.com/policy/terms.html\">Terms of Service</a>.");
+  QString about = "<h2>Organic Indoor Positioning ";
+  about.append (MOLE_VERSION);
+  about.append ("</h2>");
+  about.append ("<p>Copyright &copy; 2011 Nokia Inc.");
+  about.append ("<p>Organic Indoor Positioning is a joint development from Massachusetts Institute of Technology and Nokia Research.");
 
-  // TODO check links
+  //"By using this software, you accept its <a href=\"http://mole.research.nokia.com/policy/privacy.html\">Privacy Policy </a>"
+  //"and <a href=\"http://mole.research.nokia.com/policy/terms.html\">Terms of Service</a>.");
 
   QMessageBox::about(this, version, about);
 }
 
+void Binder::onFeedbackClicked()
+{
+  /*
+  qDebug() << "handle clicked feedback";
+  int ret = QMessageBox::information
+    (this, tr("Top Nearby Spaces"),
+     "A list of spaces..<BR>More spaces<BR>More");
+  qDebug() << "onFeedbackClicked ret" << ret;
+  */
+  rankMsgBox->setVisible(true);
+}
+
+void Binder::onRankMsgBoxButtonClicked()
+{
+  rankMsgBox->setVisible(false);
+}
+
+/*
+  // please keep this
 void Binder::onFeedbackClicked()
 {
   qDebug() << "handle clicked feedback";
@@ -373,11 +415,12 @@ void Binder::onFeedbackClicked()
     QString urlStr = mapServerURL;
     QUrl url(urlStr.append("/feedback"));
     request.setUrl(url);
-    set_network_request_headers(request);
+    setNetworkRequestHeaders(request);
     m_feedbackReply = networkAccessManager->post(request, text.toUtf8());
     connect(m_feedbackReply, SIGNAL(finished()), SLOT(onSendFeedbackFinished()));
   }
 }
+*/
 
 void Binder::onSendFeedbackFinished()
 {
@@ -425,28 +468,42 @@ void Binder::setPlacesEnabled(bool isEnabled)
   regionEdit->setEnabled(isEnabled);
   cityEdit->setEnabled(isEnabled);
   areaEdit->setEnabled(isEnabled);
+  floorEdit->setEnabled(isEnabled);
   spaceNameEdit->setEnabled(isEnabled);
   tagsEdit->setEnabled(isEnabled);
 }
 
-void Binder::setSubmitState(SubmitState _submit_state)
+void Binder::setSubmitState(SubmitState _submit_state, int scanCount)
 {
   qDebug() << "set submit state"
-           << " current " << m_submitState
-           << " new " << _submit_state;
+           << "current" << m_submitState
+           << "new" << _submit_state
+	   << "scanCount" << scanCount;
   m_submitState = _submit_state;
+  QString scanStr = tr("Scanning");
 
   switch (m_submitState) {
-  case DISPLAY:
-    submitButton->setText(tr("Incorrect Estimate?"));
+  case SCANNING:
+    for (int i = 0; i < scanCount; i++) {
+      scanStr.append (".");
+    }
+    submitButton->setText(scanStr);
     setPlacesEnabled(false);
     refreshLastEstimate();
-    m_bindTimer->stop();
+    submitButton->setEnabled(false);
     break;
-  case CORRECT:
-    submitButton->setText(tr("Submit Correction"));
+  case DISPLAY:
+    submitButton->setText(tr("Edit"));
+    setPlacesEnabled(false);
+    refreshLastEstimate();
+    m_bindTimer.stop();
+    submitButton->setEnabled(true);
+    break;
+  case EDITING:
+    submitButton->setText(tr("Submit Edit"));
     setPlacesEnabled(true);
     resetBindTimer();
+    submitButton->setEnabled(true);
     break;
   }
 }
@@ -458,20 +515,20 @@ void Binder::onPlaceChanged()
   resetBindTimer();
 }
 
-void Binder::onNetworkStatusChanged(bool _online)
+void Binder::onlineStateChanged(bool _online)
 {
-  qDebug() << "network status changed " << _online;
+  qDebug() << "Binder network status changed " << _online;
 
-  if (m_online != _online) {
-    m_online = _online;
-    if (m_online) {
+  //if (m_networkOnline != _online) {
+  //m_networkOnline = _online;
+    if (_online) {
       netLabel->setText(tr("OK"));
       netLabel->setLevel(1);
     } else {
       netLabel->setText(tr("Not OK"));
       netLabel->setLevel(-1);
     }
-  }
+    //}
 }
 
 void Binder::setDaemonLabel(bool online)
@@ -487,17 +544,29 @@ void Binder::setDaemonLabel(bool online)
   }
 }
 
+void Binder::onDaemonTimerTimeout () {
+  qDebug () << "onDaemonTimerTimeout";
+  if (!m_daemonOnline) {
+    setSubmitState (SCANNING);
+  }
+  setDaemonLabel (m_daemonOnline);
+  m_daemonOnline = false;
+}
+
+void Binder::receivedDaemonMsg () {
+  qDebug () << "receivedDaemonMsg";
+  if (!m_daemonOnline) {
+    m_daemonOnline = true;
+    setDaemonLabel (m_daemonOnline);
+  }
+}
+
 void Binder::requestLocationEstimate()
 {
   qDebug() << "Binder: request location estimate";
 
-  ++m_requestLocationEstimateCounter;
-
-  if (m_requestLocationEstimateCounter > 5)
-    setDaemonLabel(false);
-
   QDBusMessage msg = QDBusMessage::createSignal("/", "com.nokia.moled", "GetLocationEstimate");
-  QDBusConnection::sessionBus().send(msg);
+  QDBusConnection::systemBus().send(msg);
 }
 
 void Binder::onSubmitClicked()
@@ -505,12 +574,16 @@ void Binder::onSubmitClicked()
   qDebug() << "handle clicked submit";
 
   switch (m_submitState) {
-  case DISPLAY:
-    setSubmitState(CORRECT);
+  case SCANNING:
+    qFatal ("submit button should not be enabled when SCANNING");
     break;
-  case CORRECT:
+  case DISPLAY:
+    setSubmitState(EDITING);
+    break;
+  case EDITING:
     if (countryEdit->text().isEmpty() || regionEdit->text().isEmpty() ||
         cityEdit->text().isEmpty() || areaEdit->text().isEmpty() ||
+	floorEdit->text().isEmpty() ||
         spaceNameEdit->text().isEmpty()) {
 
       QString empty_fields =
@@ -523,8 +596,9 @@ void Binder::onSubmitClicked()
       bindBox.setText(tr("Are you here?"));
 
       QString estStr = areaEdit->text() + " Rm: " + spaceNameEdit->text()
-                        + "\n" + cityEdit->text() + ", " + areaEdit->text() + ", "
-                        + countryEdit->text() + "\n" + "Tags: " + tagsEdit->text();
+	+ " Floor: "+ floorEdit->text()
+	+ "\n" + cityEdit->text() + ", " + areaEdit->text() + ", "
+	+ countryEdit->text() + "\n" + "Tags: " + tagsEdit->text();
       bindBox.setInformativeText(estStr);
       bindBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
 
@@ -546,14 +620,16 @@ void Binder::onSubmitClicked()
 
 void Binder::onBindTimeout()
 {
-  qDebug() << "handle bind timeout";
-  setSubmitState(DISPLAY);
+  qDebug() << "onBindTimeout";
+  if (m_submitState == EDITING) {
+    setSubmitState(DISPLAY);
+  }
 }
 
 void Binder::resetBindTimer()
 {
   qDebug() << "reset bind timer";
-  m_bindTimer->start(20000);
+  m_bindTimer.start(20000);
 }
 
 void Binder::sendBindMsg()
@@ -561,46 +637,54 @@ void Binder::sendBindMsg()
   QDBusMessage msg = QDBusMessage::createSignal("/", "com.nokia.moled", "Bind");
 
   msg
+    << "fix"
     << countryEdit->text()
     << regionEdit->text()
     << cityEdit->text()
     << areaEdit->text()
+    << floorEdit->text().toInt()
     << spaceNameEdit->text()
     << tagsEdit->text();
 
-  QDBusConnection::sessionBus().send(msg);
+  QDBusConnection::systemBus().send(msg);
+  qDebug () << "sendBindMsg sent";
 }
 
-void Binder::handleLocationEstimate(QString fqName, bool online)
+void Binder::handleLocationEstimate(QString fqName)
 {
-  qDebug() << "handle location estimate " << fqName
-            << "online " << m_online;
+  qDebug() << "handle location estimate " << fqName;
 
-  m_requestLocationEstimateCounter = 0;
-  setDaemonLabel(true);
+  receivedDaemonMsg ();
 
-  if (m_submitState == DISPLAY) {
+  if (m_submitState == DISPLAY || m_submitState == SCANNING) {
     QStringList estParts = fqName.split("/");
 
     qDebug() << "size " << estParts.size();
     qDebug() << "part " << estParts.at(0);
 
-    if (estParts.size() == 5) {
+    if (estParts.size() == 6) {
       countryEstimate = estParts.at(0);
       regionEstimate = estParts.at(1);
       cityEstimate = estParts.at(2);
       areaEstimate = estParts.at(3);
-      spaceNameEstimate = estParts.at(4);
-
-      // TODO set tags
-      refreshLastEstimate();
+      floorEstimate = estParts.at(4);
+      spaceNameEstimate = estParts.at(5);
+    } else if (fqName == "??") {
+      countryEstimate = "??";
+      regionEstimate = "??";
+      cityEstimate = "??";
+      areaEstimate = "??";
+      floorEstimate = "0";
+      spaceNameEstimate = "??";
     }
+    // TODO set tags
+    refreshLastEstimate();
+
   } else {
     qDebug() << "not displaying new estimate because not in display mode";
   }
 
-  m_requestLocationTimer->stop();
-  onNetworkStatusChanged(online);
+  m_requestLocationTimer.stop();
 }
 
 void Binder::refreshLastEstimate()
@@ -609,6 +693,7 @@ void Binder::refreshLastEstimate()
   regionEdit->setText(regionEstimate);
   cityEdit->setText(cityEstimate);
   areaEdit->setText(areaEstimate);
+  floorEdit->setText(floorEstimate);
   spaceNameEdit->setText(spaceNameEstimate);
   tagsEdit->setText(tagsEstimate);
 }
@@ -616,9 +701,11 @@ void Binder::refreshLastEstimate()
 void Binder::onSpeedStatusChanged(int motion)
 {
   qDebug() << "statistics got speed estimate" << motion;
+  receivedDaemonMsg ();
 
   if (motion == MOVING) {
     setWalkingLabel(true);
+    setSubmitState(SCANNING);
   } else {
     setWalkingLabel(false);
   }
@@ -638,15 +725,16 @@ void Binder::setWalkingLabel(bool isWalking)
 void Binder::onWalkingTimeout()
 {
   qDebug() << "handle walking timeout";
-  m_walkingTimer->stop();
+  m_walkingTimer.stop();
   setWalkingLabel(false);
 }
 
 void Binder::handleLocationStats
 (QString /*fqName*/, QDateTime /*startTime*/,
- int scanQueueSize,int macsSeenSize,int totalAreaCount,int /*totalSpaceCount*/,int /*potentialAreaCount*/,int potentialSpaceCount,int /*movementDetectedCount*/,double scanRateTime,double emitNewLocationSec,double /*networkLatency*/,double networkSuccessRate,double overlapMax,double overlapDiff)
+ int scanQueueSize,int macsSeenSize,int totalAreaCount,int /*totalSpaceCount*/,int /*potentialAreaCount*/,int potentialSpaceCount,int /*movementDetectedCount*/,double scanRateTime,double emitNewLocationSec,double /*networkLatency*/,double networkSuccessRate,double overlapMax,double overlapDiff,QVariantMap rankEntries)
 {
   qDebug() << "statistics";
+  receivedDaemonMsg ();
 
   scanCountLabel->setText(QString::number(scanQueueSize) +
                             "/" + QString::number(macsSeenSize));
@@ -663,4 +751,27 @@ void Binder::handleLocationStats
   qDebug() << "overlap " << overlapMax << " diff " << overlapDiff;
   qDebug() << "scan rate " << scanRateTime;
   qDebug() << "network_success_rate " << networkSuccessRate;
+
+  QString rankedSpacesStr;
+  //QMapIterator<QString,double> i (rankEntries.asMap);
+  //while (i.hasNext()) {
+  //i.next();
+  for (QVariantMap::Iterator it = rankEntries.begin(); it != rankEntries.end(); ++it) {
+    // TODO cleaner way to do this?
+    rankedSpacesStr.append (it.key());
+    rankedSpacesStr.append (" ");
+    rankedSpacesStr.append (QString::number(it.value().toReal()));
+    rankedSpacesStr.append ( "\n");
+  }
+  rankMsgBox->setText(rankedSpacesStr);
+
+  if (scanQueueSize >= MIN_SCANS_TO_BIND) {
+    if (m_submitState == SCANNING) {
+      setSubmitState (DISPLAY);
+    }
+  } else {
+    qDebug () << "statsScanQueue" << scanQueueSize;
+    setSubmitState (SCANNING, scanQueueSize);
+  }
+
 }

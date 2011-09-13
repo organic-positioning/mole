@@ -10,7 +10,8 @@ QT += core network
 QT -= gui
 
 HEADERS += \
-    ../common/ports.h
+    ../common/ports.h \
+    ../common/version.h
 
 SOURCES += \
     src/main.cpp

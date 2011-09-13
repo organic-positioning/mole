@@ -19,7 +19,8 @@ HEADERS += \
     ../common/network.h \
     ../common/qt-utils.h \
     ../common/util.h \
-    ../common/timer.h
+    ../common/timer.h \
+    ../common/version.h
 
 SOURCES += \
     src/binder.cpp \

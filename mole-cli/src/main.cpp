@@ -22,10 +22,12 @@
 #include <qjson/serializer.h>
 
 #include "../../common/ports.h"
+#include "../../common/version.h"
 
 #define BUFFER_SIZE 1024
 
 void usage();
+void version();
 
 int main(int argc, char *argv[])
 {
@@ -49,14 +51,24 @@ int main(int argc, char *argv[])
     QString arg = argsIter.next();
     if (arg == "-p") {
       port = argsIter.next().toInt();
+    } else if (arg == "-v") {
+      version();
     } else if (arg == "query") {
       request["action"] = "query";
     } else if (arg == "bind") {
       request["action"] = "bind";
+    } else if (arg == "add") {
+      request["action"] = "bind";
+    } else if (arg == "fix") {
+      request["action"] = "bind";
     } else if (arg == "stats") {
       request["action"] = "stats";
     } else if (arg == "unbind") {
-      request["action"] = "unbind";
+      request["action"] = "remove";
+    } else if (arg == "remove") {
+      request["action"] = "remove";
+    } else if (arg == "validate") {
+      request["action"] = "validate";
     } else if (arg.startsWith ("--")) {
       arg.remove ("--");
       if (!argsIter.hasNext()) {
@@ -135,16 +147,28 @@ int main(int argc, char *argv[])
 void usage()
 {
   qCritical()
-    << "mole [query|bind|stats] [parameters]\n"
+    << "mole [query|bind|stats|remove|validate] [parameters]\n"
     << "query -> print current estimate\n"
     << "bind [fully-qualified place name] or [place name relative to current area]\n"
     << "stats -> print statistics\n"
     << "\n"
-    << "Examples:\n"
-    << "mole bind --country \"USA\" --region \"Massachusetts\" --city \"Cambridge\" --area \"77 Massachusetts Ave\" --space \"Information Center\"\n"
+    << "Examples:\n\n"
+    << "Add to the shared signature database:\n"
+    << "mole bind --country \"USA\" --region \"Massachusetts\" --city \"Cambridge\" --area \"77 Massachusetts Ave\" --floor \"1\" --space \"Information Center\"\n"
     << "mole bind --building \"Uninterpreted text string\" --space \"Joe's Office\"\n"
     << "mole bind --space \"Mark's Office\"\n"
-    << " (makes a bind relative to the current estimate)\n";
+    << " (makes a bind relative to the current estimate)\n\n"
+    << "Confirm that the current estimate is correct (provides positive reinforcement):\n"
+    << "mole validate\n\n"
+    << "Remove from the shared signature database:\n"
+    << "mole remove --country \"USA\" --region \"Massachusetts\" --city \"Cambridge\" --area \"77 Massachusetts Ave\" --floor \"1\" --space \"Information Center\"\n";
+
   exit (-1);
+}
+
+void version()
+{
+  qCritical("mole version %s\n", MOLE_VERSION);
+  exit(0);
 }
 

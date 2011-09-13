@@ -20,6 +20,7 @@
 
 #define QT_FATAL_ASSERT 1
 
+#include "version.h"
 #include "dbus.h"
 #include "ports.h"
 
@@ -29,7 +30,7 @@
 extern QString MOLE_ORGANIZATION;
 extern QString MOLE_APPLICATION;
 extern QString MOLE_DOMAIN;
-extern int     MOLE_VERSION;
+
 extern QString MOLE_ICON_PATH;
 extern QString DEFAULT_MAP_SERVER_URL;
 extern QString DEFAULT_STATIC_SERVER_URL;

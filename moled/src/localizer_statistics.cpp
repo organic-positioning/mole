@@ -33,6 +33,7 @@ void LocalizerStats::logStatistics()
 #ifdef USE_MOLE_DBUS
 void LocalizerStats::emitStatistics()
 {
+  qDebug () << "LocalizerStats::emitStatistics";
   int uptime = m_startTime.secsTo(QDateTime::currentDateTime());
   if (m_emitNewLocationCount > 0) {
     m_emitNewLocationSec = (double) uptime / (double) m_emitNewLocationCount;
@@ -46,6 +47,9 @@ void LocalizerStats::emitStatistics()
            << "scan_rate_ms " << m_scanRateMs;
 
   QString empty = "";
+
+  //QVariantMap rankedSpaces;
+
 
   QDBusMessage statsMsg = QDBusMessage::createSignal("/", "com.nokia.moled", "LocationStats");
   statsMsg << empty
@@ -72,15 +76,28 @@ void LocalizerStats::emitStatistics()
          << m_networkSuccessRate
 
          << m_overlapMax
-         << m_overlapDiff;
+         << m_overlapDiff
 
-  QDBusConnection::sessionBus().send(statsMsg);
+    // ranked spaces
+
+	   << rankEntries;
+
+  QDBusConnection::systemBus().send(statsMsg);
 }
 #else
 void LocalizerStats::emitStatistics()
 {
 }
 #endif
+
+void LocalizerStats::clearRankEntries() {
+  rankEntries.clear();
+}
+
+void LocalizerStats::addRankEntry(QString space, double score) {
+  rankEntries.insert(space, score);
+}
+
 
 void LocalizerStats::statsAsMap(QVariantMap &map)
 {

@@ -53,12 +53,13 @@ class UpdatingModel : public QStandardItemModel
 
   void emitNetworkState(bool _online);
 
- signals:
-  void networkChange(bool online);
+  // signals:
+  //void networkChange(bool online);
 
  protected slots:
   void startRefill();
   void finishRefill();
+  void onlineStateChanged(bool _online);
 };
 
 // load up a model from a file, with one entry per line

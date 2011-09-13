@@ -39,7 +39,7 @@ class LocalServer : public QTcpServer
   Binder *m_binder;
 
   QVariantMap handleRequest(QByteArray &rawJson, bool &monitor);
-  QVariantMap handleBind(QVariantMap &params);
+  QVariantMap handleBind(QVariantMap &params, QString source);
   QVariantMap handleStats(QVariantMap &params);
   QVariantMap handleQuery(QVariantMap &params);
   QVariantMap handleMonitor(QVariantMap &params);

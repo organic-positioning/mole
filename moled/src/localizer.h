@@ -57,12 +57,10 @@ class AreaDesc
   QMap<QString,SpaceDesc*> *spaces() const { return m_spaces; }
   QList<QString> macs() const { return m_macs->toList(); }
   void insertMac(QString mac) { m_macs->insert(mac); }
-  QDateTime lastUpdateTime() const { return m_lastUpdateTime; }
   QDateTime lastAccessTime() const { return m_lastAccessTime; }
   QDateTime lastModifiedTime() const { return m_lastModifiedTime; }
-  void setLastUpdateTime() { m_lastUpdateTime = QDateTime::currentDateTime(); }
-  void setLastModifiedTime(QDateTime time) { m_lastModifiedTime = time; }
-  void accessed() { m_lastModifiedTime = QDateTime::currentDateTime(); }
+  void setLastModifiedTime(const QDateTime ts) { m_lastModifiedTime = ts; }
+  void accessed() { m_lastAccessTime = QDateTime::currentDateTime(); }
   int mapVersion() const { return m_mapVersion; }
   void setMapVersion(int version) { m_mapVersion = version; }
 
@@ -74,7 +72,6 @@ class AreaDesc
   QSet<QString> *m_macs;
   QMap<QString,SpaceDesc*> *m_spaces;
   // according to our local clock
-  QDateTime m_lastUpdateTime;
   QDateTime m_lastAccessTime;
   // according to the server
   QDateTime m_lastModifiedTime;
@@ -111,7 +108,7 @@ class LocalizerStats : public QObject
  public:
   LocalizerStats(QObject *parent);
 
-  void emitStatistics();
+
   void emittedNewLocation() { ++m_emitNewLocationCount; }
   void receivedScan();
 
@@ -137,6 +134,12 @@ class LocalizerStats : public QObject
   void setTotalSpaceCount(int v) { m_totalSpaceCount = v; }
   void setPotentialAreaCount(int v) { m_potentialAreaCount = v; }
   void setPotentialSpaceCount(int v) { m_potentialSpaceCount = v; }
+
+  void clearRankEntries();
+  void addRankEntry(QString space, double score);
+
+ public slots:
+  void emitStatistics();
 
  private:
   QTimer *m_logTimer;
@@ -166,6 +169,9 @@ class LocalizerStats : public QObject
   QTime m_lastScanTime;
   QTime m_lastEmitLocation;
 
+  QVariantMap rankEntries;
+  //QMap<QString,double> rankEntries;
+
   double updateEwma(double current, int value) { return updateEwma(current, (double)value); }
   double updateEwma(double current, double value);
 
@@ -186,14 +192,14 @@ public:
   void touch(QString area_name);
   QString currentEstimate() const { return currentEstimateSpace; }
 
-  void localize(int scanQueueSize);
+  void localize(const int scanQueueSize);
   QMap<QString,APDesc*> *fingerprint() const { return m_fingerprint; }
   void replaceFingerprint(QMap<QString,APDesc*> *newFP);
 
   void movementDetected() { m_stats->movementDetected(); }
 
   void queryCurrentEstimate(QString&, QString&, QString&, QString&,
-                            QString&, QString&, double&);
+                            QString&, QString&, int&, double&);
 
   LocalizerStats* stats() const { return m_stats; }
   void addMonitor(QTcpSocket *socket);
@@ -201,9 +207,11 @@ public:
   void estimateAsMap(QVariantMap &placeMap);
 
   void bind(QString fqArea, QString fqSpace);
+  bool removeSpace(QString fqArea, QString fqSpace);
 
 private:
   bool m_firstAddScan;
+  bool m_forceMapCacheUpdate;
 
   bool m_areaMapReplyInFlight;
   bool m_macReplyInFlight;
@@ -215,8 +223,9 @@ private:
   double currentEstimateScore;
   //int m_areaFillPeriod;
 
-  QTimer *m_areaCacheFillTimer;
-  QTimer *m_mapCacheFillTimer;
+  QTimer m_areaCacheFillTimer;
+  QTimer m_mapCacheFillTimer;
+  QTimer m_statisticsTimer;
   QMap<QString,APDesc*> *m_fingerprint;
 
   QString currentEstimateSpace;
@@ -235,7 +244,7 @@ private:
   void requestAreaMap(QNetworkRequest request);
   void handleAreaMapResponse();
 
-  QString loudMac();
+  void loudMac(QString &loudMacA, QString &loudMacB);
 
   void emitNewLocationEstimate(QString estimatedSpaceName,
                                double estimatedSpaceScore);
@@ -264,7 +273,7 @@ private slots:
 
   void macToAreasResponse();
   void handleAreaMapResponseAndReissue();
-  bool parseMap(const QByteArray &mapAsByteArray, const QDateTime &lastModified);
+  bool parseMap(const QByteArray &mapAsByteArray, const QDateTime lastModified);
   void saveMap(QString path, const QByteArray &mapAsByteArray);
   void unlinkMap(QString path);
   void loadMaps();

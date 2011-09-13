@@ -25,7 +25,7 @@ void setNetworkRequestHeaders(QNetworkRequest &request)
   request.setRawHeader("Create-Stamp", (QTime::currentTime()).toString().toAscii());
 
   QString agent = "moled/";
-  agent.append(QString::number(MOLE_VERSION));
+  agent.append(MOLE_VERSION);
 
   request.setRawHeader(QString("User-Agent").toAscii(),
                        settings->value("user_agent").toString().toAscii());
@@ -39,7 +39,7 @@ void setNetworkRequestHeaders(QNetworkRequest &request)
   cookies.append(settings->value("cookie").toString());
 
   cookies.append("; mole_version=");
-  cookies.append(QString::number(MOLE_VERSION));
+  cookies.append(MOLE_VERSION);
 
   cookies.append("; session=");
   cookies.append(settings->value("session").toString());

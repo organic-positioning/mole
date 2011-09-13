@@ -105,8 +105,16 @@ QVariantMap LocalServer::handleRequest(QByteArray &rawJson, bool &monitor)
   if (request.contains("params"))
     params = request["params"].toMap();
 
+  // qDebug () << "action " << action;
+
   if (action == "bind") {
-    return handleBind(params);
+    return handleBind(params, "fix");
+  } else if (action == "add") {
+    return handleBind(params, "add");
+  } else if (action == "remove") {
+    return handleBind(params, "remove");
+  } else if (action == "validate") {
+    return handleBind(params, "validate");
   } else if (action == "stats") {
     return handleStats(params);
   } else if (action == "query") {
@@ -120,7 +128,7 @@ QVariantMap LocalServer::handleRequest(QByteArray &rawJson, bool &monitor)
   return resMap;
 }
 
-QVariantMap LocalServer::handleBind(QVariantMap &params)
+QVariantMap LocalServer::handleBind(QVariantMap &params, QString source)
 {
   QString country;
   QString region;
@@ -129,6 +137,7 @@ QVariantMap LocalServer::handleBind(QVariantMap &params)
   QString space;
   QString tags;
   QString building;
+  int floor = 0;
   QVariantMap resMap;
   if (params.contains("country"))
     country = params["country"].toString();
@@ -145,8 +154,14 @@ QVariantMap LocalServer::handleBind(QVariantMap &params)
   if (params.contains("space"))
     space = params["space"].toString();
 
+  if (params.contains("source"))
+    source = params["source"].toString();
+
   if (params.contains("tags"))
     tags = params["tags"].toString();
+
+  if (params.contains("floor"))
+    floor = params["floor"].toInt();
 
   if (params.contains("building")) {
     building = params["building"].toString();
@@ -164,7 +179,8 @@ QVariantMap LocalServer::handleBind(QVariantMap &params)
     area = building;
   }
 
-  QString res = m_binder->handleBindRequest(country, region, city, area, space, tags);
+  QString res = m_binder->handleBindRequest(source, country, region, city, 
+					    area, floor, space, tags);
   resMap["status"] = res;
   return resMap;
 }

@@ -34,40 +34,106 @@ SPRINT 2: June 13 - July 7 (v0.4)
 + Device/WiFi name sent properly - 1pt
 + icons: compass in/over a building?  over stata- 3pt
 + implement local socket API - 3pt
+
+SPRINT 3: July 11 - July 22 (v0.5)
++ Command line mole-binder: bind (place=, tags=), query, stat - 3pt
++ Apply binds to local database - 3pt
++ Test binding multiple nearby buildings
++ Refactor DBus so that not included with Symbian - 1pt
 + Filter bad client info: add regex filter for bad bssids sent to
   server - 1pt
++ Offline mode: sense if no network connection and stop network
+  activity if so; reactivate when changes - 3pt
 
-SPRINT 3: (v0.5)
-- Command line mole-binder: bind (place=, tags=), query, stat; needs
-to respond if not; DO THIS SOON because no telnet on tablets
-- Apply binds to local database - 3pt
-- Test binding multiple nearby buildings
-- "unbind" to remove spaces
-- Web page with instructions - 3pt
-+ Refactor DBus so that not included with Symbian - 1pt
-- Check again for memory leaks - 1pt
-
-ALPHA RELEASE 
+RELEASE v0.5 on projects.developer.nokia.com and on github
 
 SPRINT 4:
++ "unbind" to remove spaces - 3pt
++ Add floors to schema - 3pt
++ "validate" to confirm that estimate is correct - 5pt
++ background plotting for demo - 3pt
++ Test applying binds only to local DB (turning network off).  There
+  is a problem setting up the in-memory data structure.  Right after a
+  bind, we are still picking another space, because the new space has
+  a lower score. - 3pt Fixed: was problem with copying histogram
+  structure.
++ New vs old sig map: always saying it is new and replacing old map
+  (perhaps correct stamp of incoming map is not being set) - 1pt
 
-- Offline mode: sense if no network connection and stop network
-   activity if so; reactivate when changes - 3pt
-- Scan slower and stop network updates when idle - 3pt
-- Check again for memory leaks - 3pt
++ Fixes: GUI displays daemon state more accurately: daemon must send
+  it a msg every 15 seonds or so, regardless.  It does so now by
+  sending the stats every 10 seconds GUI displays network state
+  correctly.  Models only make network requests when when online. GUI
+  shows change in network status immediately.
 
++ When we previously have an estimate, and we go to a new place, the
+  binder continues to show the old estimate.  This is because
+  "eliminated all areas" did not send an estimate.
+
++ Client should work in different network availability environments
+  Test binding when wifi turned off and only 3g is available. - 1pt
+
++ When no estimate is available and the device is shaken, does the
+  scan count reflect the change - 1pt
+
++ Install pid in right place in Ubuntu and Maemo - 1pt
+
++ Upstart working on Ubuntu
+
++ Show (same) version number, and in mole-binder, and in cli
+
++ In binder: is requestLocationTimer necessary? (yes, it is)
+
++ When doing a bind without network connectivity, do we keep trying
+  to send, or does it get switched off (and then on again). Answer:
+  yes, we do the right thing.
+
++ Emit stats whenever emitting a location so that both are reflected in GUI.
+
++ To lower latency when going to a new place, change getAreas so that
+  we request more than one area - 1pt
+
++ Check memory usage in Ubuntu.  It is less than 1% and valgrind does
+  not show any egregious problems.
+
+SPRINT 5: Handling network connectivity changes and longevity
+
+- On server, change "fix" to "add" when est_location is null.
+
+- GUI changes (holding off on these until new UI is released):
+  - In Ubuntu, make UI the right size
+  - Add icons to Ubuntu package
+  - UI: more room for room name
+  - places prefill not working for city and below - 1pt
+  - Better representation in mole-binder of what the daemon is doing 1pt
+
+
+- Reconnecting to network (if you lose connectivity it doesn't come
+  back), and changing connectivity may cause crashing - 1pt
 
 POST-RELEASE
-- Better motion detection - 3pt
-- Periodic Statistics sent from client and recorded appropriately - 3pt
-- Comment out qDebug statements via some good method (#define ?) - 1pt
-- refactor client into like local socket daemon, but don't define API
-  yet - 3pt
-- Client should work in different network availability environments
-   Test binding when wifi turned off and only 3g is available
+
+- When a bind is made on another device and our floor is e.g. 0 and
+  its floor is e.g. 3 (but floor 3 is in our cache), we are not
+  fetching the updated maps of floor 3.
+
+- Periodic Statistics sent from client and recorded appropriately,
+  whether or not to send them is part of settings - 3pt
 
 
 SPRINT -Unassigned
+
+- Algorithm experimentation: When signatures on the same floor have
+  very different numbers of APs, we seem to be picking the one with
+  fewer APs, at least when we only have a few scans.  The one with few
+  APs seems to be weighed more heavily.  Needs to be tested with long
+  term scan collection - 5pt
+
+- Privacy Policy and Terms of Service
+  User needs to accept terms when installing software on install.
+  Might not ever use Binder, so needs to accept when install.
+  Need to create terms and policy with Legal.
+  But terms only apply when directing to Nokia servers. - 5pt
 
 - Reliability and Alarms
   As a user, the regular system should be available most of the time:
@@ -89,6 +155,8 @@ SPRINT -Unassigned
 - "fillAreaCache:631 - loop through results" -- we seem to be adding
   and then dropping results too frequently - 3pt
 
+- Bind should not occur if we have no scans at all (one bind immediately following another).
+
 - Remove virtual APs / reduce each AP to one real one; see email from Jun-geun on hack for how to do this (May 4 2011) - 3pt
 - Screen out mobile/transient MACs as described in UCLA SenSys paper.
   Looked briefly at this and mobile/transient MACs did not appear in
@@ -99,8 +167,6 @@ SPRINT -Unassigned
   (optification)
   Base this on a global configuration file - 1pt
  
-- Bigger feedback window - 1pt
-
 - Enforce clean entry submission
   If you set the binder inputs to a value, then start activates, but
   then if you delete the entry without hitting enter, you can still

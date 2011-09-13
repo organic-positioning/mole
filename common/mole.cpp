@@ -22,16 +22,16 @@
 QString MOLE_ORGANIZATION = "Nokia";
 QString MOLE_APPLICATION  = "Mole";
 QString MOLE_DOMAIN       = "mole.research.nokia.com";
-int     MOLE_VERSION      = 50;
-QString MOLE_ICON_PATH    = "/usr/share/mole/icons/";
 
 QString DEFAULT_MAP_SERVER_URL = "http://mole.research.nokia.com:8080";
 QString DEFAULT_STATIC_SERVER_URL = "https://s3.amazonaws.com/mole-nokia";
 
 #ifdef Q_WS_MAEMO_5
 QString DEFAULT_ROOT_PATH = "/opt/var/lib";
+QString MOLE_ICON_PATH    = "/usr/share/mole/icons/";
 #else
 QString DEFAULT_ROOT_PATH = "/var/cache/mole";
+QString MOLE_ICON_PATH    = "/usr/share/pixmaps/mole/";
 #endif
 
 bool debug = false;

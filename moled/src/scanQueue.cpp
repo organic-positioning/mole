@@ -82,13 +82,13 @@ bool ScanQueue::addReading(QString mac, QString ssid, qint16 frequency, qint8 st
       // but do not apply it to the fingerprint yet.
       APDesc* ap = getAP(mac, ssid, frequency);
 
-      scans[m_currentScan].readings[m_currentReading].set(ap, strength);
+      m_scans[m_currentScan].readings[m_currentReading].set(ap, strength);
 
       ++m_currentReading;
 
       // if we have just started a new scan, set the time
       if (m_seenMacs.isEmpty())
-        scans[m_currentScan].timestamp = QDateTime::currentDateTime();
+        m_scans[m_currentScan].timestamp = QDateTime::currentDateTime();
 
       m_seenMacs.insert(mac);
       return true;
@@ -105,7 +105,7 @@ bool ScanQueue::scanCompleted()
 
   m_currentReading = 0;
 
-  if (m_seenMacs.size() < 0) {
+  if (m_seenMacs.isEmpty()) {
     qDebug() << "scanQueue: found no readings";
     return false;
   }
@@ -128,14 +128,14 @@ bool ScanQueue::scanCompleted()
     if (previousScan < 0)
       previousScan = MAX_SCANQUEUE_SCANS -1;
 
-    if (scans[previousScan].state == ACTIVE) {
+    if (m_scans[previousScan].state == ACTIVE) {
       bool duplicateScan = true;
       for (int i = 0; duplicateScan && i < MAX_SCANQUEUE_READINGS; ++i) {
-        APDesc* apC = scans[m_currentScan].readings[i].ap;
-        APDesc* apP = scans[previousScan].readings[i].ap;
+        APDesc* apC = m_scans[m_currentScan].readings[i].ap;
+        APDesc* apP = m_scans[previousScan].readings[i].ap;
         if (apC && apP) {
-          if (apC->mac != apP->mac || scans[m_currentScan].readings[i].strength
-              != scans[previousScan].readings[i].strength)
+          if (apC->mac != apP->mac || m_scans[m_currentScan].readings[i].strength
+              != m_scans[previousScan].readings[i].strength)
             duplicateScan = false;
         }
       }
@@ -148,10 +148,10 @@ bool ScanQueue::scanCompleted()
 
   // apply the current readings to the fingerprint
   for (int i = 0; i < MAX_SCANQUEUE_READINGS; ++i) {
-    APDesc* ap = scans[m_currentScan].readings[i].ap;
+    APDesc* ap = m_scans[m_currentScan].readings[i].ap;
     if (ap) {
       ap->incrementUse();
-      ap->addSignalStrength(scans[m_currentScan].readings[i].strength);
+      ap->addSignalStrength(m_scans[m_currentScan].readings[i].strength);
       ++m_responseRateTotal;
       m_dirtyAPs.insert(ap);
     }
@@ -165,7 +165,7 @@ bool ScanQueue::scanCompleted()
   // TODO check for extra macs vs prior scans;
 
   // Use 'state' to prevent partial scans from being bound
-  scans[m_currentScan].state = ACTIVE;
+  m_scans[m_currentScan].state = ACTIVE;
   ++m_activeScanCount;
 
 
@@ -183,21 +183,22 @@ bool ScanQueue::scanCompleted()
     if (expiringScan < 0)
       expiringScan = MAX_SCANQUEUE_SCANS + expiringScan;
 
-    if (scans[expiringScan].state == ACTIVE) {
+    if (m_scans[expiringScan].state == ACTIVE) {
       for (int i = 0; i < MAX_SCANQUEUE_READINGS; ++i) {
-        APDesc* ap = scans[expiringScan].readings[i].ap;
+        APDesc* ap = m_scans[expiringScan].readings[i].ap;
         if (ap) {
-          ap->removeSignalStrength(scans[expiringScan].readings[i].strength);
+          ap->removeSignalStrength(m_scans[expiringScan].readings[i].strength);
           --m_responseRateTotal;
           if (ap->isEmpty()) {
-            m_localizer->fingerprint()->remove(getAPString(ap->mac, ap->ssid, ap->frequency));
+            m_localizer->fingerprint()->remove(ap->mac);
           } else {
             m_dirtyAPs.insert(ap);
           }
         }
       }
-      scans[expiringScan].state = INACTIVE;
+      m_scans[expiringScan].state = INACTIVE;
       --m_activeScanCount;
+      Q_ASSERT(m_activeScanCount > 0);
     }
     qDebug() << "finished expired";
   }
@@ -211,13 +212,13 @@ bool ScanQueue::scanCompleted()
 
   // clean out any unused APs
   for (int i = 0; i < MAX_SCANQUEUE_READINGS; ++i) {
-    APDesc* ap = scans[m_currentScan].readings[i].ap;
+    APDesc* ap = m_scans[m_currentScan].readings[i].ap;
     if (ap) {
       ap->decrementUse();
       if (ap->useCount() <= 0) {
         // note that the ap might not be in the sig if it was
         // expired by maxActiveQueueLength
-        QString apString = getAPString(ap->mac, ap->ssid, ap->frequency);
+        QString apString = ap->mac;
         if (m_localizer->fingerprint()->contains(apString))
           m_localizer->fingerprint()->remove(apString);
 
@@ -225,18 +226,19 @@ bool ScanQueue::scanCompleted()
           m_dirtyAPs.remove(ap);
 
         delete ap;
-      } else if (scans[m_currentScan].state == ACTIVE) {
-        ap->removeSignalStrength(scans[m_currentScan].readings[i].strength);
+      } else if (m_scans[m_currentScan].state == ACTIVE) {
+        ap->removeSignalStrength(m_scans[m_currentScan].readings[i].strength);
         --m_responseRateTotal;
         m_dirtyAPs.insert(ap);
       }
-      scans[m_currentScan].readings[i].ap = 0;
+      m_scans[m_currentScan].readings[i].ap = 0;
     }
   }
-  if (scans[m_currentScan].state == ACTIVE)
+  if (m_scans[m_currentScan].state == ACTIVE)
     --m_activeScanCount;
+  Q_ASSERT(m_activeScanCount > 0);
 
-  scans[m_currentScan].state = INCOMPLETE;
+  m_scans[m_currentScan].state = INCOMPLETE;
 
   // reset the normalized histogram for all changed histograms
   QSetIterator <APDesc*> dirtyIt (m_dirtyAPs);
@@ -257,10 +259,11 @@ bool ScanQueue::scanCompleted()
   // debugging activeScanCount
   int activeScanCountTest = 0;
   for (int i = 0; i < MAX_SCANQUEUE_SCANS; ++i) {
-    if (scans[i].state == ACTIVE)
+    if (m_scans[i].state == ACTIVE)
       ++activeScanCountTest;
   }
   Q_ASSERT(m_activeScanCount == activeScanCountTest);
+  Q_ASSERT(m_activeScanCount > 0);
 
   Q_ASSERT(m_responseRateTotal > 0);
   Q_ASSERT(m_responseRateTotal <= MAX_SCANQUEUE_READINGS*MAX_SCANQUEUE_SCANS);
@@ -287,18 +290,18 @@ void ScanQueue::serialize(QDateTime oldestValidScan, QVariantList &scanList)
     if (scanIndex >= MAX_SCANQUEUE_SCANS)
       scanIndex = 0;
 
-    if ((scans[scanIndex].state == ACTIVE ||
-         scans[scanIndex].state == INACTIVE) &&
-         scans[scanIndex].timestamp > oldestValidScan) {
+    if ((m_scans[scanIndex].state == ACTIVE ||
+         m_scans[scanIndex].state == INACTIVE) &&
+         m_scans[scanIndex].timestamp > oldestValidScan) {
       QVariantList readingsList;
       for (int j = 0; j < MAX_SCANQUEUE_READINGS; ++j) {
-        APDesc* ap = scans[scanIndex].readings[j].ap;
+        APDesc* ap = m_scans[scanIndex].readings[j].ap;
         if (ap) {
           QVariantMap readingMap;
           readingMap.insert ("bssid", ap->mac);
           readingMap.insert ("ssid", ap->ssid);
           readingMap.insert ("frequency", ap->frequency);
-          readingMap.insert ("level", scans[scanIndex].readings[j].strength);
+          readingMap.insert ("level", m_scans[scanIndex].readings[j].strength);
           readingsList << readingMap;
           ++readingCount;
         }
@@ -306,7 +309,7 @@ void ScanQueue::serialize(QDateTime oldestValidScan, QVariantList &scanList)
 
       if (!readingsList.isEmpty()) {
         QVariantMap scanMap;
-        scanMap.insert("stamp", scans[scanIndex].timestamp.toTime_t());
+        scanMap.insert("stamp", m_scans[scanIndex].timestamp.toTime_t());
         scanMap.insert("readings", readingsList);
         scanList << scanMap;
         ++scanCount;
@@ -320,25 +323,13 @@ void ScanQueue::serialize(QDateTime oldestValidScan, QVariantList &scanList)
 
 APDesc* ScanQueue::getAP(QString mac, QString ssid, qint16 frequency)
 {
-  QString apString = getAPString(mac, ssid, frequency);
+  QString apString = mac;
   if (m_localizer->fingerprint()->contains(apString)) {
     return m_localizer->fingerprint()->value(apString);
   }
   APDesc* ap = new APDesc(mac, ssid, frequency);
   m_localizer->fingerprint()->insert(apString, ap);
   return ap;
-}
-
-QString ScanQueue::getAPString(QString mac, QString /*ssid*/, qint16 /*frequency*/)
-{
-  QString res = mac;
-  // Can't add this other stuff as we directly use
-  // this in in the call to getAreas (by localizer)
-  //res.append ('/');
-  //res.append (ssid);
-  //res.append ('/');
-  //res.append (QString::number(frequency));
-  return res;
 }
 
 void ScanQueue::handleMotionEstimate(int motion)
@@ -368,25 +359,30 @@ void ScanQueue::truncate()
   // (requires the outgoing fingerprint for the ap metadata)
   // Change the scan's pointers to the new fingerprint at the same time.
   for (int i = 0; i < MAX_SCANQUEUE_READINGS; ++i) {
-    APDesc* oldAP = scans[m_currentScan].readings[i].ap;
+    APDesc* oldAP = m_scans[m_currentScan].readings[i].ap;
     if (oldAP) {
-      QString apString = getAPString(oldAP->mac, oldAP->ssid, oldAP->frequency);
+      QString apString = oldAP->mac;
       APDesc *newAP = new APDesc(oldAP->mac, oldAP->ssid, oldAP->frequency);
       newAP->incrementUse();
-      newAP->addSignalStrength(scans[m_currentScan].readings[i].strength);
+      newAP->addSignalStrength(m_scans[m_currentScan].readings[i].strength);
       ++m_responseRateTotal;
       m_dirtyAPs.insert(newAP);
       newFP->insert(apString, newAP);
-      scans[m_currentScan].readings[i].ap = newAP;
+      m_scans[m_currentScan].readings[i].ap = newAP;
     }
   }
+  qDebug() << "sQ truncate before clear responseRateTotal" << m_responseRateTotal;
 
   // Mark all of the other scans as inactive
   clear(m_currentScan);
 
+  qDebug() << "sQ truncate after clear responseRateTotal" << m_responseRateTotal;
+
   // Delete the outgoing fingerprint and
   // swap in the newly created fingerprint
   m_localizer->replaceFingerprint(newFP);
+
+  qDebug() << "sQ truncate end " << m_currentScan << "responseRateTotal" << m_responseRateTotal;
 
 }
 
@@ -394,9 +390,9 @@ void ScanQueue::clear(int ignoreScan)
 {
   for (int i = 0; i < MAX_SCANQUEUE_SCANS; ++i) {
     if (i != ignoreScan) {
-      scans[i].state = INCOMPLETE;
+      m_scans[i].state = INCOMPLETE;
       for (int j = 0; j < MAX_SCANQUEUE_READINGS; ++j)
-        scans[i].readings[j].ap = 0;
+        m_scans[i].readings[j].ap = 0;
     }
   }
 }
@@ -406,7 +402,7 @@ QDebug operator<<(QDebug dbg, const Reading &reading)
   dbg.nospace() << "[";
   if (reading.ap) {
     dbg.nospace() << *(reading.ap);
-    dbg.nospace() << ",rssi="<< reading.strength;
+    dbg.nospace() << ",rssi=" << reading.strength;
   }
   dbg.nospace() << "]";
   return dbg.space();
@@ -438,13 +434,13 @@ QDebug operator<<(QDebug dbg, const ScanQueue &s)
 {
   dbg.nospace() << "[";
   for (int i = 0; i < MAX_SCANQUEUE_SCANS; ++i) {
-    dbg.nospace() << s.scans[i];
+    dbg.nospace() << s.m_scans[i];
     if (i == s.m_currentScan) {
       dbg.nospace() << " *";
     }
     dbg.nospace() << "\n";
   }
-  dbg.nospace() << ", rr="<<s.m_responseRateTotal;
+  dbg.nospace() << ", rr="<< s.m_responseRateTotal;
   dbg.nospace() << "]";
   return dbg.space();
 }

@@ -27,6 +27,7 @@ bool MapParser::startElement(const QString&, const QString&,
     QString region;
     QString city;
     QString area;
+    int floor;
 
     for (int i = 0; i < attrs.count(); ++i) {
       if (attrs.localName(i) == "country") {
@@ -37,6 +38,8 @@ bool MapParser::startElement(const QString&, const QString&,
         city = attrs.value(i);
       } else if (attrs.localName(i) == "area") {
         area = attrs.value(i);
+      } else if (attrs.localName(i) == "floor") {
+        floor = attrs.value(i).toInt();
       } else if (attrs.localName(i) == "map_version") {
         m_areaDesc->setMapVersion(attrs.value(i).toInt());
       } else if (attrs.localName(i) == "builder_version") {
@@ -51,6 +54,8 @@ bool MapParser::startElement(const QString&, const QString&,
     m_fqArea.append(city);
     m_fqArea.append('/');
     m_fqArea.append(area);
+    m_fqArea.append('/');
+    m_fqArea.append(QString::number(floor));
 
     qDebug() << "parsing area" << m_fqArea;
 
@@ -118,7 +123,7 @@ bool MapParser::startElement(const QString&, const QString&,
   return true;
 }
 
-bool Localizer::parseMap(const QByteArray &mapAsByteArray, const QDateTime &lastModified)
+bool Localizer::parseMap(const QByteArray &mapAsByteArray, const QDateTime lastModified)
 {
   bool ok = false;
   QString mapAsXml(mapAsByteArray);
@@ -149,9 +154,10 @@ bool Localizer::parseMap(const QByteArray &mapAsByteArray, const QDateTime &last
       AreaDesc *newMap = parser.areaDesc();
       newMap->setLastModifiedTime(lastModified);
       m_signalMaps->insert(fqArea, newMap);
-      qDebug() << "inserted new map fq_area=" << fqArea;
+      qDebug() << "inserted new map fq_area=" << fqArea
+	       << "lastModified" << newMap->lastModifiedTime();
 
-      localize(0);
+      //localize(0);
       ok = true;
 
     } else {
@@ -204,6 +210,8 @@ void Localizer::unlinkMap(QString path)
   dirName.append("/");
   dirName.append(path);
 
+
+
   QDir mapDir(dirName);
 
   bool rmOk = mapDir.remove("sig.xml");
@@ -214,6 +222,8 @@ void Localizer::unlinkMap(QString path)
 
   rmOk = m_mapRoot->rmpath(path);
 
+  qDebug () << "unlinkMap" << path;
+
   if (!rmOk) {
     qWarning() << "Failed to remove path= " << path;
   }
@@ -222,7 +232,8 @@ void Localizer::unlinkMap(QString path)
 
 void Localizer::loadMaps()
 {
-  QDateTime currentTime = QDateTime::currentDateTime();
+  //QDateTime currentTime = QDateTime::currentDateTime();
+  QDateTime currentTime;
   QDirIterator it (*m_mapRoot, QDirIterator::Subdirectories);
   while (it.hasNext()) {
     it.next();
@@ -253,7 +264,7 @@ AreaDesc::AreaDesc()
 {
   m_lastAccessTime = QDateTime::currentDateTime();
   m_lastModifiedTime = QDateTime::currentDateTime();
-  m_lastUpdateTime = QDateTime::currentDateTime();
+  qDebug () << "new map area desc ctor";
 }
 
 AreaDesc::~AreaDesc()
@@ -281,6 +292,7 @@ SpaceDesc::SpaceDesc(QMap<QString,Sig*> *fingerprint)
     i.next();
     Sig* sig = new Sig(i.value());
     m_sigs->insert(i.key(), sig);
+    qDebug () << "in-memory sig " << i.key() << "sig" << *sig << "orig" << *(i.value());
   }
 
 }

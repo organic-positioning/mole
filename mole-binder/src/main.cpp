@@ -21,6 +21,7 @@
 #include "common.h"
 
 void usage();
+void version();
 
 int main(int argc, char *argv[])
 {
@@ -47,6 +48,8 @@ int main(int argc, char *argv[])
     QString arg = argsIter.next();
     if (arg == "-d") {
       debug = true;
+    } else if (arg == "-v") {
+      version();
     } else if (arg == "-s") {
       mapServerURL = argsIter.next();
     } else if (arg == "-f") {
@@ -57,6 +60,10 @@ int main(int argc, char *argv[])
       usage();
     }
   }
+
+  qDebug () << "servers:" 
+	    << "static" << staticServerURL
+	    << "dynamic" << mapServerURL;
 
   initCommon(app, logFilename);
 
@@ -80,6 +87,7 @@ int main(int argc, char *argv[])
   mainWindow->showMaximized();
 #else
   mainWindow->show();
+  mainWindow->resize(UI_WIDTH, UI_HEIGHT);
 #endif
 
   return app->exec();
@@ -94,4 +102,10 @@ void usage()
     << "-f fingerprint (static) server\n"
     << "-l log file\n"
     << "-T ground truth file (for evaluation)";
+}
+
+void version()
+{
+  qCritical("mole-binder version %s\n", MOLE_VERSION);
+  exit(0);
 }

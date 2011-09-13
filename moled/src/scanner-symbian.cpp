@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include "scanner_s60.h"
+#include "scanner_symbian.h"
 
 #include <e32base.h>
 #include <wlanmgmtclient.h>
@@ -41,28 +41,26 @@ QList<APReading*> Scanner::availableAPs()
   pMgmtClient->GetScanResults(*pScanInfo);
 
   for(pScanInfo->First(); !pScanInfo->IsDone(); pScanInfo->Next() ) {
-      apLevel = pScanInfo->RXLevel();
+    apLevel = pScanInfo->RXLevel();
 
-      retVal = pScanInfo->InformationElement(0, ieLen, &ieData);
-      if (retVal == KErrNone) {
-          TPtrC8 ptr(ieData, ieLen);
-          buf16.Copy(ptr);
-          apName = QString::fromUtf16(buf16.Ptr(),buf16.Length());
-      }
+    retVal = pScanInfo->InformationElement(0, ieLen, &ieData);
+    if (retVal == KErrNone) {
+      TPtrC8 ptr(ieData, ieLen);
+      buf16.Copy(ptr);
+      apName = QString::fromUtf16(buf16.Ptr(),buf16.Length());
+    }
 
-      pScanInfo->Bssid(bssid);
-      buf16.SetLength(0);
-      for(TInt i = 0; i < bssid.Length(); i++) {
-          buf16.AppendFormat(_L("%02x:"), bssid[i]);
-      }
-      if (buf16.Length() > 0) {
-          buf16.Delete(buf16.Length()-1, 1);
-      }
+    pScanInfo->Bssid(bssid);
+    buf16.SetLength(0);
+    for(TInt i = 0; i < bssid.Length(); i++)
+      buf16.AppendFormat(_L("%02x:"), bssid[i]);
 
-      apMac = QString::fromUtf16(buf16.Ptr(),buf16.Length());
+    if (buf16.Length() > 0)
+      buf16.Delete(buf16.Length()-1, 1);
 
-      APReading *wlan = new APReading(apName, apMac, apLevel);
-      wlans << wlan;
+    apMac = QString::fromUtf16(buf16.Ptr(),buf16.Length());
+    APReading *wlan = new APReading(apName, apMac, apLevel);
+    wlans << wlan;
   }
 
   CleanupStack::PopAndDestroy(pMgmtClient);

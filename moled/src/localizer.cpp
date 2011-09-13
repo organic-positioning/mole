@@ -29,13 +29,15 @@ QString unknownSpace = "??";
 const int AREA_FILL_PERIOD_SHORT = 100;
 const int AREA_FILL_PERIOD = 60000;
 const int MAP_FILL_PERIOD_SHORT = 1000;
-const int MAP_FILL_PERIOD_SOON = 15000;
+const int MAP_FILL_PERIOD_SOON = 10000;
 const int MAP_FILL_PERIOD = 60000;
 
 Localizer::Localizer(QObject *parent)
   : QObject(parent)
   , m_firstAddScan(true)
+  , m_forceMapCacheUpdate(true)
   , m_areaMapReplyInFlight(false)
+  , m_macReplyInFlight(false)
   , m_overlap(new Overlap())
   , m_stats(new LocalizerStats(this))
   , m_fingerprint(new QMap<QString,APDesc*>())
@@ -47,16 +49,18 @@ Localizer::Localizer(QObject *parent)
   m_mapRoot = new QDir(mapDirName);
 
 #ifdef USE_MOLE_DBUS
-  QDBusConnection::sessionBus().registerObject("/", this);
-  QDBusConnection::sessionBus().connect(QString(), QString(), "com.nokia.moled", "GetLocationEstimate", this, SLOT(handleLocationEstimateRequest()));
+  QDBusConnection::systemBus().registerObject("/", this);
+  QDBusConnection::systemBus().connect(QString(), QString(), "com.nokia.moled", "GetLocationEstimate", this, SLOT(handleLocationEstimateRequest()));
 #endif
 
-  m_areaCacheFillTimer = new QTimer(this);
-  connect(m_areaCacheFillTimer, SIGNAL(timeout()), this, SLOT(fillAreaCache()));
 
-  m_mapCacheFillTimer = new QTimer(this);
-  connect(m_mapCacheFillTimer, SIGNAL(timeout()), this, SLOT(fillMapCache()));
-  m_mapCacheFillTimer->start(MAP_FILL_PERIOD);
+  connect(&m_areaCacheFillTimer, SIGNAL(timeout()), this, SLOT(fillAreaCache()));
+
+  connect(&m_mapCacheFillTimer, SIGNAL(timeout()), this, SLOT(fillMapCache()));
+  m_mapCacheFillTimer.start(MAP_FILL_PERIOD);
+
+  connect (&m_statisticsTimer, SIGNAL(timeout()), m_stats, SLOT(emitStatistics()));
+  m_statisticsTimer.start (10000);
 
   loadMaps();
 
@@ -65,9 +69,6 @@ Localizer::Localizer(QObject *parent)
 Localizer::~Localizer()
 {
   qDebug() << "deleting localizer";
-
-  delete m_areaCacheFillTimer;
-  delete m_mapCacheFillTimer;
 
   // signal_maps
   qDeleteAll(m_signalMaps->begin(), m_signalMaps->end());
@@ -106,9 +107,8 @@ void Localizer::emitLocationEstimate()
 {
   QDBusMessage msg = QDBusMessage::createSignal("/", "com.nokia.moled", "LocationEstimate");
   msg << currentEstimateSpace;
-  msg << networkConfigurationManager->isOnline();
-
-  QDBusConnection::sessionBus().send(msg);
+  QDBusConnection::systemBus().send(msg);
+  qDebug () << "emitLocationEstimate on dbus" << currentEstimateSpace;
 }
 #else
 void Localizer::emitLocationEstimate()
@@ -116,15 +116,31 @@ void Localizer::emitLocationEstimate()
 }
 #endif
 
-void Localizer::localize(int scanQueueSize)
+void Localizer::localize(const int scanQueueSize)
 {
   m_stats->addApPerScanCount(m_fingerprint->size());
   m_stats->receivedScan();
 
+  /*
+  // for debugging
+  QMapIterator<QString,AreaDesc*> i (*m_signalMaps);
+  while (i.hasNext()) {
+    i.next();
+    QString area = i.key();
+    AreaDesc *desc = i.value();
+    if (desc != NULL) {
+      qDebug () << "new map loop C area " << desc->lastModifiedTime();      
+    } else {
+      qDebug () << "new map loop C area " << area << " null";
+    }
+  }
+  */
+
+
   // now that we have a scan, start the first network timer
   if (m_firstAddScan) {
-    m_areaCacheFillTimer->stop();
-    m_areaCacheFillTimer->start(AREA_FILL_PERIOD_SHORT);
+    m_areaCacheFillTimer.stop();
+    m_areaCacheFillTimer.start(AREA_FILL_PERIOD_SHORT);
     m_firstAddScan = false;
   }
 
@@ -176,6 +192,7 @@ void Localizer::localize(int scanQueueSize)
 
   if (potentialAreas.isEmpty()) {
     qDebug() << "eliminated all areas";
+    emitNewLocationEstimate(unknownSpace, -1);
     return;
   }
 
@@ -189,11 +206,14 @@ void Localizer::localize(int scanQueueSize)
   QString maxCSpace;
   int totalSpaceCount = 0;
 
+  qDebug () << "localizing on" << potentialAreas.size() << "areas";
+
   while (j.hasNext()) {
     QString areaName = j.next();
     AreaDesc *area = m_signalMaps->value(areaName);
     QMap<QString,SpaceDesc*> *spaces = area->spaces();
     QMapIterator<QString,SpaceDesc*> k (*spaces);
+    qDebug () << "about to touch" << areaName;
     area->touch();
 
     while (k.hasNext()) {
@@ -220,6 +240,7 @@ void Localizer::localize(int scanQueueSize)
 
   int potentialSpacesSize = potentialSpaces.size();
 
+  // note that scanQueueSize is 0 if we have been called by a new signal map download
   qDebug() << "spaceCount=" << potentialSpacesSize
            << "pct=" << potentialSpacesSize/(double)totalSpaceCount
            << "scanCount=" << scanQueueSize;
@@ -236,6 +257,7 @@ void Localizer::makeOverlapEstimateWithHist(QMap<QString,SpaceDesc*> &ps, int pe
   QString maxSpace;
   double maxScore = -5.;
 
+  m_stats->clearRankEntries();
   QMapIterator<QString,SpaceDesc*> it (ps);
 
   while (it.hasNext()) {
@@ -249,6 +271,9 @@ void Localizer::makeOverlapEstimateWithHist(QMap<QString,SpaceDesc*> &ps, int pe
       maxScore = score;
       maxSpace = it.key();
     }
+
+    m_stats->addRankEntry(it.key(), score);
+
   }
 
   if (penalty == 4) {
@@ -256,39 +281,39 @@ void Localizer::makeOverlapEstimateWithHist(QMap<QString,SpaceDesc*> &ps, int pe
       emitNewLocationEstimate(maxSpace, maxScore);
 
     m_stats->addOverlapMax(maxScore);
-    m_stats->emitStatistics();
   }
 
-  qDebug() <<"=== WEGO ESTIMATE USING HISTOGRAM (KERNEL) ===";
-  qDebug() <<"Wego location estimate using kernel histogram: "
+  qDebug() <<"=== MAO ESTIMATE USING HISTOGRAM (KERNEL) ==="
            << "penalty " << penalty
-           << maxSpace << maxScore;
+	   << "estimate" << maxSpace << maxScore;
 
 }
 
 // TODO add coverage estimate, as int? suggested space?
 void Localizer::emitNewLocationEstimate(QString estimatedSpaceName, double estimatedSpaceScore)
 {
-  qDebug() << "emit_new_location_estimate " << estimatedSpaceName
-           << " score=" << estimatedSpaceScore;
+  qDebug() << "emitNewLocationEstimate" << estimatedSpaceName
+           << "score" << estimatedSpaceScore
+	   << "currentEstimateSpace" << currentEstimateSpace;
 
   currentEstimateScore = estimatedSpaceScore;
   if (currentEstimateSpace != estimatedSpaceName) {
     currentEstimateSpace = estimatedSpaceName;
     m_stats->emittedNewLocation();
     emitLocationEstimate();
+    m_stats->emitStatistics();
     emitEstimateToMonitors();
   }
-
 }
 
 void Localizer::queryCurrentEstimate(QString &country, QString &region,
                                      QString &city, QString &area,
-                                     QString &space, QString &tags, double &score)
+                                     QString &space, QString &tags, 
+				     int &floor, double &score)
 {
   QStringList list = currentEstimateSpace.split("/");
 
-  if (currentEstimateSpace == unknownSpace || list.size() != 5) {
+  if (currentEstimateSpace == unknownSpace || list.size() != 6) {
     if (currentEstimateSpace != unknownSpace) {
       qWarning() << "queryCurrentEstimate list " << list.size()
                  << "est" << currentEstimateSpace;
@@ -301,12 +326,14 @@ void Localizer::queryCurrentEstimate(QString &country, QString &region,
     space = unknownSpace;
     tags = "";
     score = -1;
+    floor = 0;
   } else {
     country = list.at(0);
     region = list.at(1);
     city = list.at(2);
     area = list.at(3);
-    space = list.at(4);
+    floor = list.at(4).toInt();
+    space = list.at(5);
     // tags not implemented yet
     tags = "";
     score = currentEstimateScore;
@@ -315,23 +342,25 @@ void Localizer::queryCurrentEstimate(QString &country, QString &region,
 
 void Localizer::fillAreaCache()
 {
-  m_areaCacheFillTimer->stop();
-  m_areaCacheFillTimer->start(AREA_FILL_PERIOD);
+  m_areaCacheFillTimer.stop();
+  m_areaCacheFillTimer.start(AREA_FILL_PERIOD);
 
   if (!networkConfigurationManager->isOnline()) {
     qDebug() << "aborting fill_area_cache because offline";
     return;
   }
 
-  QString lMac = loudMac();
+  QString lMacA, lMacB;
+  loudMac(lMacA, lMacB);
 
-  if (!lMac.isEmpty()) {
+  if (!lMacA.isEmpty() || !lMacB.isEmpty()) {
 
     QNetworkRequest request;
     QString urlStr = mapServerURL;
     QUrl url(urlStr.append("/getAreas"));
 
-    url.addQueryItem("mac", lMac);
+    url.addQueryItem("mac", lMacA);
+    url.addQueryItem("mac2", lMacB);
     request.setUrl(url);
 
     qDebug() << "req " << url;
@@ -405,9 +434,10 @@ void Localizer::macToAreasResponse()
     length = m_macReply->readLine(buffer, bufferSize);
   }
 
-  if (newAreaFound) {
-    m_mapCacheFillTimer->stop();
-    m_mapCacheFillTimer->start(MAP_FILL_PERIOD_SHORT);
+  if (newAreaFound || m_forceMapCacheUpdate) {
+    m_mapCacheFillTimer.stop();
+    m_mapCacheFillTimer.start(MAP_FILL_PERIOD_SHORT);
+    m_forceMapCacheUpdate = false;
   }
 
 }
@@ -424,17 +454,19 @@ void Localizer::touch(QString areaName)
     m_signalMaps->insert(areaName, 0);
   }
 
+  // here we do want to potentially delay the fetch, to give the server time
+  // to do its work updating the signal map
   if (networkConfigurationManager->isOnline()) {
-    m_mapCacheFillTimer->stop();
-    m_mapCacheFillTimer->start(MAP_FILL_PERIOD_SOON);
+    m_mapCacheFillTimer.stop();
+    m_mapCacheFillTimer.start(MAP_FILL_PERIOD_SOON);
   }
 }
 
 void Localizer::fillMapCache()
 {
   qDebug() << "fill_map_cache period " << MAP_FILL_PERIOD;
-  m_mapCacheFillTimer->stop();
-  m_mapCacheFillTimer->start(MAP_FILL_PERIOD);
+  m_mapCacheFillTimer.stop();
+  m_mapCacheFillTimer.start(MAP_FILL_PERIOD);
 
   if (!networkConfigurationManager->isOnline()) {
     qDebug() << "aborting fill_map_cache because offline";
@@ -458,22 +490,24 @@ void Localizer::fillMapCache()
     i.next();
     AreaDesc *area = i.value();
     if (!area || area->isTouched()) {
-      QDateTime lastUpdateTime;
+      QDateTime lastModifiedTime;
       if (!area) {
-        qDebug() << "last_update: area is null";
+        qDebug() << "last_modified: area is null";
       } else {
-        qDebug() << "last_update " << area->lastUpdateTime()
+        qDebug() << "last_update " << area->lastModifiedTime()
                  << "touch=" << area->isTouched();
-        lastUpdateTime = area->lastUpdateTime();
+        lastModifiedTime = area->lastModifiedTime();
         area->untouch();
       }
 
 
       int version = -1;
-      if (!area)
+      if (area) {
+	qDebug () << "setting version from area";
         version = area->mapVersion();
+      }
 
-      enqueueAreaMapRequest(i.key(), lastUpdateTime);
+      enqueueAreaMapRequest(i.key(), lastModifiedTime);
 
     } else if (expireStamp > area->lastAccessTime()) {
       qDebug() << "area expired= " << i.key();
@@ -482,13 +516,13 @@ void Localizer::fillMapCache()
     }
   }
 
-  if (!m_areaMapRequests.isEmpty())
-    issueAreaMapRequest();
+  issueAreaMapRequest();
 
 }
 
-void Localizer::enqueueAreaMapRequest(QString areaName, QDateTime lastUpdateTime)
+void Localizer::enqueueAreaMapRequest(QString areaName, QDateTime lastModifiedTime)
 {
+  qDebug() << "enqueueAreaMapRequest " << areaName << lastModifiedTime;
     QNetworkRequest request;
     QString areaUrl(staticServerURL);
     areaUrl.append("/map/");
@@ -500,9 +534,9 @@ void Localizer::enqueueAreaMapRequest(QString areaName, QDateTime lastUpdateTime
     request.setUrl(areaUrl);
     setNetworkRequestHeaders(request);
 
-    if (!lastUpdateTime.isNull()) {
-      request.setRawHeader("If-Modified-Since", lastUpdateTime.toString().toAscii());
-      qDebug() << "if-modified-since" << lastUpdateTime;
+    if (!lastModifiedTime.isNull() && lastModifiedTime.isValid()) {
+      request.setRawHeader("If-Modified-Since", lastModifiedTime.toString().toAscii());
+      qDebug() << "if-modified-since" << lastModifiedTime;
     }
 
     m_areaMapRequests.enqueue(request);
@@ -523,7 +557,7 @@ void Localizer::requestAreaMap(QNetworkRequest request)
 
   if (!m_areaMapReplyInFlight) {
     m_areaMapReply = networkAccessManager->get(request);
-    qDebug() << "area_map_reply creation " << m_areaMapReply;
+    qDebug() << "area_map_reply creation " << m_areaMapReply->url().path();
     connect(m_areaMapReply, SIGNAL(finished()), SLOT(handleAreaMapResponseAndReissue()));
     m_areaMapReplyInFlight = true;
   } else {
@@ -545,21 +579,36 @@ void Localizer::handleAreaMapResponse()
   qDebug() << "area_map_response";
   qDebug() << "area_map_reply" << m_areaMapReply;
 
+  /*
+  // for debugging
+  QMapIterator<QString,AreaDesc*> i (*m_signalMaps);
+  while (i.hasNext()) {
+    i.next();
+    QString area = i.key();
+    AreaDesc *desc = i.value();
+    if (desc != NULL) {
+      qDebug () << "new map loop A area " << desc->lastModifiedTime();      
+    } else {
+      qDebug () << "new map loop A area " << area << " null";
+    }
+  }
+  */
+
   m_areaMapReply->deleteLater();
   m_areaMapReplyInFlight = false;
+
+  QString path = m_areaMapReply->url().path();
 
   // handle 304 not modified case
   QVariant httpStatus = m_areaMapReply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
   if (!httpStatus.isNull()) {
     int status = httpStatus.toInt();
     if (status == 304) {
-      qDebug() << "area_map_response: not modified";
+      qDebug() << "area_map_response: not modified path" << path;
       m_stats->addNetworkSuccessRate(1);
       return;
     }
   }
-
-  QString path = m_areaMapReply->url().path();
 
   path.remove(QRegExp("^.*/map/"));
 
@@ -567,11 +616,15 @@ void Localizer::handleAreaMapResponse()
   path.remove(path.length() - 8, path.length() - 1);
 
   if (m_areaMapReply->error() != QNetworkReply::NoError) {
-    qWarning() << "area_map_response request failed "
-               << m_areaMapReply->errorString()
-               << " url " << m_areaMapReply->url();
+    qDebug() << "area_map_response request failed "
+	     << m_areaMapReply->errorString()
+	     << "errorNo" << m_areaMapReply->error()
+	     << " url " << m_areaMapReply->url();
 
-    if (m_areaMapReply->error() == QNetworkReply::ContentNotFoundError) {
+    // AWS returns 202 when it has been deleted
+    if (m_areaMapReply->error() == QNetworkReply::ContentNotFoundError ||
+	m_areaMapReply->error() == QNetworkReply::ContentOperationNotPermittedError ||
+	m_areaMapReply->error() == QNetworkReply::ContentAccessDenied) {
       // we delete the in-memory space.
       // Note that this will wipe out an in-memory bind, however this is the correct behavior.
       // This only happens if the remote fp server exists but does not have the file.
@@ -599,13 +652,14 @@ void Localizer::handleAreaMapResponse()
   // at cost of two RTs
   QDateTime lastModified = (m_areaMapReply->header(QNetworkRequest::LastModifiedHeader)).toDateTime();
 
+
   // Can be null if we've only inserted the key and not the value
   if (m_signalMaps->contains(path) && m_signalMaps->value(path)) {
-    qDebug() << "testing age of new map vs old";
     AreaDesc *existingAreaDesc = m_signalMaps->value(path);
+    qDebug() << "testing age of new map vs old "
+	     << "existing " << existingAreaDesc->lastModifiedTime() 
+	     << "new " << lastModified;
     if (existingAreaDesc->lastModifiedTime() == lastModified) {
-      // note when we last checked this area desc
-      existingAreaDesc->setLastUpdateTime();
       qDebug() << "skipping map update because unchanged";
       return;
     }
@@ -619,16 +673,33 @@ void Localizer::handleAreaMapResponse()
   if (!parseMap(mapAsByteArray, lastModified))
     qWarning() << "parseMap error " << path;
 
+  /*
+  // for debugging
+  QMapIterator<QString,AreaDesc*> i (*m_signalMaps);
+  while (i.hasNext()) {
+    i.next();
+    QString area = i.key();
+    AreaDesc *desc = i.value();
+    if (desc != NULL) {
+      qDebug () << "new map loop B area " << desc->lastModifiedTime();      
+    } else {
+      qDebug () << "new map loop B area " << area << " null";
+    }
+  }
+  */
+
 }
 
 
 // Pick a "loud" mac at random.
 // If no loud macs exist, just pick any one.
 // Idea is to make selection of areas non-deterministic.
-QString Localizer::loudMac()
+
+// The power of two choices...
+void Localizer::loudMac(QString &loudMacA, QString &loudMacB)
 {
   if (m_fingerprint->isEmpty()) {
-    return "";
+    return;
   }
 
   const int minRssi = -80;
@@ -643,26 +714,27 @@ QString Localizer::loudMac()
     }
   }
 
-
   if (!loudMacs.isEmpty()) {
     int loudMacIndex = randInt(0, loudMacs.size() - 1);
-    return loudMacs[loudMacIndex];
+    loudMacA = loudMacs[loudMacIndex];
+    loudMacIndex = randInt(0, loudMacs.size() - 1);
+    loudMacB = loudMacs[loudMacIndex];
   } else {
-    int loudMacIndex = randInt(0, m_fingerprint->size() - 1);
+    int loudMacIndexA = randInt(0, m_fingerprint->size() - 1);
+    int loudMacIndexB = randInt(0, m_fingerprint->size() - 1);
 
     QMapIterator<QString,APDesc*> i (*m_fingerprint);
     int index = 0;
     while (i.hasNext()) {
       i.next();
-      if (index == loudMacIndex)
-        return i.key();
-
+      if (index == loudMacIndexA)
+        loudMacA = i.key();
+      if (index == loudMacIndexB)
+        loudMacB = i.key();
       ++index;
     }
   }
 
-  qFatal("loud mac not reached");
-  return "";
 }
 
 double Localizer::macOverlapCoefficient(const QMap<QString,APDesc*> *macsA, const QList<QString> &macsB)
@@ -721,6 +793,31 @@ void Localizer::bind(QString fqArea, QString fqSpace)
   qDebug() << "fingerprint area count" << m_fingerprint->size();
 }
 
+// returns true if space existed
+bool Localizer::removeSpace(QString fqArea, QString fqSpace)
+{
+  qDebug() << "in-memory remove" << fqSpace;
+
+  if (!m_signalMaps->contains(fqArea)) {
+    qDebug () << "removeSpace did not find area" << fqArea;
+    return false;
+  }
+  AreaDesc *areaDesc = m_signalMaps->value(fqArea);
+
+  QMap<QString,SpaceDesc*> *spaces = areaDesc->spaces();
+  if (!spaces->contains(fqSpace)) {
+    qDebug () << "removeSpace did not find space" << fqArea;
+    return false;
+  }
+
+  spaces->remove(fqSpace);
+  if (spaces->size() == 0) {
+    qDebug () << "no spaces left in this area" << fqArea;
+    m_signalMaps->remove(fqArea);
+  }
+  return true;
+}
+
 void Localizer::addMonitor(QTcpSocket *socket)
 {
   qDebug() << "Localizer::addMonitor";
@@ -777,12 +874,26 @@ void Localizer::estimateAsMap(QVariantMap &placeMap)
 {
   QString country, region, city, area, space, tags;
   double score;
-  queryCurrentEstimate(country, region, city, area, space, tags, score);
+  int floor;
+  queryCurrentEstimate(country, region, city, area, space, tags, floor, score);
   placeMap.insert("country", country);
   placeMap.insert("region", region);
   placeMap.insert("city", city);
   placeMap.insert("area", area);
   placeMap.insert("space", space);
   placeMap.insert("tags", tags);
+  placeMap.insert("floor", floor);
   placeMap.insert("score", score);
 }
+
+/*
+void Localizer::dumpSignalMaps () {
+  QMapIterator<QString,AreaDesc*> i (*m_signalMaps);
+  while (i.hasNext()) {
+    i.next();
+    QString area = i.key();
+    AreaDesc *desc = i.value();
+    
+  }
+}
+*/

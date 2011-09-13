@@ -44,11 +44,13 @@ UpdatingModel::UpdatingModel(QObject *parent)
 
 void UpdatingModel::initialize()
 {
-  online = true;
   timer = new AdjustingTimer(this);
   connect(timer, SIGNAL(timeout()), SLOT(startRefill()));
   url2listCache = new QMap<QUrl,QList<QString>*> () ;
   dirty = true;
+  connect (networkConfigurationManager, SIGNAL(onlineStateChanged(bool)),
+	   this, SLOT(onlineStateChanged(bool)));
+
 }
 
 void UpdatingModel::setUrl(const QUrl& _url)
@@ -92,6 +94,17 @@ void UpdatingModel::startRefill()
   qDebug() << "startRefill " << url;
   timer->stop();
 
+  if (!networkConfigurationManager->isOnline()) {
+    qDebug() << "startRefill doing nothing because offline";
+    return;
+  }
+
+  if (!url.isValid()) {
+    qDebug() << "not refreshing invalid URL";
+    timer->start (60000);
+    return;
+  }
+
   QNetworkRequest request;
   request.setUrl(url);
   qDebug() << "url " << url << "net " << networkAccessManager;
@@ -109,6 +122,7 @@ void UpdatingFileModel::finishRefill()
   }
 }
 
+/*
 void UpdatingModel::emitNetworkState(bool _online)
 {
   if (online != _online) {
@@ -116,6 +130,7 @@ void UpdatingModel::emitNetworkState(bool _online)
     networkChange(online);
   }
 }
+*/
 
 // assumes models are not very long, as we just do a linear insertion
 void UpdatingModel::finishRefill()
@@ -126,7 +141,7 @@ void UpdatingModel::finishRefill()
   if (reply->error() != QNetworkReply::NoError) {
     qWarning() << "finishRefill request failed " << reply->errorString();
     timer->restart(false);
-    emitNetworkState(false);
+    //emitNetworkState(false);
     return;
   }
 
@@ -178,7 +193,18 @@ void UpdatingModel::finishRefill()
     timer->restart(false);
   }
 
-  emitNetworkState(true);
+  //emitNetworkState(true);
+
+}
+
+void UpdatingModel::onlineStateChanged(bool _online)
+{
+  qDebug() << "Model network status changed " << _online;
+  if (_online) {
+    timer->start(1000);
+  } else {
+    timer->stop();
+  }
 
 }
 

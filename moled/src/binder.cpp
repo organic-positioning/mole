@@ -67,8 +67,21 @@ Binder::Binder(QObject *parent, Localizer *_localizer, ScanQueue *_scanQueue)
   delete device;
 
 #ifdef USE_MOLE_DBUS
+  qDebug () << "Binder listening on D-Bus";
+  QDBusConnection::systemBus().registerObject("/", this);
+  QDBusConnection::systemBus().connect
+    (QString(), QString(), 
+     "com.nokia.moled", "Bind", this, SLOT
+     (handleBindRequest (QString,QString,QString,QString,QString,
+			 int, QString,QString)));
+  /*
   QDBusConnection::sessionBus().registerObject("/", this);
-  QDBusConnection::sessionBus().connect(QString(), QString(), "com.nokia.moled", "Bind", this, SLOT(handleBindRequest(QString,QString,QString,QString,QString,QString)));
+  QDBusConnection::sessionBus().connect
+    (QString(), QString(), 
+     "com.nokia.moled", "Bind", this, SLOT
+     (handleBindRequest (QString,QString,QString,QString,QString,
+			 int, QString,QString)));
+  */
 #endif
 
   connect(&m_xmitBindTimer, SIGNAL(timeout()), this, SLOT(xmitBind()));
@@ -86,12 +99,22 @@ Binder::~Binder()
   delete m_bindsDir;
 }
 
-QString Binder::handleBindRequest(QString country, QString region,
+QString Binder::handleBindRequest(QString source, QString country, 
+				  QString region,
                                   QString city, QString area,
-                                  QString space, QString tags)
+                                  int floor, QString space, QString tags)
 {
   QVariantMap bindMap;
   const int MAX_NAME_LENGTH = 80;
+
+  source = source.toLower();
+  qDebug () << "source " << source;
+  if (source == "add" || source == "fix" || source == "validate" || 
+      source == "remove" || source == "auto") {
+    // nop
+  } else {
+    return "Error: invalid bind source";
+  }
 
  // TODO validate params here
   if (country.contains("/") || region.contains("/") || city.contains("/") ||
@@ -117,7 +140,7 @@ QString Binder::handleBindRequest(QString country, QString region,
     return "Error: tags too long";
   }
 
-  if (space.isEmpty()) {
+  if (source != "validate" && space.isEmpty()) {
     return "Error: space name is manditory";
   }
 
@@ -128,10 +151,16 @@ QString Binder::handleBindRequest(QString country, QString region,
       QString spaceIgnored;
       QString tagsIgnored;
       double scoreIgnored;
-      m_localizer->queryCurrentEstimate(country, region, city, area, spaceIgnored, tagsIgnored, scoreIgnored);
+
+      m_localizer->queryCurrentEstimate(country, region, city, area, spaceIgnored, tagsIgnored, floor, scoreIgnored);
       if (country == unknownSpace) {
         return "Error: cannot perform relative bind because there is no current estimate";
       }
+      // we are willing to fill in the whole thing if we are validating
+      if (source == "validate") {
+	space = spaceIgnored;
+      }
+
     } else {
       return "Error: missing parts of full space name but not relative bind";
     }
@@ -145,6 +174,8 @@ QString Binder::handleBindRequest(QString country, QString region,
   fullSpaceName.append(city);
   fullSpaceName.append("/");
   fullSpaceName.append(area);
+  fullSpaceName.append("/");
+  fullSpaceName.append(QString::number(floor));
   QString areaName = fullSpaceName;
   fullSpaceName.append("/");
   fullSpaceName.append(space);
@@ -165,15 +196,22 @@ QString Binder::handleBindRequest(QString country, QString region,
   bindMap.insert("device_model", m_deviceDesc);
   bindMap.insert("wifi_model", m_wifiDesc);
 
-  QVariantList bindScansList;
-  m_scanQueue->serialize(m_oldestValidScan, bindScansList);
-
-  m_oldestValidScan = QDateTime::currentDateTime();
-
-  bindMap.insert("ap_scans", bindScansList);
+  if (source == "remove") {
+    bool found = m_localizer->removeSpace(areaName, fullSpaceName);
+    if (!found) {
+      return "Error: cannot remove unknown space";
+    }
+  } else {
+    // do not send scans when removing
+    QVariantList bindScansList;
+    m_scanQueue->serialize(m_oldestValidScan, bindScansList);
+    m_oldestValidScan = QDateTime::currentDateTime();
+    bindMap.insert("ap_scans", bindScansList);
+  }
 
   bindMap.insert("tags", tags);
   bindMap.insert("description", "none");
+  bindMap.insert("source", source);
 
   // create a Serializer instance
   QJson::Serializer serializer;
@@ -203,7 +241,10 @@ QString Binder::handleBindRequest(QString country, QString region,
   stream << serialized;
   file.close();
 
-  m_localizer->bind(areaName, fullSpaceName);
+  // apply bind to local in-memory cache
+  if (source == "fix" || source == "add") {
+    m_localizer->bind(areaName, fullSpaceName);
+  }
 
   m_xmitBindTimer.start(2500);
 

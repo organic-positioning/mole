@@ -15,8 +15,9 @@
  * limitations under the License.
  */
 
-#include "core.h"
+#include <unistd.h>
 
+#include "core.h"
 #include "binder.h"
 #include "localizer.h"
 #include "localServer.h"
@@ -35,8 +36,9 @@
 
 const QString pidfile = "/var/run/mole.pid";
 
-void daemonize();
+int daemonize();
 void usage();
+void version();
 
 Core::Core(int argc, char *argv[])
   : QCoreApplication(argc, argv)
@@ -60,6 +62,8 @@ Core::Core(int argc, char *argv[])
     QString arg = argsIter.next();
     if (arg == "-h") {
       usage();
+    } else if (arg == "-v") {
+      version();
     } else if (arg == "-d") {
         debug = true;
     } else if (arg == "-n") {
@@ -112,6 +116,12 @@ Core::Core(int argc, char *argv[])
     rootPathname = settings->value("root_path").toString();
   }
 
+  if (isDaemon) {
+    daemonize();
+  } else {
+    qDebug() << "not daemonizing";
+  }
+
   //////////////////////////////////////////////////////////
   // check a few things before daemonizing
   initCommon(this, logFilename);
@@ -125,12 +135,6 @@ Core::Core(int argc, char *argv[])
              << "map_server_url=" << mapServerURL
              << "fingerprint_server_url=" << staticServerURL
              << "rootPath=" << rootPathname;
-
-  if (isDaemon) {
-    daemonize();
-  } else {
-    qDebug() << "not daemonizing";
-  }
 
   // start create map directory
   if (!rootDir.exists("map")) {
@@ -198,45 +202,78 @@ int Core::run()
 
 int main(int argc, char *argv[])
 {
-  qDebug("Mole Daemon Starting");
-
   Core *app = new Core(argc, argv);
   return app->run();
 }
 
-void daemonize()
+int daemonize()
 {
-    if (::getppid() == 1)
-      return;  // Already a daemon if owned by init
 
-    int i = fork();
-    if (i < 0) exit(1); // Fork error
-    if (i > 0) exit(0); // Parent exits
+  //#ifdef Q_WS_MAEMO_5
+  //  if (daemon(1, 0)) {
+  //    qFatal ("Cannot daemonize");
+  //  }
+  //#else
 
-    ::setsid();  // Create a new process group
+  if (::getppid() == 1) {
+    qWarning ("Already a daemon because owned by init");
+    return 0;  // Already a daemon if owned by init
+  }
 
-    ::close(0);
-    ::open("/dev/null", O_RDONLY);  // Stdin
+  int i = fork();
+  if (i < 0) exit(1); // Fork error
+  if (i > 0) exit(0); // Parent exits
 
-    int lfp = ::open(qPrintable(pidfile), O_RDWR|O_CREAT, 0640);
-    if (lfp < 0)
-      qFatal("Cannot open pidfile %s\n", qPrintable(pidfile));
+  if (::setsid() == -1) { // Create a new process group
+    qFatal ("setsid failed");
+    return -1;
+  }
 
-    if (lockf(lfp, F_TLOCK, 0) < 0)
-      qFatal("Can't get a lock on %s - another instance may be running\n", qPrintable(pidfile));
-    QByteArray ba = QByteArray::number(::getpid());
-    ::write(lfp, ba.constData(), ba.size());
+  (void)chdir("/");
+  //#endif
 
-    ::signal(SIGCHLD,SIG_IGN);
-    ::signal(SIGTSTP,SIG_IGN);
-    ::signal(SIGTTOU,SIG_IGN);
-    ::signal(SIGTTIN,SIG_IGN);
+  int lfp = ::open(qPrintable(pidfile), O_RDWR|O_CREAT, 0640);
+  if (lfp < 0)
+    qFatal("Cannot open pidfile %s\n", qPrintable(pidfile));
+
+  if (lockf(lfp, F_TLOCK, 0) < 0)
+    qFatal("Can't get a lock on %s - another instance may be running\n", qPrintable(pidfile));
+  QByteArray ba = QByteArray::number(::getpid());
+  ::write(lfp, ba.constData(), ba.size());
+
+  //#ifdef Q_WS_MAEMO_5
+  // already closed above
+  //#else
+  int fd;
+  if ((fd = open("/dev/null", O_RDWR, 0)) != -1) {
+    (void)dup2(fd, STDIN_FILENO);
+    (void)dup2(fd, STDOUT_FILENO);
+    (void)dup2(fd, STDERR_FILENO);
+    if (fd > 2)
+      (void)close (fd);
+  }
+
+  ::signal(SIGCHLD,SIG_IGN);
+  ::signal(SIGTSTP,SIG_IGN);
+  ::signal(SIGTTOU,SIG_IGN);
+  ::signal(SIGTTIN,SIG_IGN);
+  //#endif
+
+  return 0;
+
+}
+
+void version()
+{
+  qCritical("moled version %s\n", MOLE_VERSION);
+  exit(0);
 }
 
 void usage()
 {
   qCritical() << "moled usage\n"
               << "-h print usage\n"
+              << "-v version\n"
               << "-d debug\n"
               << "-n run in foreground\n"
               << "-s map server URL [" << DEFAULT_MAP_SERVER_URL << "] \n"

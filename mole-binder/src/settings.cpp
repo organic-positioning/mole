@@ -55,7 +55,7 @@ void Settings::buildUI()
 
   m_cookie = new QLineEdit(this);
   m_cookie->setMaxLength(maxCookieLength);
-  m_cookie->setText(get_user_cookie());
+  m_cookie->setText(getUserCookie());
   m_cookie->setEnabled(false);
 
   QPushButton *randomCookieButton = new QPushButton(tr("Regenerate"), this);
@@ -77,7 +77,7 @@ void Settings::buildUI()
 
 void Settings::onRandomCookieClicked()
 {
-  reset_user_cookie();
+  resetUserCookie();
   m_cookie->setText(QString(settings->value("cookie").toString()));
 }
 

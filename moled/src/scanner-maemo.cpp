@@ -21,6 +21,8 @@
 #include "scan-maemo.h"
 #include "scanQueue.h"
 
+#include <QDBusMessage>
+
 #include <icd/dbus_api.h>
 
 Scanner::Scanner(QObject *parent, ScanQueue *scanQueue, Binder *binder, Mode scanMode)

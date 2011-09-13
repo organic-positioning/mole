@@ -18,7 +18,7 @@
 #include "places.h"
 
 // yes, this could be done recursively...
-QVector<QString> places(5);
+QVector<QString> places(6);
 
 LineValidator::LineValidator(QObject *parent)
   : QRegExpValidator(parent)
@@ -79,7 +79,7 @@ PlaceModel::PlaceModel(int _index, QObject *parent)
   , m_index(_index)
   , m_settingsName("places-")
 {
-  qDebug() << "creating area model";
+  qDebug() << "creating area model index" << _index;
 
   m_settingsName.append(QString::number(m_index));
 
@@ -91,9 +91,14 @@ PlaceModel::PlaceModel(int _index, QObject *parent)
     }
   }
 
+  qDebug() << "A";
+
   if (settings->contains(m_settingsName)) {
+    qDebug() << "B";
     places[m_index] = settings->value(m_settingsName).toString();
+
   } else {
+    qDebug() << "C";
     places[m_index] = "";
   }
 
@@ -115,12 +120,12 @@ void PlaceModel::setUrl()
     if (places[i].isEmpty()) {
       qDebug() << "places " << m_index << " not setting url "
                << "with empty parent " << i;
-      stop_refill();
+      stopRefill();
       return;
     }
   }
 
-  QString urlStr(mapServerURL);
+  QString urlStr(staticServerURL);
   urlStr.append("/map/");
 
   for (int i = 0; i < m_index; ++i) {
@@ -131,7 +136,7 @@ void PlaceModel::setUrl()
 
   qDebug() << "place url " << urlStr;
 
-  UpdatingModel::set_url(QUrl(urlStr));
+  UpdatingModel::setUrl(QUrl(urlStr));
 }
 
 void PlaceModel::onTextChanged(QString text)
