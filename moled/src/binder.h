@@ -49,7 +49,6 @@ class Binder : public QObject
   void onlineStateChanged(bool);
 
  private:
-  bool m_inFlight;
   QDir *m_bindsDir;
   QString m_bindDirName;
 
@@ -58,8 +57,6 @@ class Binder : public QObject
 
   QTimer m_xmitBindTimer;
   QDateTime m_oldestValidScan;
-
-  QNetworkReply *m_reply;
 
   QMap<QString,QString> m_bfn2area;
   Localizer *m_localizer;

@@ -213,15 +213,11 @@ private:
   bool m_firstAddScan;
   bool m_forceMapCacheUpdate;
 
-  bool m_areaMapReplyInFlight;
-  bool m_macReplyInFlight;
   QDir *m_mapRoot;
   Overlap *m_overlap;
-  //int m_networkSuccessLevel;
   LocalizerStats *m_stats;
   QSet<QTcpSocket*> m_monitoringSockets;
   double currentEstimateScore;
-  //int m_areaFillPeriod;
 
   QTimer m_areaCacheFillTimer;
   QTimer m_mapCacheFillTimer;
@@ -231,8 +227,6 @@ private:
   QString currentEstimateSpace;
 
   QQueue<QNetworkRequest> m_areaMapRequests;
-  QNetworkReply *m_areaMapReply;
-  QNetworkReply *m_macReply;
 
   QMap<QString,AreaDesc*> *m_signalMaps;
 
