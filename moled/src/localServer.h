@@ -44,6 +44,9 @@ class LocalServer : public QTcpServer
   QVariantMap handleQuery(QVariantMap &params);
   QVariantMap handleMonitor(QVariantMap &params);
 
+  bool httpToContent (QByteArray &request, bool &ok);
+  void contentToHttp (QByteArray &reply, bool ok);
+
  private slots:
   void handleRequest();
 

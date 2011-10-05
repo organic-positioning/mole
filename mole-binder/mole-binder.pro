@@ -45,13 +45,13 @@ SOURCES += \
     ../common/util.cpp \
     ../common/timer.cpp
 
-FORMS    += \
-    src/binderui.ui \
-    src/statisticswidget.ui \
-    src/bindlocationwidget.ui
+#FORMS    += \
+#    src/binderui.ui \
+#    src/statisticswidget.ui \
+#    src/bindlocationwidget.ui
 
-RESOURCES += \
-    mole-binder.qrc
+# RESOURCES += \
+#    mole-binder.qrc
 
 unix:!symbian {
     isEmpty(PREFIX) {
