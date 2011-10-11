@@ -30,7 +30,6 @@ QTM_USE_NAMESPACE
 
 Binder::Binder(QObject *parent, Localizer *_localizer, ScanQueue *_scanQueue)
   : QObject(parent)
-  , m_inFlight(false)
   , m_localizer(_localizer)
   , m_scanQueue(_scanQueue)
 {
@@ -86,8 +85,10 @@ Binder::Binder(QObject *parent, Localizer *_localizer, ScanQueue *_scanQueue)
 
   connect(&m_xmitBindTimer, SIGNAL(timeout()), this, SLOT(xmitBind()));
 
-  if (networkConfigurationManager->isOnline())
+  if (networkConfigurationManager->isOnline()) {
+    qDebug () << "started bind timer m_xmitBindTimer";
     m_xmitBindTimer.start(10000);
+  }
 
   connect(networkConfigurationManager, SIGNAL(onlineStateChanged(bool)), this, SLOT(onlineStateChanged(bool)));
 
@@ -258,10 +259,10 @@ void Binder::xmitBind()
   m_xmitBindTimer.start(10000);
 
   // only send one bind at a time
-  if (m_inFlight) {
-    qDebug() << "waiting to xmit_bind until current is done";
-    return;
-  }
+  //if (m_inFlight) {
+  //qDebug() << "waiting to xmit_bind until current is done";
+  //return;
+  //}
 
   // We seem to need to do this on maemo for the
   // dir listing to be refreshed properly...
@@ -307,10 +308,8 @@ void Binder::xmitBind()
 
   request.setRawHeader("Bind", bindFileName.toAscii());
 
-  m_reply = networkAccessManager->post(request, serialized);
-  connect(m_reply, SIGNAL(finished()), SLOT (handleBindResponse()));
-
-  m_inFlight = true;
+  QNetworkReply *reply = networkAccessManager->post(request, serialized);
+  connect(reply, SIGNAL(finished()), SLOT (handleBindResponse()));
 
   qDebug() << "transmitted bind";
 
@@ -319,19 +318,19 @@ void Binder::xmitBind()
 // response from MOLE server about our bind request
 void Binder::handleBindResponse()
 {
-  m_inFlight = false;
+  QNetworkReply *reply = qobject_cast<QNetworkReply *>(sender());
 
-  if (m_reply->error() != QNetworkReply::NoError) {
+  if (reply->error() != QNetworkReply::NoError) {
     qWarning() << "handle_bind_response request failed "
-               << m_reply->errorString()
-               << " url " << m_reply->url();
+               << reply->errorString()
+               << " url " << reply->url();
     m_xmitBindTimer.stop();
   } else {
     qDebug() << "handle_bind_response request succeeded";
 
     // delete the file that we just transmitted
-    if (m_reply->request().hasRawHeader("Bind")) {
-      QVariant bindFileVar = m_reply->request().rawHeader("Bind");
+    if (reply->request().hasRawHeader("Bind")) {
+      QVariant bindFileVar = reply->request().rawHeader("Bind");
       QString bindFileName = bindFileVar.toString();
 
       qDebug() << "bind file name " << bindFileName;
@@ -351,7 +350,7 @@ void Binder::handleBindResponse()
         m_localizer->touch(areaName);
     }
   }
-  m_reply->deleteLater();
+  reply->deleteLater();
 
 }
 

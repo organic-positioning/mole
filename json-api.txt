@@ -1,0 +1,38 @@
+USING JSON to talk to Mole over a Local Socket
+Updated: July 1 2011
+
+After starting Mole, you can talk with it over a local socket.
+
+Example: start a local instance of moled, running in the foreground,
+in debug mode.
+moled -w -d -n -s http://10.200.200.45:8080 -f http://10.200.200.45
+
+Or, to start it talking to the shared server do:
+moled -w -d -n
+
+The local server is on port 4411.  There are four actions you can
+perform: stats, query, bind, and monitor.  Try to do a query via
+telnet first to make sure everything is working.
+
+$ telnet localhost 4411
+Trying ::1...
+Trying 127.0.0.1...
+Connected to localhost.
+Escape character is '^]'.
+{"action":"query"}          <--- ** What we sent **
+{ "area" : "4 Cambridge Center", "city" : "Cambridge", "country" : "USA", "region" : "Massachusetts", "score" : -0.411044, "space" : "316", "tags" : "" }Connection closed by foreign host.
+
+STATISTICS
+request: {"action":"stats"}
+response: { "Churn" : 104, "LocalizerQueueSize" : 11, "MacsSeenSize" : 34, "NetworkLatency" : 60.8, "NetworkSuccessRate" : 0.872, "OverlapDiff" : 0.0, "OverlapMax" : -0.400831, "PotentialSpaceCount" : 12, "ScanRate" : 10, "TotalAreaCount" : 1 }
+
+BIND
+Can do a bind relative to the current estimate:
+{"action":"bind", "params":{"space":"311"}}
+Or fill in "country" "region" "city" "area" "space" and optionally "tags" to do a fully qualified bind.
+
+MONITOR
+Keeps an open connection and sends new estimate and stats whenever
+there is a change.  Example of receiving two updates:
+request: {"action":"monitor"}
+two responses: { "estimate" : { "area" : "4 Cambridge Center", "city" : "Cambridge", "country" : "USA", "region" : "Massachusetts", "score" : -0.434827, "space" : "320", "tags" : "" }, "stats" : { "Churn" : 0, "LocalizerQueueSize" : 1, "MacsSeenSize" : 43, "NetworkLatency" : 0.0, "NetworkSuccessRate" : 0.8, "OverlapDiff" : 0.0, "OverlapMax" : -0.0869653, "PotentialSpaceCount" : 10, "ScanRate" : 3, "TotalAreaCount" : 1 } }{ "estimate" : { "area" : "4 Cambridge Center", "city" : "Cambridge", "country" : "USA", "region" : "Massachusetts", "score" : -0.420796, "space" : "311", "tags" : "" }, "stats" : { "Churn" : 73, "LocalizerQueueSize" : 8, "MacsSeenSize" : 48, "NetworkLatency" : 99.0, "NetworkSuccessRate" : 0.872, "OverlapDiff" : 0.0, "OverlapMax" : -0.37364, "PotentialSpaceCount" : 10, "ScanRate" : 10, "TotalAreaCount" : 1 } }

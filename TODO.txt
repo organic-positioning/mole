@@ -98,6 +98,10 @@ SPRINT 4:
 
 SPRINT 5: Handling network connectivity changes and longevity
 
++ Switch to github - 1pt
+
+- Install Dorothy's plugin in browser and have it talk to moled.
+
 - On server, change "fix" to "add" when est_location is null.
 
 - GUI changes (holding off on these until new UI is released):
@@ -110,6 +114,12 @@ SPRINT 5: Handling network connectivity changes and longevity
 
 - Reconnecting to network (if you lose connectivity it doesn't come
   back), and changing connectivity may cause crashing - 1pt
+
+- Write INSTALL.txt for client - 1pt
+
+- Look into passive scanning - 3pt
+
+- Look at error log for moled problem: when we do a bind and disconnected, local bind can be discarded (really?) - 1pt
 
 POST-RELEASE
 

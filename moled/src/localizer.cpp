@@ -36,8 +36,6 @@ Localizer::Localizer(QObject *parent)
   : QObject(parent)
   , m_firstAddScan(true)
   , m_forceMapCacheUpdate(true)
-  , m_areaMapReplyInFlight(false)
-  , m_macReplyInFlight(false)
   , m_overlap(new Overlap())
   , m_stats(new LocalizerStats(this))
   , m_fingerprint(new QMap<QString,APDesc*>())
@@ -366,33 +364,25 @@ void Localizer::fillAreaCache()
     qDebug() << "req " << url;
 
     setNetworkRequestHeaders(request);
-
-    if (!m_macReplyInFlight) {
-      m_macReply = networkAccessManager->get(request);
-      qDebug() << "mac_reply creation " << m_macReply;
-      connect(m_macReply, SIGNAL(finished()), SLOT(macToAreasResponse()));
-      m_macReplyInFlight = true;
-    } else {
-      qDebug() << "mac_reply_in_flight: dropping request" << url;
-    }
+    QNetworkReply *reply = networkAccessManager->get(request);
+    connect(reply, SIGNAL(finished()), SLOT(macToAreasResponse()));
   }
 }
 
 void Localizer::macToAreasResponse()
 {
   qDebug() << "mac_to_areas_response";
-  qDebug() << "reply" << m_macReply;
+  QNetworkReply *reply = qobject_cast<QNetworkReply *>(sender());
+  qDebug() << "reply" << reply;
+  reply->deleteLater();
 
-  m_macReplyInFlight = false;
-  m_macReply->deleteLater();
-
-  int elapsed = findReplyLatencyMsec(m_macReply);
+  int elapsed = findReplyLatencyMsec(reply);
   m_stats->addNetworkLatency(elapsed);
 
-  if (m_macReply->error() != QNetworkReply::NoError) {
+  if (reply->error() != QNetworkReply::NoError) {
     qWarning() << "mac_to_areas_response request failed "
-               << m_macReply->errorString()
-               << " url " << m_macReply->url();
+               << reply->errorString()
+               << " url " << reply->url();
     m_stats->addNetworkSuccessRate(0);
     return;
   }
@@ -406,7 +396,7 @@ void Localizer::macToAreasResponse()
   memset(buffer, 0, bufferSize);
   bool newAreaFound = false;
 
-  int length = m_macReply->readLine(buffer, bufferSize);
+  int length = reply->readLine(buffer, bufferSize);
   while (length != -1) {
     QString areaName(buffer);
     areaName = areaName.trimmed();
@@ -431,7 +421,7 @@ void Localizer::macToAreasResponse()
       }
     }
     memset(buffer, 0, bufferSize);
-    length = m_macReply->readLine(buffer, bufferSize);
+    length = reply->readLine(buffer, bufferSize);
   }
 
   if (newAreaFound || m_forceMapCacheUpdate) {
@@ -553,19 +543,11 @@ void Localizer::issueAreaMapRequest()
 
 void Localizer::requestAreaMap(QNetworkRequest request)
 {
-  qDebug() << "requestAreaMap inFlight" << m_areaMapReplyInFlight;
+  qDebug() << "requestAreaMap";
 
-  if (!m_areaMapReplyInFlight) {
-    m_areaMapReply = networkAccessManager->get(request);
-    qDebug() << "area_map_reply creation " << m_areaMapReply->url().path();
-    connect(m_areaMapReply, SIGNAL(finished()), SLOT(handleAreaMapResponseAndReissue()));
-    m_areaMapReplyInFlight = true;
-  } else {
-    // happens if we have no internet access
-    // and the previous request hasn't timed out yet
-    qWarning () << "area_map_reply in flight: dropping request" << request.url();
-  }
-
+  QNetworkReply *reply = networkAccessManager->get(request);
+  qDebug() << "area_map_reply creation " << reply->url().path();
+  connect(reply, SIGNAL(finished()), SLOT(handleAreaMapResponseAndReissue()));
 }
 
 void Localizer::handleAreaMapResponseAndReissue()
@@ -576,8 +558,7 @@ void Localizer::handleAreaMapResponseAndReissue()
 
 void Localizer::handleAreaMapResponse()
 {
-  qDebug() << "area_map_response";
-  qDebug() << "area_map_reply" << m_areaMapReply;
+  qDebug() << "handleAreaMapResponse";
 
   /*
   // for debugging
@@ -593,14 +574,13 @@ void Localizer::handleAreaMapResponse()
     }
   }
   */
+  QNetworkReply *reply = qobject_cast<QNetworkReply *>(sender());
 
-  m_areaMapReply->deleteLater();
-  m_areaMapReplyInFlight = false;
-
-  QString path = m_areaMapReply->url().path();
+  reply->deleteLater();
+  QString path = reply->url().path();
 
   // handle 304 not modified case
-  QVariant httpStatus = m_areaMapReply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
+  QVariant httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
   if (!httpStatus.isNull()) {
     int status = httpStatus.toInt();
     if (status == 304) {
@@ -615,16 +595,16 @@ void Localizer::handleAreaMapResponse()
   // chop off the sig.xml at the end
   path.remove(path.length() - 8, path.length() - 1);
 
-  if (m_areaMapReply->error() != QNetworkReply::NoError) {
+  if (reply->error() != QNetworkReply::NoError) {
     qDebug() << "area_map_response request failed "
-	     << m_areaMapReply->errorString()
-	     << "errorNo" << m_areaMapReply->error()
-	     << " url " << m_areaMapReply->url();
+	     << reply->errorString()
+	     << "errorNo" << reply->error()
+	     << " url " << reply->url();
 
     // AWS returns 202 when it has been deleted
-    if (m_areaMapReply->error() == QNetworkReply::ContentNotFoundError ||
-	m_areaMapReply->error() == QNetworkReply::ContentOperationNotPermittedError ||
-	m_areaMapReply->error() == QNetworkReply::ContentAccessDenied) {
+    if (reply->error() == QNetworkReply::ContentNotFoundError ||
+	reply->error() == QNetworkReply::ContentOperationNotPermittedError ||
+	reply->error() == QNetworkReply::ContentAccessDenied) {
       // we delete the in-memory space.
       // Note that this will wipe out an in-memory bind, however this is the correct behavior.
       // This only happens if the remote fp server exists but does not have the file.
@@ -650,7 +630,7 @@ void Localizer::handleAreaMapResponse()
   // pre-empt any parsing if we've already got the most recent
   // This could be made more effecient with a 'head'
   // at cost of two RTs
-  QDateTime lastModified = (m_areaMapReply->header(QNetworkRequest::LastModifiedHeader)).toDateTime();
+  QDateTime lastModified = (reply->header(QNetworkRequest::LastModifiedHeader)).toDateTime();
 
 
   // Can be null if we've only inserted the key and not the value
@@ -666,7 +646,7 @@ void Localizer::handleAreaMapResponse()
   }
 
   // TODO sanity check on the response
-  QByteArray mapAsByteArray = m_areaMapReply->readAll();
+  QByteArray mapAsByteArray = reply->readAll();
 
   saveMap(path, mapAsByteArray);
 

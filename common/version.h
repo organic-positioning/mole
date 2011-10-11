@@ -18,6 +18,6 @@
 #ifndef MOLE_VERSION_H_
 #define MOLE_VERSION_H_
 
-#define MOLE_VERSION "0.5.6"
+#define MOLE_VERSION "0.5.7"
 
 #endif /* MOLE_VERSION_H_ */

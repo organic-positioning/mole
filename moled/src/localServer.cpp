@@ -66,9 +66,18 @@ void LocalServer::handleRequest()
   QByteArray reply;
   if (socket->bytesAvailable() > 0) {
     QByteArray request = socket->read(BUFFER_SIZE);
-    QVariantMap replyMap = handleRequest(request, monitor);
-    QJson::Serializer serializer;
-    reply = serializer.serialize(replyMap);
+
+    bool ok;
+    bool isHttp = httpToContent (request, ok);
+
+    if (ok) {
+      QVariantMap replyMap = handleRequest(request, monitor);
+      QJson::Serializer serializer;
+      reply = serializer.serialize(replyMap);
+    }
+    if (isHttp) {
+      contentToHttp (reply, ok);
+    }
   }
 
   if (!monitor) {
@@ -87,10 +96,12 @@ QVariantMap LocalServer::handleRequest(QByteArray &rawJson, bool &monitor)
   bool ok;
   QVariantMap resMap;
 
+  qDebug () << "rawJson " << rawJson;
+
   QVariantMap request = parser.parse(rawJson, &ok).toMap();
   if (!ok) {
     qWarning() << "LS: failed to parse json" << rawJson;
-    resMap["status"] = "Error: invalid json";
+    resMap["status"] = "Error: could not parse json in request";
     return resMap;
   }
   QString action;
@@ -211,3 +222,44 @@ QVariantMap LocalServer::handleQuery(QVariantMap&)
   return placeMap;
 }
 
+// if the request is preceded by http headers,
+// discard them
+bool LocalServer::httpToContent (QByteArray &request, bool &ok) {
+  ok = true;
+  QList<QByteArray> reqLines = request.split('\n');
+  if (reqLines[0].startsWith("GET")) {
+    ok = false;
+    return true;
+  }
+  if (reqLines.size() == 1) {
+    return false;
+  }
+  if (!reqLines[0].startsWith("POST")) {
+    ok = false;
+    return true;
+  }
+  request = reqLines[reqLines.size()-1];
+  return true;
+}
+
+// this request came from an http client,
+// so put http response headers at the front
+void LocalServer::contentToHttp (QByteArray &reply, bool ok) {
+  //const QByteArray header = "HTTP/1.0 200 OK\n\n";
+  const QByteArray header = "HTTP/1.0 200 OK\nContent-Type: application/json\nServer: Mole/"+QByteArray(MOLE_VERSION)+"\n";
+  const QByteArray notOkHeader = "HTTP/1.0 400 Bad Request\n\n";
+
+  if (ok) {
+  qDebug () << "old content" << reply;
+  QString contentLength = "Content-length: "+ QString::number(reply.size()) + "\n";
+  QByteArray originalReply (reply);
+  reply = header;
+  reply += contentLength;
+  reply += "\n";
+  reply += originalReply;
+  //reply = header;
+  qDebug () << "new content" << reply;
+  } else {
+    reply = notOkHeader + reply;
+  }
+}

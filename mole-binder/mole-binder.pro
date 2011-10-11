@@ -8,6 +8,11 @@ UI_DIR = obj
 
 QT += core xml network dbus
 
+#    src/binderui.h \
+#    src/statisticswidget.h \
+#    src/bindlocationwidget.h \
+
+
 HEADERS += \
     src/common.h \
     src/binder.h \
@@ -22,6 +27,11 @@ HEADERS += \
     ../common/timer.h \
     ../common/version.h
 
+#   src/binderui.cpp \
+#    src/statisticswidget.cpp \
+#    src/bindlocationwidget.cpp \
+
+
 SOURCES += \
     src/binder.cpp \
     src/main.cpp \
@@ -34,6 +44,14 @@ SOURCES += \
     ../common/qt-utils.cpp \
     ../common/util.cpp \
     ../common/timer.cpp
+
+#FORMS    += \
+#    src/binderui.ui \
+#    src/statisticswidget.ui \
+#    src/bindlocationwidget.ui
+
+# RESOURCES += \
+#    mole-binder.qrc
 
 unix:!symbian {
     isEmpty(PREFIX) {

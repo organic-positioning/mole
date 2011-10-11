@@ -19,11 +19,14 @@
 #define BINDER_H
 
 #include <QWidget>
+#include <QtGui/QApplication>
+//#include "binderui.h"
 
 #include "common.h"
 
-#define MIN_SCANS_TO_BIND 10
+#define MIN_SCANS_TO_BIND 6
 enum SubmitState {SCANNING, DISPLAY, EDITING};
+enum BindSource {FIX, ADD, VALIDATE, REMOVE};
 
 class PlaceEdit;
 class Settings;
@@ -49,6 +52,7 @@ private:
   Settings *m_settingsDialog;
 
   QPushButton *submitButton;
+  QPushButton *confirmButton;
   QPushButton *rankMsgBoxButton;
 
   QMessageBox *rankMsgBox;
@@ -61,7 +65,7 @@ private:
   PlaceEdit *areaEdit;
   PlaceEdit *floorEdit;
   PlaceEdit *spaceNameEdit;
-  QLineEdit *tagsEdit;
+  //QLineEdit *tagsEdit;
 
   QString countryEstimate;
   QString regionEstimate;
@@ -69,7 +73,7 @@ private:
   QString areaEstimate;
   QString floorEstimate;
   QString spaceNameEstimate;
-  QString tagsEstimate;
+  //QString tagsEstimate;
 
   QLabel *walkingLabel;
   ColoredLabel *netLabel;
@@ -80,12 +84,15 @@ private:
   QLabel *overlapMaxLabel;
   QLabel *churnLabel;
 
+  //  BinderUi binderUi;
+
   void buildUI();
   void setPlacesEnabled(bool);
   void resetBindTimer();
   void setWalkingLabel(bool);
   void refreshLastEstimate();
-  void sendBindMsg();
+  void confirmBind(BindSource);
+  void sendBindMsg(BindSource);
   void setSubmitState(SubmitState state, int scanCount = 0);
   void setDaemonLabel(bool);
   void receivedDaemonMsg ();
@@ -102,6 +109,7 @@ private slots:
   void onPlaceChanged();
 
   void onSubmitClicked();
+  void onConfirmClicked();
   void onRankMsgBoxButtonClicked();
   void onBindTimeout();
   void handleLocationEstimate(QString);
