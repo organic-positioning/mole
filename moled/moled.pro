@@ -24,6 +24,7 @@ HEADERS += \
     src/moled.h \
     src/scan.h \
     src/scanQueue.h \
+    src/proximity.h \
     src/speedsensor.h \
     ../common/dbus.h \
     ../common/mole.h \
@@ -44,6 +45,7 @@ SOURCES += \
     src/scan.cpp \
     src/scanQueue.cpp \
     src/space_parser.cpp \
+    src/proximity.cpp \
     src/speedsensor.cpp \
     ../common/mole.cpp \
     ../common/network.cpp \

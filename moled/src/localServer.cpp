@@ -1,6 +1,6 @@
 /*
  * Mole - Mobile Organic Localisation Engine
- * Copyright 2010 Nokia Corporation.
+ * Copyright 2010-2011 Nokia Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -82,6 +82,7 @@ void LocalServer::handleRequest()
 
   if (!monitor) {
     socket->write(reply);
+    qDebug () << "wrote reply" << reply;
     qDebug() << "handleRequest from port" << socket->peerPort();
     socket->disconnectFromHost();
   } else {

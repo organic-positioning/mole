@@ -49,6 +49,8 @@ void Scanner::scanAccessPoints()
   if (!m_wifi)
     initWiFi();
 
+
+
   int readingCount = 0;
   QDBusReply<QList<QDBusObjectPath> > reply = m_wifi->call("GetAccessPoints");
 
@@ -119,5 +121,10 @@ void Scanner::initWiFi()
       }
     }
   }
+
+  if (!m_wifi) {
+    qFatal ("No WiFi interface found.");
+  }
+
 }
 

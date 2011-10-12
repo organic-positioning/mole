@@ -1,6 +1,6 @@
 /*
  * Mole - Mobile Organic Localisation Engine
- * Copyright 2010 Nokia Corporation.
+ * Copyright 2010-2011 Nokia Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,40 +15,39 @@
  * limitations under the License.
  */
 
-#ifndef CORE_H_
-#define CORE_H_
+#ifndef PROXIMITY_H_
+#define PROXIMITY_H_
 
-#include <QCoreApplication>
+#include "scanQueue.h"
+#include "moled.h"
 
-class Binder;
-class Localizer;
-class LocalServer;
-class Scanner;
-class ScanQueue;
-class SpeedSensor;
-class Proximity;
+#include <qjson/parser.h>
+#include <qjson/serializer.h>
 
-class Core : public QCoreApplication
+#include <QNetworkReply>
+#include <QNetworkRequest>
+
+class Proximity : public QObject
 {
+  //friend QDebug operator<<(QDebug dbg, const Proximity &proximity);
   Q_OBJECT
 
-public:
-  Core(int argc = 0, char *argv[] = 0);
-  ~Core();
+ public:
+  Proximity(QObject *parent = 0, ScanQueue *scanQueue = 0);
 
-  int run();
 
-public slots:
-  void handle_quit();
-
-private:
-  Localizer *m_localizer;
-  Binder *m_binder;
-  LocalServer *m_localServer;
-  Scanner *m_scanner;
+ private:
   ScanQueue *m_scanQueue;
-  SpeedSensor *m_speedSensor;
-  Proximity *m_proximity;
+  bool m_active;
+  QString m_name;
+  QTimer m_updateTimer;
+
+  void setTimer ();
+
+ private slots:
+  void update();
+  void handleUpdateResponse();
+  void handleProximitySettings(bool activate, QString name);
 };
 
-#endif /* CORE_H_ */
+#endif /* PROXIMITY_H_ */

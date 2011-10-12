@@ -292,7 +292,7 @@ void ScanQueue::serialize(QDateTime oldestValidScan, QVariantList &scanList)
 
     if ((m_scans[scanIndex].state == ACTIVE ||
          m_scans[scanIndex].state == INACTIVE) &&
-         m_scans[scanIndex].timestamp > oldestValidScan) {
+	(oldestValidScan.isNull() || m_scans[scanIndex].timestamp > oldestValidScan)) {
       QVariantList readingsList;
       for (int j = 0; j < MAX_SCANQUEUE_READINGS; ++j) {
         APDesc* ap = m_scans[scanIndex].readings[j].ap;
