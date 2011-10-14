@@ -134,7 +134,6 @@ void Localizer::localize(const int scanQueueSize)
   }
   */
 
-
   // now that we have a scan, start the first network timer
   if (m_firstAddScan) {
     m_areaCacheFillTimer.stop();
@@ -864,6 +863,22 @@ void Localizer::estimateAsMap(QVariantMap &placeMap)
   placeMap.insert("tags", tags);
   placeMap.insert("floor", floor);
   placeMap.insert("score", score);
+}
+
+void Localizer::serializeSignature (QVariantMap &map) {
+  QVariantMap subsigs;
+
+  QMapIterator<QString,APDesc*> i (*m_fingerprint);
+  while (i.hasNext()) {
+    i.next();
+    Sig *sig = (Sig*) (i.value());
+    QVariantMap sigMap;
+    sig->serialize (sigMap);
+    subsigs[i.key()] = sigMap;
+  }
+
+  map["macsigs"] = subsigs;
+
 }
 
 /*

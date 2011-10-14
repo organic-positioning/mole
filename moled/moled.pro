@@ -32,6 +32,7 @@ HEADERS += \
     ../common/overlap.h \
     ../common/sig.h \
     ../common/util.h \
+    ../common/settings_access.h \
     ../common/version.h
 
 #src/bayes.cpp \
@@ -51,6 +52,7 @@ SOURCES += \
     ../common/network.cpp \
     ../common/overlap.cpp \
     ../common/sig.cpp \
+    ../common/settings_access.cpp \
     ../common/util.cpp
 
 unix:LIBS += -L/usr/lib -lqjson

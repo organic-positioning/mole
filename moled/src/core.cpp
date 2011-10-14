@@ -163,7 +163,7 @@ Core::Core(int argc, char *argv[])
   }
 
   m_binder = new Binder(this, m_localizer, m_scanQueue);
-  m_proximity = new Proximity(this, m_scanQueue);
+  m_proximity = new Proximity(this, m_localizer);
   m_localServer = new LocalServer(this, m_localizer, m_binder, port);
 
   m_speedSensor = 0;

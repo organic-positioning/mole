@@ -1,6 +1,6 @@
 /*
  * Mole - Mobile Organic Localisation Engine
- * Copyright 2010,2011 Nokia Corporation.
+ * Copyright 2010-2011 Nokia Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,9 @@
 Binder::Binder(QWidget *parent)
   : QWidget(parent)
   , m_daemonOnline(false)
+  , m_currentProximityUpdate(QByteArray())
+  , m_proximityDialog(NULL)
+  , m_rankedSpacesDialog(NULL)
   , m_feedbackReply(0)
 {
 
@@ -56,6 +59,11 @@ Binder::Binder(QWidget *parent)
   QDBusConnection::systemBus().connect
     (QString(), QString(), "com.nokia.moled", "MotionEstimate", this,
      SLOT(onSpeedStatusChanged(int)));
+
+  QDBusConnection::systemBus().connect
+    (QString(), QString(), "com.nokia.moled", "ProximityUpdate", this,
+     SLOT(handleProximityUpdate(QByteArray)));
+
 }
 
 
@@ -95,14 +103,14 @@ void Binder::buildUI()
   // feedback
   QToolButton *feedbackButton = new QToolButton(buttonBox);
   feedbackButton->setIcon(QIcon(MOLE_ICON_PATH + "email.png"));
-  feedbackButton->setToolTip(tr("Send Feedback"));
+  feedbackButton->setToolTip(tr("Show nearby users"));
   feedbackButton->setIconSize(QSize(ICON_SIZE_REG, ICON_SIZE_REG));
   connect(feedbackButton, SIGNAL(clicked()), SLOT(onFeedbackClicked()));
 
   // help
   QToolButton *helpButton = new QToolButton(buttonBox);
   helpButton->setIcon(QIcon(MOLE_ICON_PATH + "help.png"));
-  helpButton->setToolTip(tr("Help"));
+  helpButton->setToolTip(tr("Show nearby spaces"));
   helpButton->setIconSize(QSize(ICON_SIZE_REG, ICON_SIZE_REG));
   connect(helpButton, SIGNAL(clicked()), SLOT(onHelpClicked()));
 
@@ -360,13 +368,14 @@ void Binder::buildUI()
 
   setLayout(layout);
 
+  /*
   rankMsgBox = new QMessageBox(this);
   rankMsgBox->setVisible(false);
   rankMsgBox->setWindowTitle (tr("Nearby Spaces"));
   rankMsgBoxButton = new QPushButton(tr("Done"), rankMsgBox);
   rankMsgBox->addButton (rankMsgBoxButton, QMessageBox::AcceptRole);
   //connect(rankMsgBoxButton, SIGNAL(clicked()), SLOT(onRankMsgBoxButtonClicked()));
-
+  */
   //binderUi.show();
 }
 
@@ -385,6 +394,10 @@ void Binder::onAboutClicked()
   about.append ("</h2>");
   about.append ("<p>Copyright &copy; 2011 Nokia Inc.");
   about.append ("<p>Organic Indoor Positioning is a joint development from Massachusetts Institute of Technology and Nokia Research.");
+  about.append ("<p>Help grow Organic Indoor Positioning by <b>binding</b> your current location. "
+       "Each bind links the name you pick with a WiFi signature.  When other Organic Indoor "
+       "Positioning users are in the same place, they will see the same name.");
+
 
   //"By using this software, you accept its <a href=\"http://mole.research.nokia.com/policy/privacy.html\">Privacy Policy </a>"
   //"and <a href=\"http://mole.research.nokia.com/policy/terms.html\">Terms of Service</a>.");
@@ -394,6 +407,7 @@ void Binder::onAboutClicked()
 
 void Binder::onFeedbackClicked()
 {
+  qDebug () << "onFeedbackClicked";
   /*
   qDebug() << "handle clicked feedback";
   int ret = QMessageBox::information
@@ -401,13 +415,49 @@ void Binder::onFeedbackClicked()
      "A list of spaces..<BR>More spaces<BR>More");
   qDebug() << "onFeedbackClicked ret" << ret;
   */
-  rankMsgBox->setVisible(true);
+  //rankMsgBox->setVisible(true);
+
+  QString title = "Proximity - Who is Nearby?";
+  if (!getProximityActive()) {
+    title.append (" (inactive)");
+  }
+  QStringList headerNames;
+  headerNames << "Display Name";
+  headerNames << "Proximity";
+  qDebug () << "creating UpdatingDisplayDialog";
+
+  m_proximityDialog = new UpdatingDisplayDialog(this, title, headerNames);
+  qDebug () << "created UpdatingDisplayDialog";
+
+  m_proximityDialog->handleUpdate(m_currentProximityUpdate);
+  m_proximityDialog->show();
+
+  connect(m_proximityDialog, SIGNAL(rejected()), this, SLOT(onProximityClosed()));
+
 }
 
+void Binder::onProximityClosed()
+{
+  qDebug() << "handle closed proximity";
+  m_proximityDialog->disconnect();
+  delete m_proximityDialog;
+  m_proximityDialog = NULL;
+}
+
+void Binder::handleProximityUpdate(QByteArray rawJson) {
+  m_currentProximityUpdate = rawJson;
+  if (m_proximityDialog != NULL) {
+    m_proximityDialog->handleUpdate(rawJson);
+  }
+}
+
+
+/*
 void Binder::onRankMsgBoxButtonClicked()
 {
   rankMsgBox->setVisible(false);
 }
+*/
 
 /*
   // please keep this
@@ -451,15 +501,26 @@ void Binder::onSendFeedbackFinished()
 
 void Binder::onHelpClicked()
 {
-  qDebug() << "handle clicked help";
+  qDebug() << "onHelpClicked";
 
-  QString help =
-    tr("<p>Help grow Organic Indoor Positioning by <b>binding</b> your current location. "
-       "Each bind links the name you pick with an RF signature.  When other Organic Indoor "
-       "Positioning users are in the same place, they will see the same name.");
+  QStringList headerNames;
+  headerNames << "Place";
+  headerNames << "Similarity";
+  m_rankedSpacesDialog = new UpdatingDisplayDialog(this, QString("Nearby Spaces"), headerNames);
+  m_rankedSpacesDialog->handleUpdate(m_currentProximityUpdate);
+  m_rankedSpacesDialog->show();
+  connect(m_rankedSpacesDialog, SIGNAL(rejected()), this, SLOT(onRankedSpacesClosed()));
 
-  QMessageBox::information(this, tr("Why Bind?"), help);
 }
+
+void Binder::onRankedSpacesClosed()
+{
+  qDebug() << "handle closed proximity";
+  m_rankedSpacesDialog->disconnect();
+  delete m_rankedSpacesDialog;
+  m_rankedSpacesDialog = NULL;
+}
+
 
 void Binder::onSettingsClicked()
 {
@@ -524,6 +585,7 @@ void Binder::setSubmitState(SubmitState _submit_state, int scanCount)
     confirmButton->setEnabled(false);
     break;
   }
+  qDebug() << "set submit state finished";
 }
 
 void Binder::onPlaceChanged()
@@ -765,6 +827,8 @@ void Binder::onSpeedStatusChanged(int motion)
 
   if (motion == MOVING) {
     setWalkingLabel(true);
+    spaceNameEstimate = "??";
+    refreshLastEstimate();
     setSubmitState(SCANNING);
   } else {
     setWalkingLabel(false);
@@ -816,18 +880,9 @@ void Binder::handleLocationStats
   qDebug() << "scan rate " << scanRateTime;
   qDebug() << "network_success_rate " << networkSuccessRate;
 
-  QString rankedSpacesStr;
-  //QMapIterator<QString,double> i (rankEntries.asMap);
-  //while (i.hasNext()) {
-  //i.next();
-  for (QVariantMap::Iterator it = rankEntries.begin(); it != rankEntries.end(); ++it) {
-    // TODO cleaner way to do this?
-    rankedSpacesStr.append (it.key());
-    rankedSpacesStr.append (" ");
-    rankedSpacesStr.append (QString::number(it.value().toReal()));
-    rankedSpacesStr.append ( "\n");
+  if (m_rankedSpacesDialog != NULL) {
+    m_rankedSpacesDialog->handleUpdate(rankEntries);
   }
-  rankMsgBox->setText(rankedSpacesStr);
 
   if (scanQueueSize >= MIN_SCANS_TO_BIND) {
     if (m_submitState == SCANNING) {

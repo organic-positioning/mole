@@ -205,6 +205,7 @@ public:
   void addMonitor(QTcpSocket *socket);
   QByteArray estimateAndStatsAsJson();
   void estimateAsMap(QVariantMap &placeMap);
+  void serializeSignature (QVariantMap &map);
 
   void bind(QString fqArea, QString fqSpace);
   bool removeSpace(QString fqArea, QString fqSpace);

@@ -1,6 +1,6 @@
 /*
  * Mole - Mobile Organic Localisation Engine
- * Copyright 2010 Nokia Corporation.
+ * Copyright 2010-2011 Nokia Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@
 
 #include "mole.h"
 #include "util.h"
+#include "settings_access.h"
 
 void setNetworkRequestHeaders(QNetworkRequest &request)
 {
@@ -73,45 +74,4 @@ int findReplyLatencyMsec(QNetworkReply *reply)
   return -1;
 }
 
-QString getUserCookie()
-{
-  if (!settings->contains("cookie") ||
-      settings->value("cookie").toString().isEmpty()) {
-
-    resetUserCookie();
-    qDebug() << "reset user cookie";
-  }
-
-  if (!settings->contains("session") ||
-      settings->value("session").toString().isEmpty()) {
-
-    resetSessionCookie();
-    qDebug() << "reset session cookie";
-  }
-
-  return settings->value("cookie").toString();
-}
-
-void resetUserCookie()
-{
-  settings->setValue("cookie", getRandomCookie(20));
-  // also do session cookie
-  resetSessionCookie();
-}
-
-void resetSessionCookie()
-{
-  settings->setValue("session", getRandomCookie(20));
-}
-
-QString getRandomCookie(int length)
-{
-  char alphanum [] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-
-  QString cookie;
-  for (int i = 0; i < length; ++i)
-    cookie.append(alphanum[randInt(0,35)]);
-
-  return cookie;
-}
 

@@ -17,19 +17,20 @@
 
 #include "proximity.h"
 
-Proximity::Proximity(QObject *parent, ScanQueue *_scanQueue)
+Proximity::Proximity(QObject *parent, Localizer *_localizer)
   : QObject(parent)
-  , m_scanQueue(_scanQueue)
+  , m_localizer(_localizer)
   , m_active(false)
   , m_name(QString())
 {
 
-  if (settings->contains("proximity_active")) {
-    m_active = settings->value("proximity_active").toBool();
-  }
-  if (settings->contains("proximity_name")) {
-    m_name = settings->value("proximity_name").toString();
-  }
+ // qDebug () << "TURN OFF *****************************";
+  //m_active = true;
+  //m_name = "foo";
+
+  m_active = getProximityActive();
+  m_name = getUserProximityName();
+
 
 #ifdef USE_MOLE_DBUS
   qDebug () << "P: listening on D-Bus";
@@ -55,10 +56,13 @@ void Proximity::update() {
   QVariantMap map;
   map.insert("name", m_name);
   QVariantList bindScansList;
-  m_scanQueue->serialize(QDateTime(), bindScansList);
-  map.insert("ap_scans", bindScansList);
+  QVariantMap signature;
+  m_localizer->serializeSignature(signature);
+  map.insert("sig", signature);
   QJson::Serializer serializer;
   const QByteArray json = serializer.serialize(map);
+
+  qDebug () << "P: update" << json;
 
   QString urlStr = mapServerURL;
   QUrl url(urlStr.append("/proximity"));
@@ -92,6 +96,7 @@ void Proximity::handleUpdateResponse()
       qWarning() << "P: failed to parse json" << rawJson;
       return;
     }
+    qDebug() << "P: raw json" << rawJson;
 
     QMap<QString,double> proxMap;
     for (QVariantMap::Iterator it = response.begin(); 
@@ -105,7 +110,7 @@ void Proximity::handleUpdateResponse()
 
 #ifdef USE_MOLE_DBUS
     QDBusMessage proxMsg = 
-      QDBusMessage::createSignal("/", "com.nokia.moled", "Proximity");
+      QDBusMessage::createSignal("/", "com.nokia.moled", "ProximityUpdate");
     proxMsg << rawJson;
     QDBusConnection::systemBus().send(proxMsg);
 #endif

@@ -18,7 +18,7 @@
 #ifndef PROXIMITY_H_
 #define PROXIMITY_H_
 
-#include "scanQueue.h"
+#include "localizer.h"
 #include "moled.h"
 
 #include <qjson/parser.h>
@@ -33,11 +33,11 @@ class Proximity : public QObject
   Q_OBJECT
 
  public:
-  Proximity(QObject *parent = 0, ScanQueue *scanQueue = 0);
+  Proximity(QObject *parent = 0, Localizer *localizer = 0);
 
 
  private:
-  ScanQueue *m_scanQueue;
+  Localizer *m_localizer;
   bool m_active;
   QString m_name;
   QTimer m_updateTimer;

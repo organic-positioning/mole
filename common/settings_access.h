@@ -1,6 +1,6 @@
 /*
  * Mole - Mobile Organic Localisation Engine
- * Copyright 2010 Nokia Corporation.
+ * Copyright 2010-2011 Nokia Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,13 +15,19 @@
  * limitations under the License.
  */
 
-#ifndef UTIL_H_
-#define UTIL_H_
+#ifndef SETTINGS_ACCESS_H_
+#define SETTINGS_ACCESS_H_
 
-double randPct();
-int randInt(int low, int high);
-int randPoisson(int mean);
-double randPoisson(double mean);
+#include "mole.h"
+#include "util.h"
 
+bool getProximityActive();
+void setProximityActive(bool isActive);
+QString getUserProximityName();
+void setUserProximityName (QString name);
+QString getUserCookie();
+void resetUserCookie();
+void resetSessionCookie();
+QString getRandomCookie(int length);
 
-#endif /* UTIL_H_ */
+#endif /* SETTINGS_ACCESS_H_ */

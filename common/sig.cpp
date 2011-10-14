@@ -175,6 +175,9 @@ void Sig::setWeight(int totalHistogramCount)
   }
 
   m_weight = c / (float)totalHistogramCount;
+
+  //qDebug () << "setWeight" << m_weight;
+
 }
 
 
@@ -366,4 +369,33 @@ int mainTest(int /*argc*/, char */*argv[]*/)
   delete s2;
   delete s3;
   return 0;
+}
+
+void Sig::serialize(QVariantMap &map) {
+  QString weight;
+  weight.setNum(m_weight);
+  map["weight"] = weight;
+  //qDebug () << "serialize weight" << m_weight;
+  QVariantMap histMap;
+    //QString histogramStr;
+    //QTextStream hS (&histogramStr);
+    //hS.setRealNumberPrecision (4);
+  int count = 0;
+  for (int i = m_histogram->min(); i < m_histogram->max(); ++i) {
+    if (m_histogram->at(i) > 0) {
+      //if (m_histogram->at(i) > 0 && count < 2) {
+      QString key;
+      key.setNum(i);
+      QString value;
+      value.setNum(m_histogram->at(i));
+      histMap[key] = value;
+      count++;
+      //hS << i << "=" << m_histogram->at(i);
+      //if (i <= m_histogram->max() - 1)
+      //hS << " ";
+    }
+  }
+  //qDebug () << "hist " << histogramStr;
+  //map["histogram"] = histogramStr;
+  map["histogram"] = histMap;
 }

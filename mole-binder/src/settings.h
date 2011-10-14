@@ -36,13 +36,22 @@ public:
 
 private:
   void buildUI();
+  void notifyDaemon();
 
+  bool m_proximityActiveCached;
   QGridLayout *m_layout;
   QLineEdit *m_cookie;
+  QLineEdit *m_proximityName;
+  QPushButton *saveProximityChangeButton;
+  QRadioButton *m_proximityActive;
 
 private slots:
   void onRandomCookieClicked();
   void onHelpCookieClicked();
+  void onSaveProximityChangeClicked();
+  void onHelpProximityClicked();
+  void onProximityActiveClicked();
+  void onProximityNameChanged(QString name);
 };
 
 #endif /* SETTINGS_H_ */

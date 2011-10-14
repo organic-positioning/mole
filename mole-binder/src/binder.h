@@ -23,6 +23,7 @@
 //#include "binderui.h"
 
 #include "common.h"
+#include "updatingDisplay.h"
 
 #define MIN_SCANS_TO_BIND 6
 enum SubmitState {SCANNING, DISPLAY, EDITING};
@@ -45,17 +46,19 @@ private:
   bool m_daemonOnline;
   //int m_requestLocationEstimateCounter;
   SubmitState m_submitState;
+  QByteArray m_currentProximityUpdate;
   QTimer m_bindTimer;
   QTimer m_requestLocationTimer;
   QTimer m_walkingTimer;
   QTimer m_daemonHeartbeatTimer;
   Settings *m_settingsDialog;
+  UpdatingDisplayDialog *m_proximityDialog;
+  UpdatingDisplayDialog *m_rankedSpacesDialog;
 
   QPushButton *submitButton;
   QPushButton *confirmButton;
-  QPushButton *rankMsgBoxButton;
-
-  QMessageBox *rankMsgBox;
+  //QPushButton *rankMsgBoxButton;
+  //QMessageBox *rankMsgBox;
 
   QNetworkReply *m_feedbackReply;
 
@@ -104,15 +107,18 @@ private slots:
   void onSettingsClicked();
 
   void onSettingsClosed();
+  void onProximityClosed();
+  void onRankedSpacesClosed();
 
   void onSendFeedbackFinished();
   void onPlaceChanged();
 
   void onSubmitClicked();
   void onConfirmClicked();
-  void onRankMsgBoxButtonClicked();
+  //void onRankMsgBoxButtonClicked();
   void onBindTimeout();
   void handleLocationEstimate(QString);
+  void handleProximityUpdate(QByteArray rawJson);
   void requestLocationEstimate();
 
 

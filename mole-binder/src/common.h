@@ -23,7 +23,12 @@
 #include "../../common/mole.h"
 #include "../../common/network.h"
 #include "../../common/qt-utils.h"
+#include "../../common/settings_access.h"
 #include "../../common/timer.h"
+
+#include <qjson/parser.h>
+#include <qjson/serializer.h>
+
 
 #ifdef Q_WS_MAEMO_5
 const int UI_WIDTH = 800;

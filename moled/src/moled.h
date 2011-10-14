@@ -20,6 +20,7 @@
 
 #include "../../common/network.h"
 #include "../../common/mole.h"
+#include "../../common/settings_access.h"
 
 #define DEFAULT_LOG_FILE    "/var/log/moled.log"
 

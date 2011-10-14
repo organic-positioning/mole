@@ -18,12 +18,14 @@ HEADERS += \
     src/binder.h \
     src/places.h \
     src/settings.h \
+    src/updatingDisplay.h \
     ../common/completer.h \
     ../common/models.h \
     ../common/mole.h \
     ../common/network.h \
     ../common/qt-utils.h \
     ../common/util.h \
+    ../common/settings_access.h \
     ../common/timer.h \
     ../common/version.h
 
@@ -37,12 +39,14 @@ SOURCES += \
     src/main.cpp \
     src/places.cpp \
     src/settings.cpp \
+    src/updatingDisplay.cpp \
     ../common/completer.cpp \
     ../common/mole.cpp \
     ../common/models.cpp \
     ../common/network.cpp \
     ../common/qt-utils.cpp \
     ../common/util.cpp \
+    ../common/settings_access.cpp \
     ../common/timer.cpp
 
 #FORMS    += \
@@ -52,6 +56,8 @@ SOURCES += \
 
 # RESOURCES += \
 #    mole-binder.qrc
+
+unix:LIBS += -L/usr/lib -lqjson
 
 unix:!symbian {
     isEmpty(PREFIX) {

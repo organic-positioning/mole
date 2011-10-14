@@ -93,6 +93,8 @@ class Sig
   float stddev() const { return m_stdDev; }
   float weight() const { return m_weight; }
 
+  void serialize(QVariantMap &map);
+
   static float computeHistOverlap(Sig *a, Sig *b);
 
  private:
