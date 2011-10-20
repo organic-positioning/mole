@@ -716,6 +716,11 @@ void Localizer::loudMac(QString &loudMacA, QString &loudMacB)
 
 }
 
+void Localizer::movementDetected() { 
+    m_stats->movementDetected();
+    currentEstimateSpace = unknownSpace;
+}
+
 double Localizer::macOverlapCoefficient(const QMap<QString,APDesc*> *macsA, const QList<QString> &macsB)
 {
   int cIntersection = 0;

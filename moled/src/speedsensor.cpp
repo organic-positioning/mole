@@ -182,6 +182,7 @@ void SpeedSensor::emitMotion(Motion motion)
 #else
 void SpeedSensor::emitMotion(Motion motion)
 {
+  m_scanQueue->handleMotionEstimate(motion);
 }
 #endif
 

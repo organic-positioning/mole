@@ -125,7 +125,7 @@ class LocalizerStats : public QObject
   void addOverlapMax(double value);
   void addOverlapDiff(double value);
 
-  void movementDetected() { ++m_movementDetectedCount; }
+  void movementDetected() { ++m_movementDetectedCount; } 
 
   void setScanQueueSize(int v) { m_scanQueueSize = v; }
   void setMacsSeenSize(int v) { m_macsSeenSize = v; }
@@ -196,7 +196,7 @@ public:
   QMap<QString,APDesc*> *fingerprint() const { return m_fingerprint; }
   void replaceFingerprint(QMap<QString,APDesc*> *newFP);
 
-  void movementDetected() { m_stats->movementDetected(); }
+  void movementDetected();
 
   void queryCurrentEstimate(QString&, QString&, QString&, QString&,
                             QString&, QString&, int&, double&);
