@@ -31,13 +31,14 @@
 const QRegExp LocallyAdministeredMAC ("^.[2367abef]:");
 const QRegExp MacRegExp ("^[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]$");
 
-ScanQueue::ScanQueue(QObject *parent, Localizer *_localizer, int _maxActiveQueueLength)
+ScanQueue::ScanQueue(QObject *parent, Localizer *_localizer, int _maxActiveQueueLength, bool _recordScans)
   : QObject(parent)
   , maxActiveQueueLength(_maxActiveQueueLength)
   , m_localizer(_localizer)
   , m_currentScan(0)
   , m_currentReading(0)
   , m_activeScanCount(0)
+  , m_recordScans(_recordScans)
   , m_seenMacsSize(0)
   , m_responseRateTotal(0)
   , m_movementDetected(false)
@@ -144,6 +145,10 @@ bool ScanQueue::scanCompleted()
         return false;
       }
     }
+  }
+
+  if (m_recordScans) {
+    recordCurrentScan ();
   }
 
   // apply the current readings to the fingerprint
@@ -397,6 +402,29 @@ void ScanQueue::clear(int ignoreScan)
   }
 }
 
+// Was going to save all this to a sqlite db.
+// This would have been tidy and more compact, but probably overkill
+void ScanQueue::recordCurrentScan() {
+
+  QString scan;
+
+  for (int i = 0; i < MAX_SCANQUEUE_READINGS; ++i) {
+    APDesc* ap = m_scans[m_currentScan].readings[i].ap;
+    if (ap) {
+      scan.append (" ");
+      scan.append (ap->mac);
+      scan.append (" ");
+      qint8 rssi = m_scans[m_currentScan].readings[i].strength;
+      QString r = QString::number(rssi);
+      scan.append (r);
+      scan.append (" ");
+    }
+  }
+
+  qWarning() << "SCAN" << scan;
+
+}
+
 QDebug operator<<(QDebug dbg, const Reading &reading)
 {
   dbg.nospace() << "[";
@@ -444,3 +472,4 @@ QDebug operator<<(QDebug dbg, const ScanQueue &s)
   dbg.nospace() << "]";
   return dbg.space();
 }
+

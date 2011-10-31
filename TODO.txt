@@ -110,7 +110,7 @@ SPRINT 5: Handling network connectivity changes and longevity
   - UI: more room for room name
   - places prefill not working for city and below - 1pt
   - Better representation in mole-binder of what the daemon is doing 1pt
-
+  - Merge new UI into github 
 
 - Reconnecting to network (if you lose connectivity it doesn't come
   back), and changing connectivity may cause crashing - 1pt
@@ -137,7 +137,7 @@ SPRINT -Unassigned
   very different numbers of APs, we seem to be picking the one with
   fewer APs, at least when we only have a few scans.  The one with few
   APs seems to be weighed more heavily.  Needs to be tested with long
-  term scan collection - 5pt
+  term scan trace collection - 5pt
 
 - Privacy Policy and Terms of Service
   User needs to accept terms when installing software on install.

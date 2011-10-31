@@ -52,6 +52,7 @@ Core::Core(int argc, char *argv[])
   bool isDaemon = true;
   bool runWiFiScanner = true;
   bool runMovementDetector = true;
+  bool recordScans = false;
 
   //////////////////////////////////////////////////////////
   // Make sure no other arguments have been given
@@ -84,6 +85,8 @@ Core::Core(int argc, char *argv[])
         runMovementDetector = false;
     } else if (arg == "--no-wifi") {
         runWiFiScanner = false;
+    } else if (arg == "-S") {
+        recordScans = true;
     } else {
         usage();
     }
@@ -154,12 +157,12 @@ Core::Core(int argc, char *argv[])
   m_localizer = new Localizer(this);
 
   if (runMovementDetector && SpeedSensor::haveAccelerometer()) {
-    m_scanQueue = new ScanQueue(this, m_localizer);
+    m_scanQueue = new ScanQueue(this, m_localizer, 0, recordScans);
   } else {
     // since we are not detecting motion, only use this many scans
     // for localization
     const int maxActiveQueueLength = 12;
-    m_scanQueue = new ScanQueue(this, m_localizer, maxActiveQueueLength);
+    m_scanQueue = new ScanQueue(this, m_localizer, maxActiveQueueLength, recordScans);
   }
 
   m_binder = new Binder(this, m_localizer, m_scanQueue);
@@ -285,7 +288,8 @@ void usage()
               << " (app data stored here)\n"
               << "-p local port [" << DEFAULT_LOCAL_PORT << "]\n"
               << "--no-accelerometer turn off movement detection\n"
-              << "--no-wifi turn off wifi scanner\n";
+              << "--no-wifi turn off wifi scanner\n"
+              << "-S record all scans to log file\n";
 
   exit(0);
 }

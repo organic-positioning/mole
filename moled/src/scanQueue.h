@@ -67,7 +67,8 @@ class ScanQueue : public QObject
   Q_OBJECT
 
  public:
-  ScanQueue(QObject *parent = 0, Localizer *localizer = 0, int maxActiveQueueLength = 0);
+  ScanQueue(QObject *parent = 0, Localizer *localizer = 0, int maxActiveQueueLength = 0, 
+	    bool recordScans = false);
 
   bool addReading(QString mac, QString ssid, qint16 frequency, qint8 strength);
   bool scanCompleted();
@@ -81,6 +82,7 @@ class ScanQueue : public QObject
   qint8 m_currentScan;
   qint8 m_currentReading;
   qint8 m_activeScanCount;
+  bool m_recordScans;
   qint8 m_seenMacsSize;
   int m_responseRateTotal;
   bool m_movementDetected;
@@ -91,6 +93,8 @@ class ScanQueue : public QObject
   Scan m_scans[MAX_SCANQUEUE_SCANS];
 
   APDesc* getAP(QString mac, QString ssid, qint16 frequency);
+
+  void recordCurrentScan();
 
   void truncate();
   void clear(int ignoreScan);
