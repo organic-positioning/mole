@@ -142,6 +142,8 @@ void Sig::addSignalStrength(qint8 strength)
               ((DynamicHistogram*)m_histogram)->getKernelizedValues());
 
   ((DynamicHistogram*)m_histogram)->increment();
+  m_mean = 0.;
+  m_stdDev = 0.;
 }
 
 void Sig::removeSignalStrength(qint8 strength)
@@ -150,6 +152,8 @@ void Sig::removeSignalStrength(qint8 strength)
               ((DynamicHistogram*)m_histogram)->getKernelizedValues());
 
   ((DynamicHistogram*)m_histogram)->decrement();
+  m_mean = 0.;
+  m_stdDev = 0.;
 }
 
 bool Sig::isEmpty()
@@ -180,6 +184,58 @@ void Sig::setWeight(int totalHistogramCount)
 
 }
 
+float Sig::mean() {
+  if (m_mean == 0.) {
+    computeMeanAndStdDev();
+  }
+  Q_ASSERT (m_mean != 0.);
+  return m_mean;
+}
+
+float Sig::stddev() {
+  if (m_stdDev == 0.) {
+    computeMeanAndStdDev();
+  }
+  Q_ASSERT (m_stdDev != 0.);
+  return m_stdDev;
+}
+
+void Sig::computeMeanAndStdDev() {
+  float avg = 0.;
+  float count = 0.;
+  for (int i = m_histogram->min(); i < m_histogram->max(); i++) {
+    if (m_histogram->at(i) > 0.) {
+      float increment = m_histogram->at(i) * (float)i;
+      avg += increment;
+      count += m_histogram->at(i);
+    }
+  }
+  avg = avg / count;
+  
+  float meanSquare = 0.;
+  for (int i = m_histogram->min(); i < m_histogram->max(); i++) {
+    if (m_histogram->at(i) > 0.) {
+      float sumSquare = (i*i) * m_histogram->at(i);
+      meanSquare += sumSquare;
+    }
+  }
+  meanSquare = meanSquare / count;
+  float var = meanSquare - (avg*avg);
+  m_mean = avg;
+  m_stdDev = qSqrt (var);
+
+  if (m_mean == 0. || m_stdDev == 0.) {
+    qWarning () << "min" << m_histogram->min()
+		<< "max" << m_histogram->max()
+		<< "count" << count;
+
+    for (int i = m_histogram->min(); i < m_histogram->max(); i++) {
+      if (m_histogram->at(i) > 0.) {
+	qWarning () << "i" << i << m_histogram->at(i);
+      }
+    }
+  }
+}
 
 Histogram::Histogram(QString histogramStr)
 {
@@ -324,7 +380,7 @@ QDebug operator << (QDebug dbg, const DynamicHistogram &histogram)
   return dbg.space();
 }
 
-QDebug operator << (QDebug dbg, const Sig &sig)
+QDebug operator << (QDebug dbg, Sig &sig)
 {
   dbg.nospace() << "[mean=" << sig.mean() << ",std="<<sig.stddev() << ",wt="<<sig.weight();
 

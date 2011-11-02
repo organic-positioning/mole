@@ -21,18 +21,16 @@
 QSet<QString> Localizer::findSignatureApMacs(const QMap<QString,SpaceDesc*> &potentialSpaces)
 {
   QSet<QString> apUnion;
-  QSet<QString> *signatureMacsSet = 0;
 
   QMapIterator<QString,SpaceDesc*> it (potentialSpaces);
   while (it.hasNext()) {
-    it.next();
-    signatureMacsSet = it.value()->macs();
+    QList<QString> signatureMacsList = it.value()->macs();
 
-    QSetIterator<QString> itMac (*signatureMacsSet);
+    QListIterator<QString> itMac (signatureMacsList);
     while (itMac.hasNext()) {
       QString mac = itMac.next();
       if (!apUnion.contains(mac))
-        apUnion.insert(mac);
+	apUnion.insert(mac);
     }
   }
   return apUnion;
@@ -41,7 +39,7 @@ QSet<QString> Localizer::findSignatureApMacs(const QMap<QString,SpaceDesc*> &pot
 QSet<QString> Localizer::findNovelApMacs(const QMap<QString, SpaceDesc*> &potentialSpaces)
 {
   QSet<QString> signatureApSet = findSignatureApMacs(potentialSpaces);
-  QSet<QString> scanApSet = QSet<QString>::fromList(activeMacs->keys());
+  QSet<QString> scanApSet = QSet<QString>::fromList(m_fingerprint->keys());
   QSet<QString> novelApMacSet;
 
   // Take a set difference scan_ap_set \ sig_ap_set.
@@ -55,16 +53,16 @@ QSet<QString> Localizer::findNovelApMacs(const QMap<QString, SpaceDesc*> &potent
   return novelApMacSet;
 }
 
-double Localizer::probabilityEstimateWithHistogram(int rssi, const Sig &signature)
+double Sig::probabilityEstimateWithHistogram(int rssi)
 {
-  Histogram* hist = signature.histogram();
   int histSize = 0;
   double frequency = 0.0;
 
-  if (hist) {
-    histSize = hist->size();
-    frequency = hist->kernelFrequency(rssi); // Kernel estimate or raw frequency value.
-  }
+  histSize = m_histogram->size();
+  frequency = m_histogram->at(rssi); // Kernel estimate or raw frequency value.
+
+  Q_ASSERT (histSize < 105);
+  Q_ASSERT (frequency > 0. && frequency < 110.);
 
   // These parameters can be a user input in the future
   int laplacePriorWeight = 1;
@@ -75,36 +73,21 @@ double Localizer::probabilityEstimateWithHistogram(int rssi, const Sig &signatur
   return conditionalProbability;
 }
 
-double Localizer::probabilityEstimate(int rssi, const Sig &signature)
+double Sig::probabilityEstimateWithGaussian(int rssi)
 {
-  double mean = signature.mean;
-  double std = signature.stddev;
+  Q_ASSERT (mean() > 0. && mean() < 110.);
+  Q_ASSERT (stddev() >= 0. && stddev() < 200.);
 
   double upperLimit = rssi + 0.5;
   double lowerLimit = rssi - 0.5;
 
-  double upperProb = probabilityXLessValue(upperLimit, mean, std);
-  double lowerProb = probabilityXLessValue(lowerLimit, mean, std);
+  double upperProb = probabilityXLessValue(upperLimit, mean(), stddev());
+  double lowerProb = probabilityXLessValue(lowerLimit, mean(), stddev());
 
   return (upperProb - lowerProb);
 }
 
-double Localizer::erfcc(double x)
-{
-  double z = qAbs(x);
-  double t = 1.0 / (1.0 + 0.5*z);
-
-  double r = t * exp(-z*z-1.26551223+t*(1.00002368+t*(.37409196+
-               t*(.09678418+t*(-.18628806+t*(.27886807+
-               t*(-1.13520398+t*(1.48851587+t*(-.82215223+
-               t*.17087277)))))))));
-  if (x >= 0.)
-    return r;
-  else
-    return (2. - r);
-}
-
-double Localizer::probabilityXLessValue(double value, double mean, double std)
+double Sig::probabilityXLessValue(double value, double mean, double std)
 {
   if (value <= mean) {
     double var = (mean - value) / std;
@@ -148,7 +131,9 @@ void Localizer::makeBayesEstimate(QMap<QString,SpaceDesc*> &potentialSpaces)
   // some zero probability doesn't matter as long as the normalizer is
   // not 0.
 
-  QMapIterator<QString,MacDesc*> itMac (*activeMacs);
+  LEFT OFF HERE IN CONVERTING THIS TO NEW STRUCTURE...
+
+  QMapIterator<QString,APDesc*> itMac (*m_fingerprint);
 
   while (itMac.hasNext()) {
       itMac.next();
@@ -205,7 +190,7 @@ void Localizer::makeBayesEstimate(QMap<QString,SpaceDesc*> &potentialSpaces)
       }
   }
 
-  qDebug() <<"Bayes location estimate: " << maxSpace << maxScore;
+  qDebug() <<"Bayes location estimate using Gaussian: " << maxSpace << maxScore;
 
 }
 
@@ -242,7 +227,7 @@ void Localizer::makeBayesEstimateWithHist(QMap<QString,SpaceDesc*> &potentialSpa
   // some zero probability doesn't matter as long as the normalizer is
   // not 0.
 
-  QMapIterator<QString,MacDesc*> itMac (*activeMacs);
+  QMapIterator<QString,MacDesc*> itMac (*m_fingerprint);
 
   while (itMac.hasNext()) {
       itMac.next();

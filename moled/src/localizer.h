@@ -137,6 +137,7 @@ class LocalizerStats : public QObject
 
   void clearRankEntries();
   void addRankEntry(QString space, double score);
+  double getConfidence();
 
  public slots:
   void emitStatistics();
@@ -169,8 +170,9 @@ class LocalizerStats : public QObject
   QTime m_lastScanTime;
   QTime m_lastEmitLocation;
 
+  double m_confidence;
   QVariantMap rankEntries;
-  //QMap<QString,double> rankEntries;
+  QList<double> rankScores;
 
   double updateEwma(double current, int value) { return updateEwma(current, (double)value); }
   double updateEwma(double current, double value);
@@ -249,7 +251,7 @@ private:
   void emitNewLocalSignature();
   void emitEstimateToMonitors();
 
-  void makeOverlapEstimate(QMap<QString,SpaceDesc*> &);
+  void makeOverlapEstimateWithGaussians(QMap<QString,SpaceDesc*> &);
   void makeOverlapEstimateWithHist(QMap<QString,SpaceDesc*> &, int penalty);
 
   //Bayes

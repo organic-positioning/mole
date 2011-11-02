@@ -33,6 +33,7 @@ class Histogram {
   float at(int index) const;
   int min() const { return m_min; }
   int max() const { return m_max; }
+  int size() const { return m_max-m_min; }
   float* getNormalizedValues() { return m_normalizedValues; }
 
   static float computeOverlap(Histogram *a, Histogram *b);
@@ -73,7 +74,7 @@ class DynamicHistogram : public Histogram
 
 class Sig
 {
- friend QDebug operator << (QDebug dbg, const Sig &sig);
+ friend QDebug operator << (QDebug dbg, Sig &sig);
 
  public:
   Sig();
@@ -89,11 +90,16 @@ class Sig
 
   int loudest() const { return m_histogram->min(); }
 
-  float mean() const { return m_mean; }
-  float stddev() const { return m_stdDev; }
+  float mean();
+  float stddev();
   float weight() const { return m_weight; }
 
   void serialize(QVariantMap &map);
+
+  // for bayes
+  double probabilityEstimateWithGaussian(int rssi);
+  double probabilityEstimateWithHistogram(int rssi);
+  double probabilityXLessValue(double value, double mean, double std);
 
   static float computeHistOverlap(Sig *a, Sig *b);
 
@@ -102,6 +108,8 @@ class Sig
   float m_stdDev;
   float m_weight;
   Histogram *m_histogram;
+
+  void computeMeanAndStdDev();
 
 };
 

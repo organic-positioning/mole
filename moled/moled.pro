@@ -35,8 +35,6 @@ HEADERS += \
     ../common/settings_access.h \
     ../common/version.h
 
-#src/bayes.cpp \
-
 SOURCES += \
     src/binder.cpp \
     src/core.cpp \

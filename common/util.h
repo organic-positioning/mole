@@ -22,6 +22,6 @@ double randPct();
 int randInt(int low, int high);
 int randPoisson(int mean);
 double randPoisson(double mean);
-
+double erfcc(double x);
 
 #endif /* UTIL_H_ */

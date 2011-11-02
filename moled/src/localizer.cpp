@@ -31,6 +31,7 @@ const int AREA_FILL_PERIOD = 60000;
 const int MAP_FILL_PERIOD_SHORT = 1000;
 const int MAP_FILL_PERIOD_SOON = 10000;
 const int MAP_FILL_PERIOD = 60000;
+const int BEST_PENALTY = 4;
 
 Localizer::Localizer(QObject *parent)
   : QObject(parent)
@@ -245,7 +246,12 @@ void Localizer::localize(const int scanQueueSize)
   m_stats->setTotalSpaceCount(totalSpaceCount);
   m_stats->setPotentialSpaceCount(potentialSpacesSize);
 
-  makeOverlapEstimateWithHist(potentialSpaces, 4);
+  //makeBayesEstimate(potentialSpaces);
+  //makeBayesEstimateWithHist(potentialSpaces);
+  makeOverlapEstimateWithGaussians(potentialSpaces);
+  makeOverlapEstimateWithHist(potentialSpaces, 0);
+  makeOverlapEstimateWithHist(potentialSpaces, 1);
+  makeOverlapEstimateWithHist(potentialSpaces, BEST_PENALTY);
 
 }
 
@@ -269,22 +275,76 @@ void Localizer::makeOverlapEstimateWithHist(QMap<QString,SpaceDesc*> &ps, int pe
       maxSpace = it.key();
     }
 
-    m_stats->addRankEntry(it.key(), score);
+    if (penalty == BEST_PENALTY) {
+      m_stats->addRankEntry(it.key(), score);
+    }
 
   }
 
-  if (penalty == 4) {
+  double confidence = 0.;
+  if (penalty == BEST_PENALTY) {
     if (!maxSpace.isEmpty())
       emitNewLocationEstimate(maxSpace, maxScore);
 
     m_stats->addOverlapMax(maxScore);
+    confidence = m_stats->getConfidence();
   }
 
   qDebug() <<"=== MAO ESTIMATE USING HISTOGRAM (KERNEL) ==="
            << "penalty " << penalty
-	   << "estimate" << maxSpace << maxScore;
+	   << "estimate" << maxSpace << maxScore
+	   << "confidence" << confidence;
 
 }
+
+void Localizer::makeOverlapEstimateWithGaussians
+(QMap<QString,SpaceDesc*> &potential_spaces) {
+
+  QString maxSpace;
+  double maxScore = -5.;
+  const double init_overlap_diff = 10.;
+  double overlap_diff = init_overlap_diff;
+  QMapIterator<QString,SpaceDesc*> i (potential_spaces);
+
+  while (i.hasNext()) {
+    i.next();
+    double score = m_overlap->compareSigOverlap
+      ((QMap<QString,Sig*>*)m_fingerprint, i.value()->signatures());
+
+    qDebug () << "overlap compute: space="<< i.key() << " score="<< score;
+
+    double diff = maxScore - score;
+    //qDebug () << "score " << score
+    //<< "diff " << diff;
+
+    // Hmm. This is not correct and not computable the way we are doing it.
+    // It is also not that interesting a value.
+
+    // Maybe s
+    // difference between top and second-from-top
+    if (diff < overlap_diff) {
+      overlap_diff = diff;
+    }
+
+    if (score > maxScore) {
+      maxScore = score;
+      maxSpace = i.key();
+    }
+
+  }
+
+  //if (overlap_diff < init_overlap_diff) {
+  //stats->add_overlap_diff (overlap_diff);
+  // stats->add_overlap_max (maxScore);
+  //}
+
+  //qDebug () << "overlap max: space="<< maxSpace << " score="<< maxScore
+  // << " scans_used=" << scan_queue->size();
+
+  qDebug() <<"=== MAO ESTIMATE USING GAUSSIAN ===" << maxSpace << maxScore;
+}
+
+
 
 // TODO add coverage estimate, as int? suggested space?
 void Localizer::emitNewLocationEstimate(QString estimatedSpaceName, double estimatedSpaceScore)

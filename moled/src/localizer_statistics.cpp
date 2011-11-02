@@ -91,11 +91,27 @@ void LocalizerStats::emitStatistics()
 #endif
 
 void LocalizerStats::clearRankEntries() {
+  m_confidence = 0.;
   rankEntries.clear();
+  rankScores.clear();
 }
 
 void LocalizerStats::addRankEntry(QString space, double score) {
   rankEntries.insert(space, score);
+  rankScores.append(score);
+}
+
+double LocalizerStats::getConfidence() {
+  if (m_confidence != 0.) {
+    return m_confidence;
+  }
+  if (rankScores.size() < 2) {
+    return 0.;
+  }
+  qSort(rankScores.begin(), rankScores.end(), qGreater<double>());
+  m_confidence = rankScores.at(0) - rankScores.at(1);
+  qDebug () << "getConfidence" << rankScores.at(0) << rankScores.at(1) << "conf" << m_confidence;
+  return m_confidence;
 }
 
 
@@ -131,6 +147,7 @@ LocalizerStats::LocalizerStats(QObject *parent)
   , m_overlapMax(0.)
   , m_overlapDiff(0.)
   , m_movementDetectedCount(0)
+  , m_confidence(0)
 {
   m_startTime = QDateTime::currentDateTime();
   m_lastEmitLocation = QTime::currentTime();
