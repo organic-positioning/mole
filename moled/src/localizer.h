@@ -108,7 +108,6 @@ class LocalizerStats : public QObject
  public:
   LocalizerStats(QObject *parent);
 
-
   void emittedNewLocation() { ++m_emitNewLocationCount; }
   void receivedScan();
 
@@ -125,7 +124,7 @@ class LocalizerStats : public QObject
   void addOverlapMax(double value);
   //void addOverlapDiff(double value);
 
-  void movementDetected() { ++m_movementDetectedCount; } 
+  //void movementDetected() { ++m_movementDetectedCount; } 
 
   void setScanQueueSize(int v) { m_scanQueueSize = v; }
   void setMacsSeenSize(int v) { m_macsSeenSize = v; }
@@ -134,6 +133,9 @@ class LocalizerStats : public QObject
   void setTotalSpaceCount(int v) { m_totalSpaceCount = v; }
   void setPotentialAreaCount(int v) { m_potentialAreaCount = v; }
   void setPotentialSpaceCount(int v) { m_potentialSpaceCount = v; }
+  void setCurrentMotion(Motion motion) { m_currentMotion = motion; }
+  void clearAfterWalkDetection();
+  void handleHibernate(bool goToSleep);
 
   void clearRankEntries();
   void addRankEntry(QString space, double score);
@@ -152,6 +154,8 @@ class LocalizerStats : public QObject
   int m_potentialAreaCount;
   int m_potentialSpaceCount;
 
+  Motion m_currentMotion;
+
   double m_networkLatency;
   double m_networkSuccessRate;
 
@@ -164,11 +168,12 @@ class LocalizerStats : public QObject
 
   double m_overlapMax;
   //double m_overlapDiff;
-  int m_movementDetectedCount;
+  //int m_movementDetectedCount;
 
   QDateTime m_startTime;
   QTime m_lastScanTime;
   QTime m_lastEmitLocation;
+  QTimer m_emitTimer;
 
   double m_confidence;
   QVariantMap rankEntries;
@@ -198,7 +203,7 @@ public:
   QMap<QString,APDesc*> *fingerprint() const { return m_fingerprint; }
   void replaceFingerprint(QMap<QString,APDesc*> *newFP);
 
-  void movementDetected();
+  void handleMotionChange(Motion currentMotion);
 
   void queryCurrentEstimate(QString&, QString&, QString&, QString&,
                             QString&, QString&, int&, double&);
@@ -229,7 +234,6 @@ private:
 
   QTimer m_areaCacheFillTimer;
   QTimer m_mapCacheFillTimer;
-  QTimer m_statisticsTimer;
   QMap<QString,APDesc*> *m_fingerprint;
 
   QString currentEstimateSpace;
@@ -280,7 +284,7 @@ private slots:
   void unlinkMap(QString path);
   void loadMaps();
 
-  void handleLocationEstimateRequest();
+  void emitLocationAndStats();
 
 };
 

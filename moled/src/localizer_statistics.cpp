@@ -18,6 +18,7 @@
 #include "localizer.h"
 
 const qreal ALPHA = 0.20;
+const int maxEmitStatisticsDelay = 10000;
 
 // periodically put a line in the log file
 void LocalizerStats::logStatistics()
@@ -30,10 +31,25 @@ void LocalizerStats::logStatistics()
              << "macs " << m_macsSeenSize;
 }
 
-#ifdef USE_MOLE_DBUS
+void LocalizerStats::clearAfterWalkDetection() {
+  m_scanQueueSize = 0;
+  m_macsSeenSize = 0;
+  m_totalAreaCount = 0;
+  m_totalSpaceCount = 0;
+  m_potentialAreaCount = 0;
+  m_potentialSpaceCount = 0;
+  m_overlapMax = 0.;
+  m_confidence = 0.;
+}
+
+
 void LocalizerStats::emitStatistics()
 {
-  //qDebug () << "LocalizerStats::emitStatistics";
+  m_emitTimer.stop();
+  m_emitTimer.start(maxEmitStatisticsDelay);
+
+#ifdef USE_MOLE_DBUS
+
   int uptime = m_startTime.secsTo(QDateTime::currentDateTime());
   if (m_emitNewLocationCount > 0) {
     m_emitNewLocationSec = (double) uptime / (double) m_emitNewLocationCount;
@@ -66,7 +82,7 @@ void LocalizerStats::emitStatistics()
           << m_potentialAreaCount
           << m_potentialSpaceCount
 
-          << m_movementDetectedCount
+          << m_currentMotion
 
 	 << m_scanRateSec
 
@@ -84,12 +100,8 @@ void LocalizerStats::emitStatistics()
 	   << rankEntries;
 
   QDBusConnection::systemBus().send(statsMsg);
-}
-#else
-void LocalizerStats::emitStatistics()
-{
-}
 #endif
+}
 
 void LocalizerStats::clearRankEntries() {
   m_confidence = 0.;
@@ -138,6 +150,7 @@ LocalizerStats::LocalizerStats(QObject *parent)
   , m_totalSpaceCount(0)
   , m_potentialAreaCount(0)
   , m_potentialSpaceCount(0)
+  , m_currentMotion(STATIONARY)
   , m_networkLatency(0)
   , m_networkSuccessRate(0.8)
   , m_apPerSigCount(0)
@@ -145,7 +158,7 @@ LocalizerStats::LocalizerStats(QObject *parent)
   , m_emitNewLocationSec(0)
   , m_emitNewLocationCount(0)
   , m_overlapMax(0.)
-  , m_movementDetectedCount(0)
+    //, m_movementDetectedCount(0)
   , m_confidence(0)
 {
   m_startTime = QDateTime::currentDateTime();
@@ -155,6 +168,10 @@ LocalizerStats::LocalizerStats(QObject *parent)
   m_logTimer = new QTimer(this);
   connect(m_logTimer, SIGNAL(timeout()), SLOT(logStatistics()));
   m_logTimer->start(30000);
+
+  connect (&m_emitTimer, SIGNAL(timeout()), this, SLOT(emitStatistics()));
+  m_emitTimer.start(maxEmitStatisticsDelay);
+
 }
 
 void LocalizerStats::addNetworkLatency(int value)
@@ -175,6 +192,15 @@ void LocalizerStats::receivedScan()
            << "elapsed " << m_lastScanTime.elapsed();
   m_lastScanTime.restart();
 }
+
+void LocalizerStats::handleHibernate(bool goToSleep)
+{
+  qDebug () << "LocalizerStats handleHibernate" << goToSleep;
+  if (goToSleep) {
+    m_scanRateSec = -1;
+  }
+}
+
 
 void LocalizerStats::addApPerSigCount(int count)
 {

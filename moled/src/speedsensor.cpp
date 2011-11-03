@@ -191,7 +191,7 @@ void SpeedSensor::emitMotion(Motion motion)
     }
   }
 
-  m_scanQueue->handleMotionEstimate(motion);
+  m_scanQueue->handleMotionChange(motion);
 #ifdef USE_MOLE_DBUS
   QDBusMessage msg = QDBusMessage::createSignal("/", "com.nokia.moled", "MotionEstimate");
   msg << motion;

@@ -337,13 +337,13 @@ APDesc* ScanQueue::getAP(QString mac, QString ssid, qint16 frequency)
   return ap;
 }
 
-void ScanQueue::handleMotionEstimate(int motion)
+void ScanQueue::handleMotionChange(Motion motion)
 {
   qDebug() << "localizer got speed estimate" << motion;
 
   if (motion == MOVING) {
     m_movementDetected = true;
-    m_localizer->movementDetected();
+    m_localizer->handleMotionChange(motion);
   }
 
 }

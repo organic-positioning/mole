@@ -123,8 +123,8 @@ private slots:
   void requestLocationEstimate();
 
 
-  void onWalkingTimeout();
-  void onSpeedStatusChanged(int);
+  //void onWalkingTimeout();
+  //void onSpeedStatusChanged(int);
   void onlineStateChanged(bool);
   void onDaemonTimerTimeout ();
   

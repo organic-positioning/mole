@@ -51,7 +51,7 @@ Localizer::Localizer(QObject *parent, bool _runAllAlgorithms)
 
 #ifdef USE_MOLE_DBUS
   QDBusConnection::systemBus().registerObject("/", this);
-  QDBusConnection::systemBus().connect(QString(), QString(), "com.nokia.moled", "GetLocationEstimate", this, SLOT(handleLocationEstimateRequest()));
+  QDBusConnection::systemBus().connect(QString(), QString(), "com.nokia.moled", "GetLocationEstimate", this, SLOT(emitLocationAndStats()));
 #endif
 
 
@@ -59,9 +59,6 @@ Localizer::Localizer(QObject *parent, bool _runAllAlgorithms)
 
   connect(&m_mapCacheFillTimer, SIGNAL(timeout()), this, SLOT(fillMapCache()));
   m_mapCacheFillTimer.start(MAP_FILL_PERIOD);
-
-  connect (&m_statisticsTimer, SIGNAL(timeout()), m_stats, SLOT(emitStatistics()));
-  m_statisticsTimer.start (10000);
 
   loadMaps();
 
@@ -96,7 +93,7 @@ void Localizer::replaceFingerprint(QMap<QString,APDesc*> *newFP)
   m_fingerprint = newFP;
 }
 
-void Localizer::handleLocationEstimateRequest()
+void Localizer::emitLocationAndStats()
 {
   qDebug() << "location estimate request";
   emitLocationEstimate();
@@ -788,9 +785,13 @@ void Localizer::loudMac(QString &loudMacA, QString &loudMacB)
 
 }
 
-void Localizer::movementDetected() { 
-    m_stats->movementDetected();
-    currentEstimateSpace = unknownSpace;
+void Localizer::handleMotionChange(Motion currentMotion) { 
+    m_stats->setCurrentMotion(currentMotion);
+    if (currentMotion == MOVING) {
+      m_stats->clearAfterWalkDetection();
+      currentEstimateSpace = unknownSpace; // TODO is this really what we want?
+    }
+    emitLocationAndStats();
 }
 
 void Localizer::handleHibernate(bool goToSleep)

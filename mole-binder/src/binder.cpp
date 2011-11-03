@@ -43,7 +43,7 @@ Binder::Binder(QWidget *parent)
   connect(&m_requestLocationTimer, SIGNAL(timeout()), SLOT(requestLocationEstimate()));
   m_requestLocationTimer.start(2000);
 
-  connect(&m_walkingTimer, SIGNAL(timeout()), SLOT(onWalkingTimeout()));
+  //connect(&m_walkingTimer, SIGNAL(timeout()), SLOT(onWalkingTimeout()));
 
   connect(&m_daemonHeartbeatTimer, SIGNAL(timeout()), SLOT(onDaemonTimerTimeout()));
   m_daemonHeartbeatTimer.start(15000);
@@ -58,9 +58,9 @@ Binder::Binder(QWidget *parent)
     (QString(), QString(), "com.nokia.moled", "LocationEstimate", this,
      SLOT(handleLocationEstimate(QString)));
 
-  QDBusConnection::systemBus().connect
-    (QString(), QString(), "com.nokia.moled", "MotionEstimate", this,
-     SLOT(onSpeedStatusChanged(int)));
+  //QDBusConnection::systemBus().connect
+  //(QString(), QString(), "com.nokia.moled", "MotionEstimate", this,
+  //SLOT(onSpeedStatusChanged(int)));
 
   QDBusConnection::systemBus().connect
     (QString(), QString(), "com.nokia.moled", "ProximityUpdate", this,
@@ -830,11 +830,10 @@ void Binder::refreshLastEstimate()
   //tagsEdit->setText(tagsEstimate);
 }
 
-
-void Binder::onSpeedStatusChanged(int motion)
+/*
+void Binder::onSpeedStatusChanged(Motion motion)
 {
   qDebug() << "statistics got speed estimate" << motion;
-  receivedDaemonMsg ();
 
   if (motion == MOVING) {
     setWalkingLabel(true);
@@ -845,7 +844,7 @@ void Binder::onSpeedStatusChanged(int motion)
     setWalkingLabel(false);
   }
 }
-
+*/
 
 void Binder::setWalkingLabel(bool isWalking)
 {
@@ -860,17 +859,19 @@ void Binder::setWalkingLabel(bool isWalking)
 }
 
 
+/*
 void Binder::onWalkingTimeout()
 {
   qDebug() << "handle walking timeout";
   m_walkingTimer.stop();
   setWalkingLabel(false);
 }
+*/
 
 
 void Binder::handleLocationStats
 (QString /*fqName*/, QDateTime /*startTime*/,
- int scanQueueSize,int macsSeenSize,int totalAreaCount,int /*totalSpaceCount*/,int /*potentialAreaCount*/,int potentialSpaceCount,int /*movementDetectedCount*/,int scanRateTime,double emitNewLocationSec,double /*networkLatency*/,double networkSuccessRate,double overlapMax,double confidence,QVariantMap rankEntries)
+ int scanQueueSize,int macsSeenSize,int totalAreaCount,int /*totalSpaceCount*/,int /*potentialAreaCount*/,int potentialSpaceCount,int _motionEstimate,int scanRateTime,double emitNewLocationSec,double /*networkLatency*/,double networkSuccessRate,double overlapMax,double confidence,QVariantMap rankEntries)
 {
   qDebug() << "statistics";
   receivedDaemonMsg ();
@@ -879,7 +880,11 @@ void Binder::handleLocationStats
                             "/" + QString::number(macsSeenSize));
   cacheSpacesLabel->setText(QString::number(totalAreaCount) +
                              "/" + QString::number(potentialSpaceCount));
-  scanRateLabel->setText(QString::number(scanRateTime)+"s");
+  if (scanRateTime >= 0) {
+    scanRateLabel->setText(QString::number(scanRateTime)+"s");
+  } else {
+    scanRateLabel->setText("Off");
+  }
 
   overlapMaxLabel->setText(QString::number(overlapMax,'f', 3));
   confidenceLabel->setText(QString::number(confidence, 'f', 3));
@@ -911,6 +916,17 @@ void Binder::handleLocationStats
   } else {
     qDebug () << "statsScanQueue" << scanQueueSize;
     setSubmitState (SCANNING, scanQueueSize);
+  }
+
+  Motion motionEstimate = (Motion) _motionEstimate;
+  qDebug() << "motionEstimate" << motionEstimate;
+  if (motionEstimate == MOVING) {
+    setWalkingLabel(true);
+    //spaceNameEstimate = "??";
+    //refreshLastEstimate();
+    //setSubmitState(SCANNING);
+  } else {
+    setWalkingLabel(false);
   }
 
   //binderUi.setLocationStats(scanCountLabel->text(), cacheSpacesLabel->text(), scanRateLabel->text(), overlapMaxLabel->text(), churnLabel->text());
