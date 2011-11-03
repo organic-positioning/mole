@@ -39,7 +39,7 @@ void LocalizerStats::clearAfterWalkDetection() {
   m_potentialAreaCount = 0;
   m_potentialSpaceCount = 0;
   m_overlapMax = 0.;
-  m_confidence = 0.;
+  clearRankEntries();
 }
 
 

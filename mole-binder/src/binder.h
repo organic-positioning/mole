@@ -44,6 +44,7 @@ public slots:
 
 private:
   bool m_daemonOnline;
+  Motion m_motionEstimate;
   //int m_requestLocationEstimateCounter;
   SubmitState m_submitState;
   QByteArray m_currentProximityUpdate;

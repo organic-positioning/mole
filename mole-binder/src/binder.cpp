@@ -28,6 +28,7 @@ const int MIN_SCANS_TO_BIND = 6;
 Binder::Binder(QWidget *parent)
   : QWidget(parent)
   , m_daemonOnline(false)
+  , m_motionEstimate(STATIONARY)
   , m_currentProximityUpdate(QByteArray())
   , m_proximityDialog(NULL)
   , m_rankedSpacesDialog(NULL)
@@ -826,7 +827,11 @@ void Binder::refreshLastEstimate()
   cityEdit->setText(cityEstimate);
   areaEdit->setText(areaEstimate);
   floorEdit->setText(floorEstimate);
-  spaceNameEdit->setText(spaceNameEstimate);
+  if (m_motionEstimate == MOVING) {
+    spaceNameEdit->setText("??");
+  } else {
+    spaceNameEdit->setText(spaceNameEstimate);
+  }
   //tagsEdit->setText(tagsEstimate);
 }
 
@@ -918,12 +923,12 @@ void Binder::handleLocationStats
     setSubmitState (SCANNING, scanQueueSize);
   }
 
-  Motion motionEstimate = (Motion) _motionEstimate;
-  qDebug() << "motionEstimate" << motionEstimate;
-  if (motionEstimate == MOVING) {
+  m_motionEstimate = (Motion) _motionEstimate;
+  qDebug() << "motionEstimate" << m_motionEstimate;
+  if (m_motionEstimate == MOVING) {
     setWalkingLabel(true);
     //spaceNameEstimate = "??";
-    //refreshLastEstimate();
+    refreshLastEstimate();
     //setSubmitState(SCANNING);
   } else {
     setWalkingLabel(false);

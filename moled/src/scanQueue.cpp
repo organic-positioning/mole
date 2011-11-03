@@ -343,8 +343,8 @@ void ScanQueue::handleMotionChange(Motion motion)
 
   if (motion == MOVING) {
     m_movementDetected = true;
-    m_localizer->handleMotionChange(motion);
   }
+  m_localizer->handleMotionChange(motion);
 
 }
 

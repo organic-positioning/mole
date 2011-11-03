@@ -34,7 +34,6 @@ const int MAX_READING_COUNT = 100;
 
 const int MOTION_HISTORY_SIZE = 3; // must be >= 3
 
-// Neccessary for Qt Mobility API usage
 QTM_USE_NAMESPACE
 
 class SpeedSensor : public QObject, public QAccelerometerFilter

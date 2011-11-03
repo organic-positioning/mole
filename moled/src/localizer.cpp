@@ -96,23 +96,20 @@ void Localizer::replaceFingerprint(QMap<QString,APDesc*> *newFP)
 void Localizer::emitLocationAndStats()
 {
   qDebug() << "location estimate request";
-  emitLocationEstimate();
   m_stats->emitStatistics();
+  emitLocationEstimate();
 }
 
-#ifdef USE_MOLE_DBUS
+
 void Localizer::emitLocationEstimate()
 {
+#ifdef USE_MOLE_DBUS
   QDBusMessage msg = QDBusMessage::createSignal("/", "com.nokia.moled", "LocationEstimate");
   msg << currentEstimateSpace;
   QDBusConnection::systemBus().send(msg);
   qDebug () << "emitLocationEstimate on dbus" << currentEstimateSpace;
-}
-#else
-void Localizer::emitLocationEstimate()
-{
-}
 #endif
+}
 
 void Localizer::localize(const int scanQueueSize)
 {
@@ -284,10 +281,10 @@ void Localizer::makeOverlapEstimateWithHist(QMap<QString,SpaceDesc*> &ps, int pe
 
   double confidence = 0.;
   if (penalty == BEST_PENALTY) {
+    m_stats->addOverlapMax(maxScore);
     if (!maxSpace.isEmpty())
       emitNewLocationEstimate(maxSpace, maxScore);
 
-    m_stats->addOverlapMax(maxScore);
     confidence = m_stats->getConfidence();
   }
 
@@ -358,8 +355,8 @@ void Localizer::emitNewLocationEstimate(QString estimatedSpaceName, double estim
   if (currentEstimateSpace != estimatedSpaceName) {
     currentEstimateSpace = estimatedSpaceName;
     m_stats->emittedNewLocation();
-    emitLocationEstimate();
     m_stats->emitStatistics();
+    emitLocationEstimate();
     emitEstimateToMonitors();
   }
 }
@@ -789,15 +786,16 @@ void Localizer::handleMotionChange(Motion currentMotion) {
     m_stats->setCurrentMotion(currentMotion);
     if (currentMotion == MOVING) {
       m_stats->clearAfterWalkDetection();
-      currentEstimateSpace = unknownSpace; // TODO is this really what we want?
+      //currentEstimateSpace = unknownSpace; // TODO is this really what we want?
     }
-    emitLocationAndStats();
+    m_stats->emitStatistics();
 }
 
 void Localizer::handleHibernate(bool goToSleep)
 {
   qDebug () << "Localizer handleHibernate" << goToSleep;
   m_hibernating = goToSleep;
+  m_stats->handleHibernate(goToSleep);
 }
 
 double Localizer::macOverlapCoefficient(const QMap<QString,APDesc*> *macsA, const QList<QString> &macsB)
