@@ -49,7 +49,7 @@ Binder::Binder(QWidget *parent)
   QDBusConnection::systemBus().connect
     (QString(), QString(), "com.nokia.moled", "LocationStats", this,
      SLOT(handleLocationStats(QString,QDateTime,int,int,int,int,int,
-                              int,int,double,double,double,double,double,
+                              int,int,int,double,double,double,double,
 			      double,QVariantMap)));
 
   QDBusConnection::systemBus().connect
@@ -859,7 +859,7 @@ void Binder::onWalkingTimeout()
 
 void Binder::handleLocationStats
 (QString /*fqName*/, QDateTime /*startTime*/,
- int scanQueueSize,int macsSeenSize,int totalAreaCount,int /*totalSpaceCount*/,int /*potentialAreaCount*/,int potentialSpaceCount,int /*movementDetectedCount*/,double scanRateTime,double emitNewLocationSec,double /*networkLatency*/,double networkSuccessRate,double overlapMax,double overlapDiff,QVariantMap rankEntries)
+ int scanQueueSize,int macsSeenSize,int totalAreaCount,int /*totalSpaceCount*/,int /*potentialAreaCount*/,int potentialSpaceCount,int /*movementDetectedCount*/,int scanRateTime,double emitNewLocationSec,double /*networkLatency*/,double networkSuccessRate,double overlapMax,double overlapDiff,QVariantMap rankEntries)
 {
   qDebug() << "statistics";
   receivedDaemonMsg ();
@@ -868,7 +868,7 @@ void Binder::handleLocationStats
                             "/" + QString::number(macsSeenSize));
   cacheSpacesLabel->setText(QString::number(totalAreaCount) +
                              "/" + QString::number(potentialSpaceCount));
-  scanRateLabel->setText(QString::number((int)(round(scanRateTime/1000)))+"s");
+  scanRateLabel->setText(QString::number(scanRateTime)+"s");
 
   overlapMaxLabel->setText(QString::number(overlapMax,'f', 4));
 

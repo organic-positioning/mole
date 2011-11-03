@@ -33,10 +33,12 @@ const int MAP_FILL_PERIOD_SOON = 10000;
 const int MAP_FILL_PERIOD = 60000;
 const int BEST_PENALTY = 4;
 
-Localizer::Localizer(QObject *parent)
+Localizer::Localizer(QObject *parent, bool _runAllAlgorithms)
   : QObject(parent)
+  , m_runAllAlgorithms(_runAllAlgorithms)
   , m_firstAddScan(true)
   , m_forceMapCacheUpdate(true)
+  , m_hibernating(false)
   , m_overlap(new Overlap())
   , m_stats(new LocalizerStats(this))
   , m_fingerprint(new QMap<QString,APDesc*>())
@@ -246,11 +248,13 @@ void Localizer::localize(const int scanQueueSize)
   m_stats->setTotalSpaceCount(totalSpaceCount);
   m_stats->setPotentialSpaceCount(potentialSpacesSize);
 
-  //makeBayesEstimate(potentialSpaces);
-  //makeBayesEstimateWithHist(potentialSpaces);
-  makeOverlapEstimateWithGaussians(potentialSpaces);
-  makeOverlapEstimateWithHist(potentialSpaces, 0);
-  makeOverlapEstimateWithHist(potentialSpaces, 1);
+  if (m_runAllAlgorithms) {
+    //makeBayesEstimate(potentialSpaces);
+    //makeBayesEstimateWithHist(potentialSpaces);
+    makeOverlapEstimateWithGaussians(potentialSpaces);
+    makeOverlapEstimateWithHist(potentialSpaces, 0);
+    makeOverlapEstimateWithHist(potentialSpaces, 1);
+  }
   makeOverlapEstimateWithHist(potentialSpaces, BEST_PENALTY);
 
 }
@@ -406,6 +410,10 @@ void Localizer::fillAreaCache()
     qDebug() << "aborting fill_area_cache because offline";
     return;
   }
+  if (m_hibernating) {
+    qDebug() << "aborting fill_area_cache because hibernating";
+    return;
+  }
 
   QString lMacA, lMacB;
   loudMac(lMacA, lMacB);
@@ -519,6 +527,10 @@ void Localizer::fillMapCache()
 
   if (!networkConfigurationManager->isOnline()) {
     qDebug() << "aborting fill_map_cache because offline";
+    return;
+  }
+  if (m_hibernating) {
+    qDebug() << "aborting fill_map_cache because hibernating";
     return;
   }
 
@@ -779,6 +791,12 @@ void Localizer::loudMac(QString &loudMacA, QString &loudMacB)
 void Localizer::movementDetected() { 
     m_stats->movementDetected();
     currentEstimateSpace = unknownSpace;
+}
+
+void Localizer::handleHibernate(bool goToSleep)
+{
+  qDebug () << "Localizer handleHibernate" << goToSleep;
+  m_hibernating = goToSleep;
 }
 
 double Localizer::macOverlapCoefficient(const QMap<QString,APDesc*> *macsA, const QList<QString> &macsB)

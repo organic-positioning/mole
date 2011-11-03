@@ -42,6 +42,11 @@ Scanner::~Scanner()
 {
 }
 
+void Scanner::handleHibernate(bool goToSleep)
+{
+  qDebug () << "handleHibernate" << goToSleep;
+}
+
 void Scanner::scanAccessPoints()
 {
   m_timer.stop();

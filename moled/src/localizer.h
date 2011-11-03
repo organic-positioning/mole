@@ -158,7 +158,7 @@ class LocalizerStats : public QObject
   double m_apPerSigCount;
   double m_apPerScanCount;
 
-  double m_scanRateMs;
+  //double m_scanRateMs;
   double m_emitNewLocationSec;
   int m_emitNewLocationCount;
 
@@ -176,6 +176,7 @@ class LocalizerStats : public QObject
 
   double updateEwma(double current, int value) { return updateEwma(current, (double)value); }
   double updateEwma(double current, double value);
+  int scanRate();
 
 private slots:
   void logStatistics();
@@ -187,7 +188,7 @@ class Localizer : public QObject
   Q_OBJECT
 
 public:
-  Localizer(QObject *parent = 0);
+  Localizer(QObject *parent = 0, bool runAllAlgorithms = false);
   ~Localizer();
 
   void scanCompleted();
@@ -212,9 +213,14 @@ public:
   void bind(QString fqArea, QString fqSpace);
   bool removeSpace(QString fqArea, QString fqSpace);
 
+ public slots:
+  void handleHibernate(bool goToSleep);
+
 private:
+  bool m_runAllAlgorithms;
   bool m_firstAddScan;
   bool m_forceMapCacheUpdate;
+  bool m_hibernating;
 
   QDir *m_mapRoot;
   Overlap *m_overlap;

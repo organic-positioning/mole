@@ -74,6 +74,8 @@ class ScanQueue : public QObject
   bool scanCompleted();
   void serialize(QDateTime oldestValidScan, QVariantList &scanList);
   void handleMotionEstimate(int motion);
+  void hibernate(bool goToSleep);
+  bool hibernating() { return m_hibernating; }
 
   const int maxActiveQueueLength;
 
@@ -86,6 +88,7 @@ class ScanQueue : public QObject
   qint8 m_seenMacsSize;
   int m_responseRateTotal;
   bool m_movementDetected;
+  bool m_hibernating;
 
   QSet<QString> m_seenMacs;
   QSet<APDesc*> m_dirtyAPs;

@@ -35,7 +35,7 @@ Scanner::Scanner(QObject *parent, ScanQueue *scanQueue, Binder *binder, Mode sca
 {
   binder->setWifiDesc("N900");
 
-  m_interarrival.start();
+  //m_interarrival.start();
 
   connect(this, SIGNAL(scannedAccessPoint(ICDScan *)), this, SLOT(addReadings(ICDScan *)));
 
@@ -48,6 +48,17 @@ Scanner::Scanner(QObject *parent, ScanQueue *scanQueue, Binder *binder, Mode sca
 Scanner::~Scanner()
 {
   stop();
+}
+
+void Scanner::handleHibernate(bool goToSleep)
+{
+  qDebug () << "Scanner handleHibernate" << goToSleep;
+  //qFatal ("handleHibernate");
+  if (goToSleep) {
+    stop();
+  } else {
+    start();
+  }
 }
 
 void Scanner::scanResultHandler(const QDBusMessage &msg)//const QList<QVariant> &msg)
@@ -217,7 +228,7 @@ void Scanner::addReadings(ICDScan *scan)
   m_scanQueue->addReading(scan->StationId(), scan->NetworkName(),
                           (qint16)(scan->NetworkAttributes()), (qint8)strength);
 
-  m_interarrival.restart();
+  //m_interarrival.restart();
 
 }
 

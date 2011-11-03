@@ -348,6 +348,10 @@ void ScanQueue::handleMotionEstimate(int motion)
 
 }
 
+void ScanQueue::hibernate(bool goToSleep) {
+
+}
+
 // scale back everything except for the current scan
 void ScanQueue::truncate()
 {

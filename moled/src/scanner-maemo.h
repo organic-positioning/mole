@@ -40,6 +40,7 @@ class Scanner : public QObject
   ~Scanner();
 
   bool stop();
+  void hibernate(bool goToSleep);
 
  signals:
   void scannedAccessPoint(ICDScan *network);
@@ -51,7 +52,7 @@ class Scanner : public QObject
   Mode m_mode;
   bool m_scanning;
 
-  QTime m_interarrival;
+  //QTime m_interarrival;
   QTimer m_startTimer;
 
  public slots:
@@ -59,6 +60,7 @@ class Scanner : public QObject
 
   void scanResultHandler(const QDBusMessage&);
   void print(ICDScan *network);
+  void handleHibernate(bool goToSleep);
 
  private slots:
   void addReadings(ICDScan *network);

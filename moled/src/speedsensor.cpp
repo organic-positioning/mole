@@ -21,25 +21,30 @@ bool SpeedSensor::accelerometerExists = true;
 bool SpeedSensor::testedForAccelerometer = false;
 
 SpeedSensor::SpeedSensor(QObject* parent, ScanQueue *_scanQueue,
-                         int _samplingPeriod, int _dutyCycle)
+                         int _samplingPeriod, int _dutyCycle,
+			 int _hibernationDelay)
   : QObject(parent)
+  , m_lastHibernateMessage(false)
   , m_sensor(new QAccelerometer(this))
   , m_scanQueue(_scanQueue)
   , m_on(false)
   , m_readingCount(0)
   , samplingPeriod(_samplingPeriod)
   , dutyCycle(_dutyCycle)
+  , hibernationDelay(_hibernationDelay)
 {
-  qDebug() <<"speedsensor samplingPeriod=" <<samplingPeriod <<"dutyCycle="<<dutyCycle;
 
   connect(&m_timer, SIGNAL(timeout()), SLOT(handleTimeout()));
+  connect(&m_hibernateTimer, SIGNAL(timeout()), SLOT(handleHibernateTimeout()));
 
   for (int i = 0; i < MOTION_HISTORY_SIZE; ++i)
     m_motionHistory[i] = STATIONARY;
 
+  m_hibernateTimer.start(hibernationDelay);
   handleTimeout();
 
-  qDebug() << "starting speed sensor";
+  qWarning() << "starting speed sensor hibernationDelay" << hibernationDelay 
+	     << "samplingPeriod=" <<samplingPeriod <<"dutyCycle="<<dutyCycle;
 }
 
 void SpeedSensor::handleTimeout()
@@ -156,7 +161,7 @@ Motion SpeedSensor::updateSpeedVariance()
   }
   magVariance /= m_readingCount;
 
-  qDebug() << "mean variance " << magVariance;
+  //qDebug() << "mean variance " << magVariance;
 
   Motion motion;
   if (magVariance > 0.8) {
@@ -170,21 +175,39 @@ Motion SpeedSensor::updateSpeedVariance()
 
 }
 
-#ifdef USE_MOLE_DBUS
+
 void SpeedSensor::emitMotion(Motion motion)
 {
+  if (motion == MOVING) {
+    m_hibernateTimer.stop();
+    m_lastHibernateMessage = false;
+    emit hibernate(false);
+    m_scanQueue->hibernate(false);
+  } else {
+    if (!m_lastHibernateMessage) {
+      if (!m_hibernateTimer.isActive()) {
+	m_hibernateTimer.start(hibernationDelay);
+      }
+    }
+  }
+
+  m_scanQueue->handleMotionEstimate(motion);
+#ifdef USE_MOLE_DBUS
   QDBusMessage msg = QDBusMessage::createSignal("/", "com.nokia.moled", "MotionEstimate");
   msg << motion;
-  m_scanQueue->handleMotionEstimate(motion);
   QDBusConnection::systemBus().send(msg);
+#endif
   qDebug() << "emitMotion" << motion;
 }
-#else
-void SpeedSensor::emitMotion(Motion motion)
+
+void SpeedSensor::handleHibernateTimeout()
 {
-  m_scanQueue->handleMotionEstimate(motion);
+  qDebug () << "SpeedSensor handleHibernateTimeout";
+  m_hibernateTimer.stop();
+  m_lastHibernateMessage = true;
+  emit hibernate(true);
+  m_scanQueue->hibernate(true);
 }
-#endif
 
 void SpeedSensor::shutdown()
 {

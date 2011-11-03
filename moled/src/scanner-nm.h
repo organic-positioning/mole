@@ -34,6 +34,11 @@ class Scanner : public QObject
   Scanner(QObject *parent = 0, ScanQueue *scanQueue = 0, Binder *binder = 0);
   ~Scanner ();
 
+  void hibernate(bool goToSleep);
+
+ public slots:
+  void handleHibernate(bool goToSleep);
+
  private:
   ScanQueue *m_scanQueue;
   Binder *m_binder;

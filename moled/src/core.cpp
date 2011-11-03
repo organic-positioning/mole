@@ -53,6 +53,7 @@ Core::Core(int argc, char *argv[])
   bool runWiFiScanner = true;
   bool runMovementDetector = true;
   bool recordScans = false;
+  bool runAllAlgorithms = false;
 
   //////////////////////////////////////////////////////////
   // Make sure no other arguments have been given
@@ -87,6 +88,8 @@ Core::Core(int argc, char *argv[])
         runWiFiScanner = false;
     } else if (arg == "-S") {
         recordScans = true;
+    } else if (arg == "-A") {
+      runAllAlgorithms = true;
     } else {
         usage();
     }
@@ -154,7 +157,7 @@ Core::Core(int argc, char *argv[])
   // reset session cookie on MOLEd restart
   resetSessionCookie();
 
-  m_localizer = new Localizer(this);
+  m_localizer = new Localizer(this, runAllAlgorithms);
 
   if (runMovementDetector && SpeedSensor::haveAccelerometer()) {
     m_scanQueue = new ScanQueue(this, m_localizer, 0, recordScans);
@@ -169,13 +172,16 @@ Core::Core(int argc, char *argv[])
   m_proximity = new Proximity(this, m_localizer);
   m_localServer = new LocalServer(this, m_localizer, m_binder, port);
 
-  m_speedSensor = 0;
-  if (runMovementDetector && SpeedSensor::haveAccelerometer())
-    m_speedSensor = new SpeedSensor(this, m_scanQueue);
-
   m_scanner = 0;
   if (runWiFiScanner)
     m_scanner = new Scanner(this, m_scanQueue, m_binder);
+
+  m_speedSensor = 0;
+  if (runMovementDetector && SpeedSensor::haveAccelerometer()) {
+    m_speedSensor = new SpeedSensor(this, m_scanQueue);
+    connect(m_speedSensor, SIGNAL(hibernate(bool)), m_scanner, SLOT(handleHibernate(bool)));
+    connect(m_speedSensor, SIGNAL(hibernate(bool)), m_localizer, SLOT(handleHibernate(bool)));
+  }
 
   connect(this, SIGNAL(aboutToQuit()), SLOT(handle_quit()));
 }
@@ -289,7 +295,8 @@ void usage()
               << "-p local port [" << DEFAULT_LOCAL_PORT << "]\n"
               << "--no-accelerometer turn off movement detection\n"
               << "--no-wifi turn off wifi scanner\n"
-              << "-S record all scans to log file\n";
+              << "-S record all scans to log file\n"
+              << "-A run all localization algorithms for comparison\n";
 
   exit(0);
 }

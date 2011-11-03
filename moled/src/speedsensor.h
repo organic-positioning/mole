@@ -43,10 +43,13 @@ class SpeedSensor : public QObject, public QAccelerometerFilter
 
  public:
   SpeedSensor(QObject* parent = 0, ScanQueue *scanQueue = 0,
-              int samplingPeriod = 250, int dutyCycle = 4500);
+              int samplingPeriod = 250, int dutyCycle = 4500,
+	      int _hibernationDelay = 120000);
 
   void shutdown();
   static bool haveAccelerometer();
+ signals:
+  void hibernate(bool goToSleep);
 
  private slots:
   // Override of QAcclerometerFilter::filter(QAccelerometerReading*)
@@ -54,19 +57,23 @@ class SpeedSensor : public QObject, public QAccelerometerFilter
   Motion updateSpeedShafer();
   Motion updateSpeedVariance();
   void handleTimeout();
+  void handleHibernateTimeout();
   void emitMotion(Motion motion);
 
  private:
+  bool m_lastHibernateMessage;
   QAccelerometer *m_sensor;
   ScanQueue *m_scanQueue;
   bool m_on;
   Motion m_motionHistory[MOTION_HISTORY_SIZE];
   QTimer m_timer;
+  QTimer m_hibernateTimer;
   int m_readingCount;
   qreal m_reading[MAX_READING_COUNT][ACC_READING_COLUMNS];
 
   const int samplingPeriod;
   const int dutyCycle;
+  const int hibernationDelay;
 
   static bool testedForAccelerometer;
   static bool accelerometerExists;

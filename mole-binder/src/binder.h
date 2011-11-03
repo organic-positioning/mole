@@ -131,7 +131,7 @@ private slots:
   void handleLocationStats
     (QString fq_name, QDateTime start_time,
      int,int,int,int,int,int,int,
-     double,double,double,double,double,double,QVariantMap);
+     int,double,double,double,double,double,QVariantMap);
 };
 
 #endif // BINDER_H
