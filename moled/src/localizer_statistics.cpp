@@ -25,7 +25,7 @@ void LocalizerStats::logStatistics()
   qWarning() << "stats: "
              << "net_ok " << m_networkSuccessRate
              << "churn " << m_emitNewLocationSec
-             << "scan_ms " << scanRate() //m_scanRateMs
+             << "scanRateSec " << m_scanRateSec
              << "scans " << m_scanQueueSize
              << "macs " << m_macsSeenSize;
 }
@@ -44,7 +44,7 @@ void LocalizerStats::emitStatistics()
   qDebug() << "emit_statistics "
            << "network_success_rate " << m_networkSuccessRate
            << "emit_new_location_sec " << m_emitNewLocationSec
-           << "scan_rate_ms " << scanRate(); // m_scanRateMs;
+           << "scan_rate_ms " << m_scanRateSec;
 
   QString empty = "";
 
@@ -68,7 +68,7 @@ void LocalizerStats::emitStatistics()
 
           << m_movementDetectedCount
 
-	 << scanRate() // m_scanRateMs
+	 << m_scanRateSec
 
     // doubles
          << m_emitNewLocationSec
@@ -77,7 +77,7 @@ void LocalizerStats::emitStatistics()
          << m_networkSuccessRate
 
          << m_overlapMax
-         << m_overlapDiff
+         << getConfidence()
 
     // ranked spaces
 
@@ -122,11 +122,11 @@ void LocalizerStats::statsAsMap(QVariantMap &map)
   map.insert("MacsSeenSize", m_macsSeenSize);
   map.insert("TotalAreaCount", m_totalAreaCount);
   map.insert("PotentialSpaceCount", m_potentialSpaceCount);
-  map.insert("ScanRate", scanRate());
+  map.insert("ScanRate", m_scanRateSec);
   map.insert("NetworkSuccessRate", m_networkSuccessRate);
   map.insert("NetworkLatency", m_networkLatency);
   map.insert("OverlapMax", m_overlapMax);
-  map.insert("OverlapDiff", m_overlapDiff);
+  map.insert("OverlapDiff", getConfidence());
   map.insert("Churn", (int)(round(m_emitNewLocationSec)));
 }
 
@@ -142,11 +142,9 @@ LocalizerStats::LocalizerStats(QObject *parent)
   , m_networkSuccessRate(0.8)
   , m_apPerSigCount(0)
   , m_apPerScanCount(0)
-    //  , m_scanRateMs(0)
   , m_emitNewLocationSec(0)
   , m_emitNewLocationCount(0)
   , m_overlapMax(0.)
-  , m_overlapDiff(0.)
   , m_movementDetectedCount(0)
   , m_confidence(0)
 {
@@ -172,17 +170,10 @@ void LocalizerStats::addNetworkSuccessRate(int value)
 
 void LocalizerStats::receivedScan()
 {
-  qDebug() << "received_scan "
+  m_scanRateSec = ((int)(round(m_lastScanTime.elapsed()/1000)));
+  qDebug() << "receivedScan "
            << "elapsed " << m_lastScanTime.elapsed();
-  //m_scanRateMs = m_lastScanTime.elapsed();
-  // TODO make this the average of the last e.g. ten minutes
-  //m_lastScanTime = QTime::currentTime();
   m_lastScanTime.restart();
-}
-
-int LocalizerStats::scanRate() 
-{
-  return ((int)(round(m_lastScanTime.elapsed()/1000)));
 }
 
 void LocalizerStats::addApPerSigCount(int count)
@@ -195,17 +186,12 @@ void LocalizerStats::addApPerScanCount(int count)
   m_apPerScanCount = updateEwma(m_apPerScanCount, count);
 }
 
-void LocalizerStats::addOverlapDiff(double value)
-{
-  m_overlapDiff = updateEwma(m_overlapDiff, value);
-}
-
 void LocalizerStats::addOverlapMax(double value)
 {
   qDebug() << "overlap "
            << "max " << m_overlapMax
            << "value " << value;
-  m_overlapMax = updateEwma(m_overlapMax, value);
+  m_overlapMax = value;
 }
 
 double LocalizerStats::updateEwma(double current, double value)

@@ -80,7 +80,7 @@ UpdatingDisplayProxyModel::UpdatingDisplayProxyModel(QObject *parent) :
   QSortFilterProxyModel (parent) {
 }
 
-bool UpdatingDisplayProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const {
+bool UpdatingDisplayProxyModel::filterAcceptsRow(int /*sourceRow*/, const QModelIndex &/*sourceParent*/) const {
 
   /*
   QModelIndex index1 = sourceModel()->index(sourceRow, 1, sourceParent);

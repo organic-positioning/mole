@@ -25,7 +25,7 @@
 #include "common.h"
 #include "updatingDisplay.h"
 
-#define MIN_SCANS_TO_BIND 6
+
 enum SubmitState {SCANNING, DISPLAY, EDITING};
 enum BindSource {FIX, ADD, VALIDATE, REMOVE};
 
@@ -85,6 +85,7 @@ private:
   QLabel *cacheSpacesLabel;
   QLabel *scanRateLabel;
   QLabel *overlapMaxLabel;
+  QLabel *confidenceLabel;
   QLabel *churnLabel;
 
   //  BinderUi binderUi;

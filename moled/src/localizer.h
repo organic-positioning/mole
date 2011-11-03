@@ -123,7 +123,7 @@ class LocalizerStats : public QObject
   void addApPerScanCount(int);
 
   void addOverlapMax(double value);
-  void addOverlapDiff(double value);
+  //void addOverlapDiff(double value);
 
   void movementDetected() { ++m_movementDetectedCount; } 
 
@@ -158,12 +158,12 @@ class LocalizerStats : public QObject
   double m_apPerSigCount;
   double m_apPerScanCount;
 
-  //double m_scanRateMs;
+  int m_scanRateSec;
   double m_emitNewLocationSec;
   int m_emitNewLocationCount;
 
   double m_overlapMax;
-  double m_overlapDiff;
+  //double m_overlapDiff;
   int m_movementDetectedCount;
 
   QDateTime m_startTime;
@@ -176,7 +176,6 @@ class LocalizerStats : public QObject
 
   double updateEwma(double current, int value) { return updateEwma(current, (double)value); }
   double updateEwma(double current, double value);
-  int scanRate();
 
 private slots:
   void logStatistics();

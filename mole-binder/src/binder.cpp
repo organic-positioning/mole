@@ -20,6 +20,8 @@
 #include "places.h"
 #include "settings.h"
 
+const int MIN_SCANS_TO_BIND = 6;
+
 // TODO show coverage of local area in color
 // TODO have tags come from server
 
@@ -304,11 +306,17 @@ void Binder::buildUI()
   cacheSpacesLabel->setToolTip(cacheSpacesTooltip);
 
   // overlap algorithm
-  QLabel *overlapMaxInfoLabel = new QLabel(tr("Overlap Max:"), statsBox);
+  QLabel *overlapMaxInfoLabel = new QLabel(tr("Top Score:"), statsBox);
   overlapMaxLabel = new QLabel("0.0  ", statsBox);
-  QString overlapMaxTooltip(tr("Internal score of top estimated space (1=max)"));
+  QString overlapMaxTooltip(tr("Internal score of top estimated space (1=max); confidence in estimate (larger is more confident)"));
   overlapMaxInfoLabel->setToolTip(overlapMaxTooltip);
   overlapMaxLabel->setToolTip(overlapMaxTooltip);
+
+  QLabel *confidenceInfoLabel = new QLabel(tr("Confidence:"), statsBox);
+  confidenceLabel = new QLabel("0.0  ", statsBox);
+  QString confidenceTooltip(tr("Confidence in estimate (larger is more confident)"));
+  confidenceInfoLabel->setToolTip(confidenceTooltip);
+  confidenceLabel->setToolTip(confidenceTooltip);
 
   QLabel *churnInfoLabel = new QLabel(tr("Churn:"), statsBox);
   churnLabel = new QLabel("0s  ", statsBox);
@@ -338,8 +346,11 @@ void Binder::buildUI()
   statsLayout->addWidget(overlapMaxInfoLabel, 0, 7);
   statsLayout->addWidget(overlapMaxLabel, 0, 8);
 
-  statsLayout->addWidget(churnInfoLabel, 1, 7);
-  statsLayout->addWidget(churnLabel, 1, 8);
+  statsLayout->addWidget(confidenceInfoLabel, 1, 7);
+  statsLayout->addWidget(confidenceLabel, 1, 8);
+
+  statsLayout->addWidget(churnInfoLabel, 2, 7);
+  statsLayout->addWidget(churnLabel, 2, 8);
 
   QFrame *statFrameA = new QFrame(statsBox);
   statFrameA->setFrameStyle(QFrame::VLine | QFrame::Sunken);
@@ -859,7 +870,7 @@ void Binder::onWalkingTimeout()
 
 void Binder::handleLocationStats
 (QString /*fqName*/, QDateTime /*startTime*/,
- int scanQueueSize,int macsSeenSize,int totalAreaCount,int /*totalSpaceCount*/,int /*potentialAreaCount*/,int potentialSpaceCount,int /*movementDetectedCount*/,int scanRateTime,double emitNewLocationSec,double /*networkLatency*/,double networkSuccessRate,double overlapMax,double overlapDiff,QVariantMap rankEntries)
+ int scanQueueSize,int macsSeenSize,int totalAreaCount,int /*totalSpaceCount*/,int /*potentialAreaCount*/,int potentialSpaceCount,int /*movementDetectedCount*/,int scanRateTime,double emitNewLocationSec,double /*networkLatency*/,double networkSuccessRate,double overlapMax,double confidence,QVariantMap rankEntries)
 {
   qDebug() << "statistics";
   receivedDaemonMsg ();
@@ -870,13 +881,22 @@ void Binder::handleLocationStats
                              "/" + QString::number(potentialSpaceCount));
   scanRateLabel->setText(QString::number(scanRateTime)+"s");
 
-  overlapMaxLabel->setText(QString::number(overlapMax,'f', 4));
+  overlapMaxLabel->setText(QString::number(overlapMax,'f', 3));
+  confidenceLabel->setText(QString::number(confidence, 'f', 3));
+
+  if (confidence > 0.05) {
+    confidenceLabel->setStyleSheet("QLabel { color: green }");
+  } else if (confidence > 0.01) {
+    confidenceLabel->setStyleSheet("QLabel { color: yellow }");
+  } else {
+    confidenceLabel->setStyleSheet("QLabel { color: red }");
+  }
 
   qDebug() << "emit new location sec " << emitNewLocationSec;
 
   churnLabel->setText(QString::number((int)(round(emitNewLocationSec)))+"s");
 
-  qDebug() << "overlap " << overlapMax << " diff " << overlapDiff;
+  qDebug() << "overlap " << overlapMax << " confidence " << confidence;
   qDebug() << "scan rate " << scanRateTime;
   qDebug() << "network_success_rate " << networkSuccessRate;
 

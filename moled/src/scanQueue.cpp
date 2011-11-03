@@ -348,7 +348,7 @@ void ScanQueue::handleMotionEstimate(int motion)
 
 }
 
-void ScanQueue::hibernate(bool goToSleep) {
+void ScanQueue::hibernate(bool /*goToSleep*/) {
 
 }
 
