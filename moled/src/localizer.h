@@ -31,6 +31,20 @@
 #include <QTcpSocket>
 #include <QAbstractSocket>
 
+/*
+#include <qtm12/QtLocation/QGeoSearchReply>
+#include <qtm12/QtLocation/QGeoAddress>
+#include <qtm12/QtLocation/QGeoPlace>
+#include <qtm12/QtLocation/QGeoSearchManager>
+#include <qtm12/QtLocation/QGeoServiceProvider>
+#include <qtm12/QtLocation/QGeoPositionInfo>
+#include <qtm12/QtLocation/QGeoCoordinate>
+#include <qtm12/QtLocation/QGeoPositionInfo>
+#include <qtm12/QtLocation/QGeoPositionInfoSource>
+
+QTM_USE_NAMESPACE
+*/
+
 class Binder;
 
 class SpaceDesc
@@ -219,6 +233,7 @@ public:
 
  public slots:
   void handleHibernate(bool goToSleep);
+  //void positionUpdated(QGeoPositionInfo geoPositionInfo);
 
 private:
   bool m_runAllAlgorithms;
@@ -231,6 +246,10 @@ private:
   LocalizerStats *m_stats;
   QSet<QTcpSocket*> m_monitoringSockets;
   double currentEstimateScore;
+  //QPointer<QGeoPositionInfoSource> m_locationDataSource;
+  //QGeoPositionInfoSource *m_locationDataSource;
+  //QGeoPositionInfo m_positionInfo;
+  //QGeoSearchManager *m_geoSearchManager;
 
   QTimer m_areaCacheFillTimer;
   QTimer m_mapCacheFillTimer;
@@ -249,6 +268,7 @@ private:
   void issueAreaMapRequest();
   void requestAreaMap(QNetworkRequest request);
   void handleAreaMapResponse();
+  bool haveValidEstimate();
 
   void loudMac(QString &loudMacA, QString &loudMacB);
 
@@ -286,9 +306,12 @@ private slots:
 
   void emitLocationAndStats();
 
+  //void handleGeoSearch();
+  //void searchError(QGeoSearchReply *reply, QGeoSearchReply::Error error, const QString &errorString);
+
 };
 
 extern QString currentEstimateSpace;
-extern QString unknownSpace;
+const extern QString unknownSpace;
 
 #endif /* LOCALIZER_H_ */

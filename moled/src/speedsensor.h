@@ -19,6 +19,7 @@
 #define SPEEDSENSOR_H_
 
 #include <QAccelerometer>
+//#include <qtm12/QtSensors/QAccelerometer>
 #include <QtDBus>
 
 #include "moled.h"
@@ -43,7 +44,7 @@ class SpeedSensor : public QObject, public QAccelerometerFilter
  public:
   SpeedSensor(QObject* parent = 0, ScanQueue *scanQueue = 0,
               int samplingPeriod = 250, int dutyCycle = 4500,
-	      int _hibernationDelay = 120000);
+	      int _hibernationDelay = 300000);
 
   void shutdown();
   static bool haveAccelerometer();

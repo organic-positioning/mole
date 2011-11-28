@@ -108,6 +108,17 @@ void initCommon(QObject *parent, QString logFilename)
   }
 
   rootDir.setPath(rootPathname);
+  if (!rootDir.exists()) {
+    bool ok = QDir().mkpath(rootPathname);
+    if (!ok) {
+      fprintf(stderr, "Cannot create root dir %s.  Exiting.\n", rootDir.path().toAscii().data());
+      exit(-1);
+    } else {
+      fprintf(stderr, "Created root dir %s.\n", rootDir.path().toAscii().data());
+      rootDir.setPath(rootPathname);
+    }
+  }
+
   if (!rootDir.isReadable()) {
     fprintf(stderr, "Cannot read root dir %s.  Exiting.\n", rootDir.path().toAscii().data());
     exit(-1);

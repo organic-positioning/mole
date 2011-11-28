@@ -10,11 +10,20 @@ MOC_DIR = moc
 OBJECTS_DIR = obj
 UI_DIR = obj
 
+# if using qt mobility 1.2 w/maemo, can do
+# export LD_LIBRARY_PATH=/opt/qtm12/lib
+# on device
+#LIBS += -L/usr/lib/qtm12 -lQtSystemInfo
+# Note: forced this to work by moving old library to qtm11
+#LIBS += -L/usr/lib/qtm12 -lQtSensors
+#LIBS += -L/usr/lib/qtm12 -lQtLocation
+
 QT += core xml network
 QT -= gui
+#CONFIG += mobility12
 CONFIG += mobility
 CONFIG += debug
-MOBILITY += sensors systeminfo
+MOBILITY += sensors systeminfo location
 
 HEADERS += \
     src/binder.h \
@@ -22,6 +31,7 @@ HEADERS += \
     src/localizer.h \
     src/localServer.h \
     src/moled.h \
+    src/scanner.h \
     src/scan.h \
     src/scanQueue.h \
     src/proximity.h \
@@ -41,6 +51,7 @@ SOURCES += \
     src/localizer.cpp \
     src/localServer.cpp \
     src/localizer_statistics.cpp \
+    src/scanner.cpp \
     src/scan.cpp \
     src/scanQueue.cpp \
     src/space_parser.cpp \
@@ -99,6 +110,9 @@ unix:!symbian {
 symbian {
     TARGET.UID3 = 0xe689ea0d
     TARGET.CAPABILITY += NetworkServices
+    TARGET.CAPABILITY += Location
     TARGET.EPOCSTACKSIZE = 0x14000
     TARGET.EPOCHEAPSIZE = 0x020000 0x800000
 }
+
+

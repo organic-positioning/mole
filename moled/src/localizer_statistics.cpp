@@ -197,7 +197,9 @@ void LocalizerStats::handleHibernate(bool goToSleep)
 {
   qDebug () << "LocalizerStats handleHibernate" << goToSleep;
   if (goToSleep) {
-    m_scanRateSec = -1;
+    m_scanRateSec = 60;
+  } else {
+    m_scanRateSec = 10;
   }
 }
 

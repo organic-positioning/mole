@@ -62,7 +62,7 @@ void Proximity::update() {
   QJson::Serializer serializer;
   const QByteArray json = serializer.serialize(map);
 
-  qDebug () << "P: update" << json;
+  //qDebug () << "P: update" << json;
 
   QString urlStr = mapServerURL;
   QUrl url(urlStr.append("/proximity"));
@@ -96,7 +96,7 @@ void Proximity::handleUpdateResponse()
       qWarning() << "P: failed to parse json" << rawJson;
       return;
     }
-    qDebug() << "P: raw json" << rawJson;
+    //qDebug() << "P: raw json" << rawJson;
 
     QMap<QString,double> proxMap;
     for (QVariantMap::Iterator it = response.begin(); 

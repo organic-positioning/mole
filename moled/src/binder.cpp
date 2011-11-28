@@ -22,11 +22,11 @@
 
 #include <QNetworkReply>
 #include <QNetworkRequest>
-#include <QSystemDeviceInfo>
+//#include <qtm12/QtLocation/QSystemDeviceInfo>
 
 #include <qjson/serializer.h>
 
-QTM_USE_NAMESPACE
+//QTM_USE_NAMESPACE
 
 Binder::Binder(QObject *parent, Localizer *_localizer, ScanQueue *_scanQueue)
   : QObject(parent)
@@ -54,6 +54,8 @@ Binder::Binder(QObject *parent, Localizer *_localizer, ScanQueue *_scanQueue)
 
   m_bindsDir = new QDir(m_bindDirName);
 
+  qWarning("Temporarily omitting acquiring system device info");
+  /*
   QSystemDeviceInfo *device = new QSystemDeviceInfo(parent);
   qDebug() << "product name  " << device->productName().simplified();
   m_deviceDesc.append(device->productName().simplified());
@@ -64,6 +66,7 @@ Binder::Binder(QObject *parent, Localizer *_localizer, ScanQueue *_scanQueue)
   qDebug() << "manufacturer  " << device->manufacturer().simplified();
   m_deviceDesc.append(device->manufacturer().simplified());
   delete device;
+  */
 
 #ifdef USE_MOLE_DBUS
   qDebug () << "Binder listening on D-Bus";

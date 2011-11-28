@@ -29,8 +29,10 @@ Scanner::Scanner(QObject *parent, ScanQueue *scanQueue, Binder *binder, Mode sca
   : QObject(parent)
   , m_bus(QDBusConnection::connectToBus(QDBusConnection::SystemBus, "system"))
   , m_scanQueue(scanQueue)
+  , m_hibernating(false)
   , m_mode(scanMode)
   , m_scanning(false)
+
 
 {
   binder->setWifiDesc("N900");
@@ -53,10 +55,16 @@ Scanner::~Scanner()
 void Scanner::handleHibernate(bool goToSleep)
 {
   qDebug () << "Scanner handleHibernate" << goToSleep;
-  //qFatal ("handleHibernate");
+  m_hibernating = goToSleep;
   if (goToSleep) {
+    // stop scanning now
     stop();
+    // scan again after hibernate timeout
+    m_startTimer.start(SCAN_INTERVAL_MSEC_HIBERNATE);
   } else {
+    // stop any pending timers from hibernating
+    m_startTimer.stop();
+    // start scanning now
     start();
   }
 }
@@ -217,6 +225,11 @@ void Scanner::addReadings(ICDScan *scan)
   // We do not seem to be getting anything WLAN_INFRA
   // so we do not need to exclude them here.
   if (scan->SignalStrengthDb() == 0 && scan->NetworkAttributes() == 0) {
+    if (m_hibernating) {
+      // scan again in a while, but not right now
+      stop();
+      m_startTimer.start(SCAN_INTERVAL_MSEC_HIBERNATE);
+    }
     m_scanQueue->scanCompleted();
     return;
   }

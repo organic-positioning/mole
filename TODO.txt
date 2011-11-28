@@ -121,6 +121,13 @@ SPRINT 5: Handling network connectivity changes and longevity
 
 - Look at error log for moled problem: when we do a bind and disconnected, local bind can be discarded (really?) - 1pt
 
+SPRINT 6:
+
+- Increase scan queue limit from 12 to 60
+
+- Version number on client: add -v option to moled.  See why correct
+  version number is not showing up with -v on 'mole'
+
 POST-RELEASE
 
 - When a bind is made on another device and our floor is e.g. 0 and

@@ -23,7 +23,7 @@
 #include <qjson/serializer.h>
 
 QString currentEstimateSpace;
-QString unknownSpace = "??";
+const QString unknownSpace = "??";
 
 
 const int AREA_FILL_PERIOD_SHORT = 100;
@@ -54,6 +54,54 @@ Localizer::Localizer(QObject *parent, bool _runAllAlgorithms)
   QDBusConnection::systemBus().connect(QString(), QString(), "com.nokia.moled", "GetLocationEstimate", this, SLOT(emitLocationAndStats()));
 #endif
 
+  /*
+  m_locationDataSource = 0;
+  if (!m_locationDataSource) {
+    // qWarning() << "sources" << QGeoPositionInfoSource::  availableSources();
+    m_locationDataSource =
+      QGeoPositionInfoSource::createDefaultSource(this);
+      //QGeoPositionInfoSource::PositioningMethods methods = m_locationDataSource->preferredPositioningMethods();
+      //qWarning () << "methods" << methods;
+
+    //m_locationDataSource->setPreferredPositioningMethods(QGeoPositionInfoSource::NonSatellitePositioningMethods);
+    if (m_locationDataSource) {
+    connect(m_locationDataSource, SIGNAL(positionUpdated(QGeoPositionInfo)),
+	    this, SLOT(positionUpdated(QGeoPositionInfo)));
+ 
+    m_locationDataSource->startUpdates();
+
+    QGeoPositionInfo position = m_locationDataSource->lastKnownPosition();
+    QGeoCoordinate coordinate = position.coordinate();
+    if (coordinate.isValid()) {
+    qreal latitude = coordinate.latitude();
+    qreal longitude = coordinate.longitude();
+    qWarning() << QString("Latitude: %1 Longitude: %2").arg(latitude).arg(longitude);
+
+    QGeoServiceProvider serviceProvider("nokia");
+ 
+    if (serviceProvider.error() == QGeoServiceProvider::NoError) {
+      m_geoSearchManager = serviceProvider.searchManager();
+    }
+
+    connect(m_geoSearchManager,
+                    SIGNAL(finished(QGeoSearchReply*)),
+                    this,
+                    SLOT(searchResults(QGeoSearchReply*)));
+
+            connect(m_geoSearchManager,
+                    SIGNAL(error(QGeoSearchReply*,QGeoSearchReply::Error,QString)),
+                    this,
+                    SLOT(searchError(QGeoSearchReply*,QGeoSearchReply::Error,QString)));
+            QGeoSearchReply* reply = m_geoSearchManager->reverseGeocode (coordinate);
+            //connect(reply, SIGNAL(finished()), this, SLOT(handleGeoSearch()));
+
+
+    } else {
+      qWarning () << "coord not valid";
+    }
+      }
+  }
+  */
 
   connect(&m_areaCacheFillTimer, SIGNAL(timeout()), this, SLOT(fillAreaCache()));
 
@@ -63,6 +111,32 @@ Localizer::Localizer(QObject *parent, bool _runAllAlgorithms)
   loadMaps();
 
 }
+
+/*
+void Localizer::handleGeoSearch() {
+    QGeoSearchReply *reply = qobject_cast<QGeoSearchReply *>(sender());
+    reply->deleteLater();
+    if (reply->error() != QGeoSearchReply::NoError) {
+        qWarning() << "geo search error" << reply->errorString();
+    } else{
+        qWarning() << "size" << reply->places().size();
+        QList<QGeoPlace> places = reply->places();
+        for (int i = 0; i < reply->places().size(); ++i) {
+            QGeoPlace place = reply->places().at(i);
+            qWarning() << "addr country" << place.address().county();
+        }
+    }
+}
+
+
+void Localizer::searchError(QGeoSearchReply *reply, QGeoSearchReply::Error error, const QString &errorString)
+{
+    // ... inform the user that an error has occurred ...
+    qWarning("searchError");
+    reply->deleteLater();
+}
+
+*/
 
 Localizer::~Localizer()
 {
@@ -85,6 +159,25 @@ Localizer::~Localizer()
   qDebug () << "finished deleting localizer";
 
 }
+
+/*
+void Localizer::positionUpdated(QGeoPositionInfo geoPositionInfo) {
+  if (geoPositionInfo.isValid()) {
+
+    m_locationDataSource->stopUpdates();
+ 
+    // Save the position information into a member variable
+    m_positionInfo = geoPositionInfo;
+ 
+    // Get the current location as latitude and longitude
+    QGeoCoordinate geoCoordinate = geoPositionInfo.coordinate();
+    qreal latitude = geoCoordinate.latitude();
+    qreal longitude = geoCoordinate.longitude();
+    qDebug() << QString("Latitude: %1 Longitude: %2").arg(latitude).arg(longitude);
+  }
+  qFatal ("positionUpdated");
+}
+*/
 
 void Localizer::replaceFingerprint(QMap<QString,APDesc*> *newFP)
 {
@@ -361,6 +454,13 @@ void Localizer::emitNewLocationEstimate(QString estimatedSpaceName, double estim
   }
 }
 
+bool Localizer::haveValidEstimate() {
+  if (currentEstimateSpace == unknownSpace) {
+    return false;
+  }
+  return true;
+}
+
 void Localizer::queryCurrentEstimate(QString &country, QString &region,
                                      QString &city, QString &area,
                                      QString &space, QString &tags, 
@@ -404,7 +504,7 @@ void Localizer::fillAreaCache()
     qDebug() << "aborting fill_area_cache because offline";
     return;
   }
-  if (m_hibernating) {
+  if (m_hibernating && haveValidEstimate()) {
     qDebug() << "aborting fill_area_cache because hibernating";
     return;
   }
@@ -523,7 +623,7 @@ void Localizer::fillMapCache()
     qDebug() << "aborting fill_map_cache because offline";
     return;
   }
-  if (m_hibernating) {
+  if (m_hibernating && haveValidEstimate()) {
     qDebug() << "aborting fill_map_cache because hibernating";
     return;
   }

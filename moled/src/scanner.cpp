@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-#ifndef MOLE_VERSION_H_
-#define MOLE_VERSION_H_
+#include "scanner.h"
 
-#define MOLE_VERSION "0.5.13"
+// see also hard-coded m_scanRateSec in localizer_statistics.cpp
 
-#endif /* MOLE_VERSION_H_ */
+const int SCAN_INTERVAL_MSEC_REGULAR   = 10000;
+const int SCAN_INTERVAL_MSEC_HIBERNATE = 60000;

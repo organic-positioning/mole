@@ -1,6 +1,6 @@
 /*
  * Mole - Mobile Organic Localisation Engine
- * Copyright 2010 Nokia Corporation.
+ * Copyright 2010-2011 Nokia Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,8 @@
 #include <QObject>
 #include <QTime>
 #include <QTimer>
+
+#include "scanner.h"
 
 class Binder;
 class ICDScan;
@@ -48,6 +50,7 @@ class Scanner : public QObject
  private:
   QDBusConnection m_bus;
   ScanQueue *m_scanQueue;
+  bool m_hibernating;
 
   Mode m_mode;
   bool m_scanning;
@@ -67,4 +70,4 @@ class Scanner : public QObject
 
 };
 
-#endif // SCANNER_H
+#endif // SCANNER_MAEMO_H

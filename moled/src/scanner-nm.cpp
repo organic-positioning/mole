@@ -22,20 +22,19 @@
 
 #include <NetworkManager/NetworkManager.h>
 
-
-int SCAN_INTERVAL_MSEC = 2500;
-const int MIN_SCAN_INTERVAL_MSEC = 10000;
-const int MAX_SCAN_INTERVAL_MSEC = 120000;
+const int SCAN_INTERVAL_MSEC_REGULAR   = 10000;
+const int SCAN_INTERVAL_MSEC_HIBERNATE = 60000;
 
 Scanner::Scanner(QObject *parent, ScanQueue *_scanQueue, Binder *_binder)
   : QObject(parent)
   , m_scanQueue(_scanQueue)
   , m_binder(_binder)
+  , m_scanInterval(SCAN_INTERVAL_MSEC_REGULAR)
   , m_haveSetDriver(false)
   , m_wifi(0)
 {
   connect(&m_timer, SIGNAL(timeout()), this, SLOT(scanAccessPoints()));
-  m_timer.start(SCAN_INTERVAL_MSEC);
+  m_timer.start(m_scanInterval);
 }
 
 Scanner::~Scanner()
@@ -45,6 +44,14 @@ Scanner::~Scanner()
 void Scanner::handleHibernate(bool goToSleep)
 {
   qDebug () << "handleHibernate" << goToSleep;
+  m_timer.stop();
+  if (goToSleep) {
+    m_scanInterval = SCAN_INTERVAL_MSEC_HIBERNATE;
+    m_timer.start(m_scanInterval);
+  } else {
+    m_scanInterval = SCAN_INTERVAL_MSEC_REGULAR;
+    m_timer.start(0);
+  }
 }
 
 void Scanner::scanAccessPoints()
@@ -77,24 +84,15 @@ void Scanner::scanAccessPoints()
   }
 
   if (readingCount > 0) {
-    if (m_scanQueue->scanCompleted()) {
-      SCAN_INTERVAL_MSEC -= 1000;
-    } else {
-      SCAN_INTERVAL_MSEC += 1000;
-    }
+    bool duplicate = m_scanQueue->scanCompleted();
 
-    if (SCAN_INTERVAL_MSEC < MIN_SCAN_INTERVAL_MSEC) {
-      SCAN_INTERVAL_MSEC = MIN_SCAN_INTERVAL_MSEC;
-    } else if (SCAN_INTERVAL_MSEC > MAX_SCAN_INTERVAL_MSEC) {
-      SCAN_INTERVAL_MSEC = MAX_SCAN_INTERVAL_MSEC;
-    }
   } else {
     if (m_wifi)
       delete m_wifi;
     initWiFi();
   }
 
-  m_timer.start(SCAN_INTERVAL_MSEC);
+  m_timer.start(m_scanInterval);
 
 }
 
