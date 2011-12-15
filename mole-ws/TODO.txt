@@ -7,3 +7,5 @@ Mole Web Service Client and Server TODO
 If desired:
 - improve output of query results
 - improve the persistence of the db
+- server does pre-screening of containers based on mac union
+- use device type to segment scans
