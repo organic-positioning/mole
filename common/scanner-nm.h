@@ -21,27 +21,28 @@
 #include <QtCore>
 #include <QtDBus>
 
-#include "moled.h"
-
-class Binder;
-class ScanQueue;
-
 class Scanner : public QObject
 {
   Q_OBJECT
 
  public:
-  Scanner(QObject *parent = 0, ScanQueue *scanQueue = 0, Binder *binder = 0);
+  Scanner(QObject *parent = 0);
   ~Scanner ();
 
+  bool stop();
+  bool start();
   void hibernate(bool goToSleep);
 
  public slots:
   void handleHibernate(bool goToSleep);
 
+ signals:
+  void setWiFiDesc(QString desc);
+  void scanCompleted();
+  void addReading(QString mac, QString ssid, qint16 frequency, qint8 strength);
+
  private:
-  ScanQueue *m_scanQueue;
-  Binder *m_binder;
+  int m_scanInterval;
   QTimer m_timer;
   bool m_haveSetDriver;
   QDBusInterface *m_wifi;

@@ -20,9 +20,20 @@
 
 #ifdef Q_OS_SYMBIAN
 
-#else
+#endif
+
+// TODO fix this b/c maemo is linux
+// The idea is that we should be able to exclude D-Bus on Linux
+
+#ifdef Q_WS_MAEMO_5
 #include <QtDBus>
 #define USE_MOLE_DBUS 1
 #endif
+
+#ifdef Q_OS_LINUX
+#include <QtDBus>
+#define USE_MOLE_DBUS 1
+#endif
+
 
 #endif /* MOLE_DBUS_H_ */

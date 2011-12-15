@@ -16,25 +16,19 @@
  */
 
 #include "scanner-nm.h"
-
-#include "binder.h"
-#include "scanQueue.h"
-
 #include <NetworkManager/NetworkManager.h>
 
 const int SCAN_INTERVAL_MSEC_REGULAR   = 10000;
 const int SCAN_INTERVAL_MSEC_HIBERNATE = 60000;
 
-Scanner::Scanner(QObject *parent, ScanQueue *_scanQueue, Binder *_binder)
+Scanner::Scanner(QObject *parent)
   : QObject(parent)
-  , m_scanQueue(_scanQueue)
-  , m_binder(_binder)
   , m_scanInterval(SCAN_INTERVAL_MSEC_REGULAR)
   , m_haveSetDriver(false)
   , m_wifi(0)
 {
+  m_timer.setSingleShot(true);
   connect(&m_timer, SIGNAL(timeout()), this, SLOT(scanAccessPoints()));
-  m_timer.start(m_scanInterval);
 }
 
 Scanner::~Scanner()
@@ -56,12 +50,11 @@ void Scanner::handleHibernate(bool goToSleep)
 
 void Scanner::scanAccessPoints()
 {
-  m_timer.stop();
+  //qDebug() << Q_FUNC_INFO;
+  m_timer.start(m_scanInterval);
 
   if (!m_wifi)
     initWiFi();
-
-
 
   int readingCount = 0;
   QDBusReply<QList<QDBusObjectPath> > reply = m_wifi->call("GetAccessPoints");
@@ -73,10 +66,11 @@ void Scanner::scanAccessPoints()
                        QDBusConnection::systemBus());
 
     if (ap.isValid()) {
-      m_scanQueue->addReading(ap.property("HwAddress").toString(),
-                              ap.property("Ssid").toString(),
-                              (qint16)(ap.property("Frequency").toUInt()),
-                              (qint8)(ap.property("Strength").toUInt()));
+      //qDebug() << Q_FUNC_INFO << "addReading";
+      emit addReading(ap.property("HwAddress").toString(),
+		      ap.property("Ssid").toString(),
+		      (qint16)(ap.property("Frequency").toUInt()),
+		      (qint8)(ap.property("Strength").toUInt()));
       ++readingCount;
     } else {
       qWarning() << " got invalid AP " << path.path();
@@ -84,16 +78,14 @@ void Scanner::scanAccessPoints()
   }
 
   if (readingCount > 0) {
-    bool duplicate = m_scanQueue->scanCompleted();
-
+    emit scanCompleted();
   } else {
-    if (m_wifi)
+    if (m_wifi) {
       delete m_wifi;
+      m_wifi = 0;
+    }
     initWiFi();
   }
-
-  m_timer.start(m_scanInterval);
-
 }
 
 void Scanner::initWiFi()
@@ -113,7 +105,8 @@ void Scanner::initWiFi()
     if (device.isValid()) {
       if (device.property("DeviceType").toUInt() == DEVICE_TYPE_802_11_WIRELESS) {
         if (!m_haveSetDriver) {
-          m_binder->setWifiDesc(device.property("Driver").toString());
+	  QString desc = device.property("Driver").toString();
+          emit setWiFiDesc(desc);
           m_haveSetDriver = true;
         }
         // parent?
@@ -129,5 +122,20 @@ void Scanner::initWiFi()
     qFatal ("No WiFi interface found.");
   }
 
+}
+
+bool Scanner::start() {
+  qDebug() << Q_FUNC_INFO;
+  m_timer.start(1000);
+  return true;
+}
+
+bool Scanner::stop() {
+  // TODO only return true if already running?
+  qDebug() << Q_FUNC_INFO;
+  m_timer.stop();
+  delete m_wifi;
+  m_wifi = 0;
+  return true;
 }
 

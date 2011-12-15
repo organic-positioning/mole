@@ -477,3 +477,14 @@ QDebug operator<<(QDebug dbg, const ScanQueue &s)
   return dbg.space();
 }
 
+QDebug operator<<(QDebug dbg, const APDesc &d)
+{
+  dbg.nospace()
+    << "["
+    << "mac=" << d.mac
+    << ",ssid="<< d.ssid
+    << ",freq="<< d.frequency
+    << ",useCount="<< d.m_count;
+  dbg.nospace() << "]";
+  return dbg.space();
+}

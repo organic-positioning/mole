@@ -1,0 +1,9 @@
+Mole Web Service Client and Server TODO
+
+- scale/normalize score provided in query results
+
+- shorted time for scanning (do several scans in quick succession)
+
+If desired:
+- improve output of query results
+- improve the persistence of the db

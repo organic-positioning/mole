@@ -25,9 +25,7 @@
 
 #include "scanner.h"
 
-class Binder;
 class ICDScan;
-class ScanQueue;
 
 class Scanner : public QObject
 {
@@ -37,8 +35,7 @@ class Scanner : public QObject
  public:
   enum Mode { Active, ActiveSaved, Passive };
 
-  Scanner(QObject *parent = 0, ScanQueue *scanQueue = 0,
-          Binder *binder = 0, Mode scanMode = Scanner::Passive);
+  Scanner(QObject *parent = 0, Mode scanMode = Scanner::Passive);
   ~Scanner();
 
   bool stop();
@@ -46,10 +43,12 @@ class Scanner : public QObject
 
  signals:
   void scannedAccessPoint(ICDScan *network);
+  void scanCompleted();
+  void addReading(QString mac, QString ssid, qint16 frequency, qint8 strength);
+  void setWiFiDesc(QString desc);
 
  private:
   QDBusConnection m_bus;
-  ScanQueue *m_scanQueue;
   bool m_hibernating;
 
   Mode m_mode;

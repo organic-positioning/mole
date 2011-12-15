@@ -18,6 +18,7 @@
 #ifndef MOLE_PORTS_H_
 #define MOLE_PORTS_H_
 
+#define DEFAULT_LOCAL_HOST  "localhost"
 #define DEFAULT_LOCAL_PORT  4411
 
 #endif /* MOLE_PORTS_H_ */

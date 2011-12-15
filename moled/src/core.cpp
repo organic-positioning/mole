@@ -26,9 +26,9 @@
 #include "proximity.h"
 
 #ifdef Q_WS_MAEMO_5
-#include "scanner-maemo.h"
+#include "../common/scanner-maemo.h"
 #else
-#include "scanner-nm.h"
+#include "../common/scanner-nm.h"
 #endif
 
 #include <csignal>
@@ -173,8 +173,13 @@ Core::Core(int argc, char *argv[])
   m_localServer = new LocalServer(this, m_localizer, m_binder, port);
 
   m_scanner = 0;
-  if (runWiFiScanner)
-    m_scanner = new Scanner(this, m_scanQueue, m_binder);
+  if (runWiFiScanner) {
+    m_scanner = new Scanner(this);
+    connect(m_scanner, SIGNAL(setWiFiDesc(QString)), m_binder, SLOT(handleWiFiDesc(QString)));
+    connect(m_scanner, SIGNAL(addReading(QString,QString,qint16,qint8)),
+            m_scanQueue, SLOT(addReading(QString,QString,qint16,qint8)));
+    connect(m_scanner, SIGNAL(scanCompleted()), m_scanQueue, SLOT(scanCompleted()));
+  }
 
   m_speedSensor = 0;
   if (runMovementDetector && SpeedSensor::haveAccelerometer()) {

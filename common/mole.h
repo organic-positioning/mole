@@ -24,6 +24,7 @@
 #include "dbus.h"
 #include "ports.h"
 
+#include <QtCore>
 #include <QNetworkAccessManager>
 #include <QNetworkConfigurationManager>
 

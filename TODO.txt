@@ -128,6 +128,10 @@ SPRINT 6:
 - Version number on client: add -v option to moled.  See why correct
   version number is not showing up with -v on 'mole'
 
+- Use QSignalMapper instead of casting after network functions
+
+- Check in-memory binds.  Seemed not to work during presentation in Chicago.
+
 POST-RELEASE
 
 - When a bind is made on another device and our floor is e.g. 0 and

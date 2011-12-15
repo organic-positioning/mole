@@ -31,8 +31,8 @@ HEADERS += \
     src/localizer.h \
     src/localServer.h \
     src/moled.h \
-    src/scanner.h \
-    src/scan.h \
+    ../common/scanner.h \
+    ../common/scan.h \
     src/scanQueue.h \
     src/proximity.h \
     src/speedsensor.h \
@@ -51,8 +51,8 @@ SOURCES += \
     src/localizer.cpp \
     src/localServer.cpp \
     src/localizer_statistics.cpp \
-    src/scanner.cpp \
-    src/scan.cpp \
+    ../common/scanner.cpp \
+#    ../common/scan.cpp \
     src/scanQueue.cpp \
     src/space_parser.cpp \
     src/proximity.cpp \
@@ -76,13 +76,13 @@ OTHER_FILES += \
 maemo5 {
     CONFIG += icd2 link_pkgconfig
     PKGCONFIG += glib-2.0 icd2
-    HEADERS += src/scanner-maemo.h  src/scan-maemo.h
-    SOURCES += src/scanner-maemo.cpp
+    HEADERS += ../common/scanner-maemo.h  ../common/scan-maemo.h
+    SOURCES += ../common/scanner-maemo.cpp
 }
 
 !maemo5 {
-    HEADERS += src/scanner-nm.h
-    SOURCES += src/scanner-nm.cpp
+    HEADERS += ../common/scanner-nm.h
+    SOURCES += ../common/scanner-nm.cpp
 }
 
 unix:!symbian {

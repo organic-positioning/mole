@@ -15,9 +15,15 @@
  * limitations under the License.
  */
 
-#include "scanner.h"
+#ifndef SCANNER_H
+#define SCANNER_H
 
-// see also hard-coded m_scanRateSec in localizer_statistics.cpp
+#include <QtCore>
 
-const int SCAN_INTERVAL_MSEC_REGULAR   = 10000;
-const int SCAN_INTERVAL_MSEC_HIBERNATE = 60000;
+extern const int SCAN_INTERVAL_MSEC_REGULAR;
+extern const int SCAN_INTERVAL_MSEC_HIBERNATE;
+
+extern const QRegExp LocallyAdministeredMAC;
+extern const QRegExp MacRegExp;
+
+#endif // SCANNER_H
