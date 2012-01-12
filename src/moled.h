@@ -18,10 +18,8 @@
 #ifndef MOLED_H_
 #define MOLED_H_
 
-#include "network.h"
-#include "mole.h"
-#include "settings_access.h"
-
-#define DEFAULT_LOG_FILE    "/var/log/moled.log"
+//#include "network.h"
+//#include "mole.h"
+//#include "settings_access.h"
 
 #endif /* MOLED_H_ */

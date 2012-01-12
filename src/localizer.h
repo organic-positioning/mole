@@ -19,10 +19,11 @@
 #define LOCALIZER_H_
 
 #include "moled.h"
-#include "util.h"
+#include "math.h"
 #include "network.h"
 #include "overlap.h"
 #include "scan.h"
+#include "motion.h"
 
 #include <QXmlDefaultHandler>
 #include <QXmlInputSource>

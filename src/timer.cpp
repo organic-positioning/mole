@@ -16,7 +16,7 @@
  */
 
 #include "timer.h"
-#include "util.h"
+#include "math.h"
 
 #include <QDebug>
 

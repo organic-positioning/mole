@@ -1,6 +1,6 @@
 /*
  * Mole - Mobile Organic Localisation Engine
- * Copyright 2010 Nokia Corporation.
+ * Copyright 2010-2012 Nokia Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,13 +15,28 @@
  * limitations under the License.
  */
 
-#ifndef UTIL_H_
-#define UTIL_H_
+#ifndef MOLE_UTIL_H
+#define MOLE_UTIL_H
 
-double randPct();
-int randInt(int low, int high);
-int randPoisson(int mean);
-double randPoisson(double mean);
-double erfcc(double x);
+#include <stdio.h>
+#include <stdlib.h>
+#include <iostream>
+#include <fcntl.h>
+#include <csignal>
+#include <sys/types.h>
+#include <sys/stat.h>
 
-#endif /* UTIL_H_ */
+#include <QCoreApplication>
+#include <QDebug>
+#include <QStringList>
+#include <QTextStream>
+#include <QDateTime>
+#include <QFile>
+
+extern bool debug;
+extern FILE *logStream;
+extern void outputHandler(QtMsgType type, const char *msg);
+extern void daemonize(QString exec);
+extern void initLogger(const char* logFilename);
+
+#endif // MOLE_UTIL_H

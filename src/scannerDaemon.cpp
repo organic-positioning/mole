@@ -1,106 +1,44 @@
-/****************************************************************************
-**
-** Copyright (C) 2010-2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-**
-****************************************************************************/
+/*
+ * Mole - Mobile Organic Localisation Engine
+ * Copyright 2010-2012 Nokia Corporation.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <iostream>
-#include <fcntl.h>
-#include <csignal>
-#include <sys/types.h>
-#include <sys/stat.h>
+#include <qjson/serializer.h>
+#include "version.h"
+#include "util.h"
+#include "scannerDaemon.h"
+#include "speedsensor.h"
 
-#include <QCoreApplication>
-#include <QDebug>
+#ifdef Q_WS_MAEMO_5
+#include "scanner-maemo.h"
+#else
+#include "scanner-nm.h"
+#endif
 
-#include <QStringList>
-#include <QTextStream>
-#include <QDateTime>
-#include <QFile>
-
-#include "localServer.h"
-
+const int  BUFFER_SIZE = 1024;
 #define DEFAULT_LOG_FILE     "/var/log/mole-scanner.log"
-#define MOLE_SCANNER_VERSION "0.1"
 #define DEFAULT_PORT         5950
 
 void usage();
-
-bool debug = false;
-FILE *logStream = NULL;
-
-//////////////////////////////////////////////////////////////////////////////
-// Set up logging
-void outputHandler(QtMsgType type, const char *msg)
-{
-  switch(type) {
-  case QtDebugMsg:
-    if(debug) {
-      fprintf(logStream, "%s D: %s\n", QDateTime::currentDateTime().toString().toAscii().data(), msg);
-      fflush(logStream);
-    }
-    break;
-  case QtWarningMsg:
-    fprintf(logStream, "%s I: %s\n", QDateTime::currentDateTime().toString().toAscii().data(), msg);
-    fflush(logStream);
-    break;
-  case QtCriticalMsg:
-    fprintf(logStream, "%s C: %s\n", QDateTime::currentDateTime().toString().toAscii().data(), msg);
-    fflush(logStream);
-    break;
-  case QtFatalMsg:
-    fprintf(logStream, "%s F: %s\n", QDateTime::currentDateTime().toString().toAscii().data(), msg);
-    fflush(logStream);
-    std::exit(-1);
-  }
-}
-
-void daemonize()
-{
-    if (::getppid() == 1) 
-	return;  // Already a daemon if owned by init
-
-    int i = fork();
-    if (i < 0) exit(1); // Fork error
-    if (i > 0) exit(0); // Parent exits
-    
-    ::setsid();  // Create a new process group
-
-    for (i = ::getdtablesize() ; i > 0 ; i-- )
-	::close(i);   // Close all file descriptors
-    i = ::open("/dev/null", O_RDWR); // Stdin
-    ::dup(i);  // stdout
-    ::dup(i);  // stderr
-
-    ::close(0);
-    ::open("/dev/null", O_RDONLY);  // Stdin
-
-    ::umask(027);
-
-    QString pidfile = "/var/run/mole-scanner.pid";
-    int lfp = ::open(qPrintable(pidfile), O_RDWR|O_CREAT, 0640);
-    if (lfp<0)
-	qFatal("Cannot open pidfile %s\n", qPrintable(pidfile));
-    if (lockf(lfp, F_TLOCK, 0)<0)
-	qFatal("Can't get a lock on %s - another instance may be running\n", qPrintable(pidfile));
-    QByteArray ba = QByteArray::number(::getpid());
-    ::write(lfp, ba.constData(), ba.size());
-
-    ::signal(SIGCHLD,SIG_IGN);
-    ::signal(SIGTSTP,SIG_IGN);
-    ::signal(SIGTTOU,SIG_IGN);
-    ::signal(SIGTTIN,SIG_IGN);
-}
 
 int main(int argc, char *argv[])
 {
   QCoreApplication::setOrganizationName("Nokia");
   QCoreApplication::setOrganizationDomain("nrcc.noklab.com");
   QCoreApplication::setApplicationName("mole-scanner");
-  QCoreApplication::setApplicationVersion(MOLE_SCANNER_VERSION);
+  QCoreApplication::setApplicationVersion(MOLE_VERSION);
   qsrand(QDateTime::currentMSecsSinceEpoch()+getpid());
 
   QCoreApplication *app = new QCoreApplication(argc, argv);
@@ -137,26 +75,28 @@ int main(int argc, char *argv[])
   }
 
   if (isDaemon) {
-    daemonize();
+    daemonize("mole-scanner");
   } else {
     qDebug() << "not daemonizing";
   }
 
-  //////////////////////////////////////////////////////////
-  // Initialize logger
-  if (logFilename != NULL) {
-    if((logStream = fopen(logFilename, "a")) == NULL) {
-      fprintf(stderr, "Could not open log file %s.\n\n", logFilename);
-      std::exit(-1);
-    }
-  } else {
-    logStream = stderr;
-  }
-
+  initLogger(logFilename);
   qInstallMsgHandler(outputHandler);
+
   qDebug() << "installed msg handler";
 
   LocalServer *localServer = new LocalServer(app, port);
+  Scanner *scanner = new Scanner(app);
+  /*
+  connect(m_scanner, SIGNAL(addReading(QString,QString,qint16,qint8)),
+	  m_scanQueue, SLOT(addReading(QString,QString,qint16,qint8)));
+  connect(m_scanner, SIGNAL(scanCompleted()), m_scanQueue, SLOT(scanCompleted()));
+  */
+  
+  if (SpeedSensor::haveAccelerometer()) {
+    SpeedSensor speedSensor = new SpeedSensor(app);
+    connect(m_speedSensor, SIGNAL(hibernate(bool)), m_scanner, SLOT(handleHibernate(bool)));
+  }
 
   //////////////////////////////////////////////////////////
   qWarning() << "Starting mole-scanner " 
@@ -177,20 +117,10 @@ void usage() {
 	      << "-n run in foreground (do not daemonize)\n"
 	      << "-p port [" << DEFAULT_PORT << "]\n"
 	      << "-l log file [" << DEFAULT_LOG_FILE << "]\n";
-  qCritical() << "version" << MOLE_SCANNER_VERSION;
+  qCritical() << "version" << MOLE_VERSION;
   exit(0);
 }
-/****************************************************************************
-**
-** Copyright (C) 2010-2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-**
-****************************************************************************/
 
-#include "localServer.h"
-#include <qjson/serializer.h>
-
-const int  BUFFER_SIZE = 1024;
 
 LocalServer::LocalServer(QObject *parent, int port)
   :QTcpServer(parent)

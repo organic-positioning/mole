@@ -18,7 +18,7 @@
 #include "network.h"
 
 #include "mole.h"
-#include "util.h"
+#include "math.h"
 #include "settings_access.h"
 
 void setNetworkRequestHeaders(QNetworkRequest &request)

@@ -35,6 +35,7 @@
 #include <fcntl.h>
 #include <iostream>
 
+#define DEFAULT_LOG_FILE    "/var/log/moled.log"
 const QString pidfile = "/var/run/mole.pid";
 
 int daemonize();

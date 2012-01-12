@@ -37,7 +37,7 @@ HEADERS += \
     ../src/network.h \
     ../src/overlap.h \
     ../src/sig.h \
-    ../src/util.h \
+    ../src/math.h \
     ../src/settings_access.h \
     ../src/version.h
 
@@ -58,7 +58,7 @@ SOURCES += \
     ../src/overlap.cpp \
     ../src/sig.cpp \
     ../src/settings_access.cpp \
-    ../src/util.cpp
+    ../src/math.cpp
 
 unix:LIBS += -L/usr/lib -lqjson
 

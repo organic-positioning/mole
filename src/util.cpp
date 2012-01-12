@@ -1,6 +1,6 @@
 /*
  * Mole - Mobile Organic Localisation Engine
- * Copyright 2010 Nokia Corporation.
+ * Copyright 2010-2012 Nokia Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,48 +17,84 @@
 
 #include "util.h"
 
-#include <math.h>
-#include <stdlib.h>
+bool debug = false;
+FILE *logStream = NULL;
 
-#include <QTime>
-
-int randInt(int low, int high)
-{
-  return qrand() % ((high + 1) - low) + low;
+//////////////////////////////////////////////////////////
+void initLogger(const char* logFilename) {
+  // Initialize logger
+  if (logFilename != NULL) {
+    if((logStream = fopen(logFilename, "a")) == NULL) {
+      fprintf(stderr, "Could not open log file %s.\n\n", logFilename);
+      exit(-1);
+    }
+  } else {
+    logStream = stderr;
+  }
 }
 
-double randPct()
+//////////////////////////////////////////////////////////////////////////////
+// Set up logging
+void outputHandler(QtMsgType type, const char *msg)
 {
-  double ret = qrand() / (double) RAND_MAX;
-  return ret;
+  switch(type) {
+  case QtDebugMsg:
+    if(debug) {
+      fprintf(logStream, "%s D: %s\n", QDateTime::currentDateTime().toString().toAscii().data(), msg);
+      fflush(logStream);
+    }
+    break;
+  case QtWarningMsg:
+    fprintf(logStream, "%s I: %s\n", QDateTime::currentDateTime().toString().toAscii().data(), msg);
+    fflush(logStream);
+    break;
+  case QtCriticalMsg:
+    fprintf(logStream, "%s C: %s\n", QDateTime::currentDateTime().toString().toAscii().data(), msg);
+    fflush(logStream);
+    break;
+  case QtFatalMsg:
+    fprintf(logStream, "%s F: %s\n", QDateTime::currentDateTime().toString().toAscii().data(), msg);
+    fflush(logStream);
+    exit(-1);
+  }
 }
 
-double randPoisson(double mean)
+void daemonize(QString exec)
 {
-  double u;
-  while ((u = randPct()) == 0.);
+  if (::getppid() == 1) 
+    return;  // Already a daemon if owned by init
 
-  return (-mean) * log(u);
-};
+  int i = fork();
+  if (i < 0) exit(1); // Fork error
+  if (i > 0) exit(0); // Parent exits
+    
+  ::setsid();  // Create a new process group
 
-int randPoisson(int mean)
-{
-  return (int)(randPoisson((double)mean));
+  for (i = ::getdtablesize() ; i > 0 ; i-- )
+    ::close(i);   // Close all file descriptors
+  i = ::open("/dev/null", O_RDWR); // Stdin
+  ::dup(i);  // stdout
+  ::dup(i);  // stderr
+
+  ::close(0);
+  ::open("/dev/null", O_RDONLY);  // Stdin
+
+  ::umask(027);
+
+  QString pidfile = "/var/run/" + exec + ".pid";
+  //QString pidfile = "/var/run/" + exec + "mole-scanner.pid";
+  int lfp = ::open(qPrintable(pidfile), O_RDWR|O_CREAT, 0640);
+  if (lfp<0)
+    qFatal("Cannot open pidfile %s\n", qPrintable(pidfile));
+  if (lockf(lfp, F_TLOCK, 0)<0)
+    qFatal("Can't get a lock on %s - another instance may be running\n", qPrintable(pidfile));
+  QByteArray ba = QByteArray::number(::getpid());
+  ::write(lfp, ba.constData(), ba.size());
+
+  ::signal(SIGCHLD,SIG_IGN);
+  ::signal(SIGTSTP,SIG_IGN);
+  ::signal(SIGTTOU,SIG_IGN);
+  ::signal(SIGTTIN,SIG_IGN);
 }
 
-
-double erfcc(double x)
-{
-  double z = qAbs(x);
-  double t = 1.0 / (1.0 + 0.5*z);
-
-  double r = t * exp(-z*z-1.26551223+t*(1.00002368+t*(.37409196+
-               t*(.09678418+t*(-.18628806+t*(.27886807+
-               t*(-1.13520398+t*(1.48851587+t*(-.82215223+
-               t*.17087277)))))))));
-  if (x >= 0.)
-    return r;
-  else
-    return (2. - r);
-}
 

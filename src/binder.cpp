@@ -1,6 +1,6 @@
 /*
  * Mole - Mobile Organic Localisation Engine
- * Copyright 2010 Nokia Corporation.
+ * Copyright 2010-2012 Nokia Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,8 @@
  */
 #include "binder.h"
 
-#include "moled.h"
+#include "mole.h"
+#include "network.h"
 #include "localizer.h"
 #include "scanQueue.h"
 

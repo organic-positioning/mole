@@ -1,6 +1,6 @@
 /*
  * Mole - Mobile Organic Localisation Engine
- * Copyright 2010-2011 Nokia Corporation.
+ * Copyright 2010-2012 Nokia Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,6 @@
 #ifndef MOLE_VERSION_H_
 #define MOLE_VERSION_H_
 
-#define MOLE_VERSION "0.5.13"
+#define MOLE_VERSION "0.5.14"
 
 #endif /* MOLE_VERSION_H_ */
