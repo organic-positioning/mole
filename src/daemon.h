@@ -15,13 +15,40 @@
  * limitations under the License.
  */
 
-#ifndef MOLED_H_
-#define MOLED_H_
+#ifndef DAEMON_H_
+#define DAEMON_H_
 
-#include "../../common/network.h"
-#include "../../common/mole.h"
-#include "../../common/settings_access.h"
+#include <QCoreApplication>
 
-#define DEFAULT_LOG_FILE    "/var/log/moled.log"
+class Binder;
+class Localizer;
+class LocalServer;
+class Scanner;
+class ScanQueue;
+class SpeedSensor;
+class Proximity;
 
-#endif /* MOLED_H_ */
+class Daemon : public QCoreApplication
+{
+  Q_OBJECT
+
+public:
+  Daemon(int argc = 0, char *argv[] = 0);
+  ~Daemon();
+
+  int run();
+
+public slots:
+  void handle_quit();
+
+private:
+  Localizer *m_localizer;
+  Binder *m_binder;
+  LocalServer *m_localServer;
+  Scanner *m_scanner;
+  ScanQueue *m_scanQueue;
+  SpeedSensor *m_speedSensor;
+  Proximity *m_proximity;
+};
+
+#endif /* DAEMON_H_ */

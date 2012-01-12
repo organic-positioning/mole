@@ -15,31 +15,13 @@
  * limitations under the License.
  */
 
-#ifndef COMMON_H_
-#define COMMON_H_
+#ifndef MOLED_H_
+#define MOLED_H_
 
-#include "../../common/completer.h"
-#include "../../common/models.h"
-#include "../../common/mole.h"
-#include "../../common/network.h"
-#include "../../common/qt-utils.h"
-#include "../../common/settings_access.h"
-#include "../../common/timer.h"
+#include "network.h"
+#include "mole.h"
+#include "settings_access.h"
 
-#include <qjson/parser.h>
-#include <qjson/serializer.h>
+#define DEFAULT_LOG_FILE    "/var/log/moled.log"
 
-
-#ifdef Q_WS_MAEMO_5
-const int UI_WIDTH = 800;
-const int UI_HEIGHT = 400;
-const int ICON_SIZE_REG = 64;
-const int ICON_SIZE_SMALL = 40;
-#else
-const int UI_WIDTH = 540;
-const int UI_HEIGHT = 240;
-const int ICON_SIZE_REG = 32;
-const int ICON_SIZE_SMALL = 20;
-#endif
-
-#endif /* COMMON_H_ */
+#endif /* MOLED_H_ */

@@ -19,9 +19,9 @@
 #define LOCALIZER_H_
 
 #include "moled.h"
-#include "../../common/util.h"
-#include "../../common/network.h"
-#include "../../common/overlap.h"
+#include "util.h"
+#include "network.h"
+#include "overlap.h"
 #include "scan.h"
 
 #include <QXmlDefaultHandler>
@@ -233,7 +233,6 @@ public:
 
  public slots:
   void handleHibernate(bool goToSleep);
-  void removeMacFromFingerprint(QString mac);
   //void positionUpdated(QGeoPositionInfo geoPositionInfo);
 
 private:

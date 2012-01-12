@@ -1,6 +1,6 @@
 /*
  * Mole - Mobile Organic Localisation Engine
- * Copyright 2010-2011 Nokia Corporation.
+ * Copyright 2010 Nokia Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,39 +15,31 @@
  * limitations under the License.
  */
 
-#ifndef PROXIMITY_H_
-#define PROXIMITY_H_
+#ifndef COMMON_H_
+#define COMMON_H_
 
-#include "localizer.h"
-#include "moled.h"
+#include "../completer.h"
+#include "../models.h"
+#include "../mole.h"
+#include "../network.h"
+#include "../qt-utils.h"
+#include "../settings_access.h"
+#include "../timer.h"
 
 #include <qjson/parser.h>
 #include <qjson/serializer.h>
 
-#include <QNetworkReply>
-#include <QNetworkRequest>
 
-class Proximity : public QObject
-{
-  //friend QDebug operator<<(QDebug dbg, const Proximity &proximity);
-  Q_OBJECT
+#ifdef Q_WS_MAEMO_5
+const int UI_WIDTH = 800;
+const int UI_HEIGHT = 400;
+const int ICON_SIZE_REG = 64;
+const int ICON_SIZE_SMALL = 40;
+#else
+const int UI_WIDTH = 540;
+const int UI_HEIGHT = 240;
+const int ICON_SIZE_REG = 32;
+const int ICON_SIZE_SMALL = 20;
+#endif
 
- public:
-  Proximity(QObject *parent = 0, Localizer *localizer = 0);
-
-
- private:
-  Localizer *m_localizer;
-  bool m_active;
-  QString m_name;
-  QTimer m_updateTimer;
-
-  void setTimer ();
-
- private slots:
-  void update();
-  void handleUpdateResponse();
-  void handleProximitySettings(bool activate, QString name);
-};
-
-#endif /* PROXIMITY_H_ */
+#endif /* COMMON_H_ */

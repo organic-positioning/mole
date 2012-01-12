@@ -1,0 +1,9 @@
+For a Debian/Ubuntu installation, first install these packages:
+qt4-qmake libqt4-dev qtmobility-dev libqjson-dev network-manager-dev
+
+Then:
+qmake
+make
+
+Executables are in bin.
+

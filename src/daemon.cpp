@@ -1,6 +1,6 @@
 /*
  * Mole - Mobile Organic Localisation Engine
- * Copyright 2010 Nokia Corporation.
+ * Copyright 2010-2012 Nokia Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 
 #include <unistd.h>
 
-#include "core.h"
+#include "daemon.h"
 #include "binder.h"
 #include "localizer.h"
 #include "localServer.h"
@@ -26,9 +26,9 @@
 #include "proximity.h"
 
 #ifdef Q_WS_MAEMO_5
-#include "../common/scanner-maemo.h"
+#include "scanner-maemo.h"
 #else
-#include "../common/scanner-nm.h"
+#include "scanner-nm.h"
 #endif
 
 #include <csignal>
@@ -41,7 +41,7 @@ int daemonize();
 void usage();
 void version();
 
-Core::Core(int argc, char *argv[])
+Daemon::Daemon(int argc, char *argv[])
   : QCoreApplication(argc, argv)
 {
   initSettings();
@@ -191,7 +191,7 @@ Core::Core(int argc, char *argv[])
   connect(this, SIGNAL(aboutToQuit()), SLOT(handle_quit()));
 }
 
-void Core::handle_quit()
+void Daemon::handle_quit()
 {
   qWarning() << "Stopping mole daemon...";
 
@@ -207,18 +207,18 @@ void Core::handle_quit()
   qWarning() << "Stopped mole daemon";
 }
 
-Core::~Core()
+Daemon::~Daemon()
 {
 }
 
-int Core::run()
+int Daemon::run()
 {
   return exec();
 }
 
 int main(int argc, char *argv[])
 {
-  Core *app = new Core(argc, argv);
+  Daemon *app = new Daemon(argc, argv);
   return app->run();
 }
 

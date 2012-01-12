@@ -1,6 +1,6 @@
 /*
  * Mole - Mobile Organic Localisation Engine
- * Copyright 2010 Nokia Corporation.
+ * Copyright 2010-2012 Nokia Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,9 +18,11 @@
 #ifndef SPEEDSENSOR_H_
 #define SPEEDSENSOR_H_
 
-#include <QAccelerometer>
+#include <QtSensors/QAccelerometer>
 //#include <qtm12/QtSensors/QAccelerometer>
 #include <QtDBus>
+
+// QTM_BEGIN_NAMESPACE
 
 #include "moled.h"
 #include "scanQueue.h"

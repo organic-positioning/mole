@@ -1,6 +1,6 @@
 /*
  * Mole - Mobile Organic Localisation Engine
- * Copyright 2010 Nokia Corporation.
+ * Copyright 2010-2012 Nokia Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 
 #include <QApplication>
 
-#include "binder.h"
+#include "binderGui.h"
 #include "common.h"
 
 void usage();
@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
   QWidget *mainWidget = new QWidget(mainWindow);
   mainWindow->setCentralWidget(mainWidget);
 
-  Binder *binder = new Binder(mainWidget);
+  BinderGUI *binder = new BinderGUI(mainWidget);
   app->connect(app, SIGNAL(aboutToQuit()), binder, SLOT(handleQuit()));
 
 #ifdef Q_WS_MAEMO_5
