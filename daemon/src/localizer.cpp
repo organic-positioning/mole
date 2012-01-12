@@ -1063,6 +1063,12 @@ void Localizer::serializeSignature (QVariantMap &map) {
 
 }
 
+void Localizer::removeMacFromFingerprint(QString mac) {
+  if (m_fingerprint->contains(mac)) {
+      m_fingerprint->remove(mac);
+  }
+}
+
 /*
 void Localizer::dumpSignalMaps () {
   QMapIterator<QString,AreaDesc*> i (*m_signalMaps);

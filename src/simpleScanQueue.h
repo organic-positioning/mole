@@ -1,6 +1,6 @@
 /*
  * Mole - Mobile Organic Localisation Engine
- * Copyright 2010-2011 Nokia Corporation.
+ * Copyright 2010-2012 Nokia Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 #define SIMPLESCANQUEUE_H_
 
 #include <QtCore>
-#include "../common/scanner.h"
+#include "scanner.h"
 
 const int MAX_SCANQUEUE_READINGS = 50;
 const int MAX_SCANQUEUE_SCANS = 10;

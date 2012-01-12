@@ -233,6 +233,7 @@ public:
 
  public slots:
   void handleHibernate(bool goToSleep);
+  void removeMacFromFingerprint(QString mac);
   //void positionUpdated(QGeoPositionInfo geoPositionInfo);
 
 private:

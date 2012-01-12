@@ -1,6 +1,6 @@
 /*
  * Mole - Mobile Organic Localisation Engine
- * Copyright 2010-2011 Nokia Corporation.
+ * Copyright 2010-2012 Nokia Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,9 +25,9 @@
 
 #include <qjson/parser.h>
 #include <qjson/serializer.h>
-#include "core.h"
-#include "../../common/ports.h"
-#include "../../common/version.h"
+#include "wsClient.h"
+#include "ports.h"
+#include "version.h"
 
 QString DEFAULT_SERVER_URL = "http://mole.research.nokia.com:8090";
 #define BUFFER_SIZE 4096
@@ -36,12 +36,12 @@ void usage();
 void version();
 
 int main(int argc, char *argv[]) {
-  Core *app = new Core(argc, argv);
+  WSClient *app = new WSClient(argc, argv);
   app->start();
   return app->exec();
 }
 
-Core::Core(int argc, char *argv[])
+WSClient::WSClient(int argc, char *argv[])
   : QCoreApplication(argc, argv),
     m_targetScanCount(1),
     m_scansCompleted(0),
@@ -105,7 +105,7 @@ Core::Core(int argc, char *argv[])
 
 //////////////////////////////////////////////////////////
  
-void Core::start() {
+void WSClient::start() {
   if (m_request == "bind" || m_request == "query") {
     // kick off a few local scans, and send them with the request
     // for remote processing
@@ -121,7 +121,7 @@ void Core::start() {
 
 //////////////////////////////////////////////////////////
 
-void Core::scanCompleted() {
+void WSClient::scanCompleted() {
   ++m_scansCompleted;
   if (m_scansCompleted >= m_targetScanCount) {
     m_scanner->stop();
@@ -133,7 +133,7 @@ void Core::scanCompleted() {
 
 //////////////////////////////////////////////////////////
 
-void Core::sendRequest() {
+void WSClient::sendRequest() {
   QJson::Serializer serializer;
 
   // TODO placeholders that describe the client
@@ -167,7 +167,7 @@ void Core::sendRequest() {
   qDebug() << "sent request to" << urlStr;
 }
 
-void Core::handleResponse() {
+void WSClient::handleResponse() {
   QNetworkReply *reply = qobject_cast<QNetworkReply *>(sender());
 
   if (reply->error() != QNetworkReply::NoError) {

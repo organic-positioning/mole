@@ -1,6 +1,6 @@
 /*
  * Mole - Mobile Organic Localisation Engine
- * Copyright 2010-2011 Nokia Corporation.
+ * Copyright 2010-2012 Nokia Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef CORE_H_
-#define CORE_H_
+#ifndef WSCLIENT_H_
+#define WSCLIENT_H_
 
 #include <QCoreApplication>
 #include <QNetworkAccessManager>
@@ -24,17 +24,17 @@
 
 #include "simpleScanQueue.h"
 #ifdef Q_WS_MAEMO_5
-#include "../../common/scanner-maemo.h"
+#include "scanner-maemo.h"
 #else
-#include "../../common/scanner-nm.h"
+#include "scanner-nm.h"
 #endif
 
-class Core : public QCoreApplication
+class WSClient : public QCoreApplication
 {
   Q_OBJECT
 
 public:
-  Core(int argc = 0, char *argv[] = 0);
+  WSClient(int argc = 0, char *argv[] = 0);
   void start();
   void sendRequest();
 
@@ -58,4 +58,4 @@ private slots:
 
 };
 
-#endif /* CORE_H_ */
+#endif /* WSCLIENT_H_ */

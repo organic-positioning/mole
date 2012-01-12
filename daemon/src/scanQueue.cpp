@@ -195,7 +195,7 @@ bool ScanQueue::scanCompleted()
           ap->removeSignalStrength(m_scans[expiringScan].readings[i].strength);
           --m_responseRateTotal;
           if (ap->isEmpty()) {
-            m_localizer->fingerprint()->remove(ap->mac);
+	    emit removeMacFromFingerprint(ap->mac);
           } else {
             m_dirtyAPs.insert(ap);
           }
@@ -224,8 +224,7 @@ bool ScanQueue::scanCompleted()
         // note that the ap might not be in the sig if it was
         // expired by maxActiveQueueLength
         QString apString = ap->mac;
-        if (m_localizer->fingerprint()->contains(apString))
-          m_localizer->fingerprint()->remove(apString);
+	emit removeMacFromFingerprint(apString);
 
         if (m_dirtyAPs.contains(ap))
           m_dirtyAPs.remove(ap);
