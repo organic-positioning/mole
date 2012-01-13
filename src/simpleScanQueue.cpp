@@ -1,6 +1,6 @@
 /*
  * Mole - Mobile Organic Localisation Engine
- * Copyright 2010-2011 Nokia Corporation.
+ * Copyright 2010-2012 Nokia Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,23 +15,26 @@
  * limitations under the License.
  */
 
+#include "scanner.h"
 #include "simpleScanQueue.h"
 
 SimpleScanQueue::SimpleScanQueue(QObject *parent)
   : QObject(parent)
   , m_currentScan(0)
 {
+  qWarning() << "Creating simpleScanQueue for" 
+	     << MAX_SCANQUEUE_SCANS << "scans and"
+	     << MAX_SCANQUEUE_READINGS << "readings";
+    
 }
 
 Scan::Scan() : m_currentReading(0) {
+  m_timestamp = QDateTime();
 }
 
 void Scan::addReading(QString mac, QString ssid, qint16 frequency, qint8 strength) {
   //qDebug() << Q_FUNC_INFO << " reading=" << m_currentReading;
   if (m_currentReading < MAX_SCANQUEUE_READINGS) {
-    if (m_currentReading == 0) {
-      stamp();
-    }
     m_readings[m_currentReading].set (mac, ssid, frequency, strength);
     ++m_currentReading;
   } else {
@@ -44,6 +47,7 @@ void Scan::clear() {
     m_readings[i].clear();
   }
   m_currentReading = 0;
+  m_timestamp = QDateTime();
 }
 
 void SimpleScanQueue::addReading(QString mac, QString ssid, qint16 frequency, qint8 strength)
@@ -84,9 +88,30 @@ void SimpleScanQueue::scanCompleted()
       return;
     }
   }
+
+  // mark this scan as valid
+  m_scans[m_currentScan].stamp();
   m_currentScan++;
+  if (m_currentScan >= MAX_SCANQUEUE_SCANS) {
+    m_currentScan = 0;
+  }
+  // reset the data structure for the next incoming scan
+  m_scans[m_currentScan].clear();
   emit scanQueueCompleted();
 }
+
+void SimpleScanQueue::handleMotionChange(Motion motion) {
+  qDebug() << Q_FUNC_INFO << motion;
+
+  if (motion == MOVING) {
+    for (int i = 0; i < MAX_SCANQUEUE_SCANS; i++) {
+      if (i != m_currentScan) {
+	m_scans[i].clear();
+      }
+    }
+  }
+}
+
 
 bool operator== (Reading &s1, Reading &s2) {
   if (s1.m_mac == s2.m_mac &&
@@ -145,11 +170,26 @@ void Scan::serialize(QVariantMap &map) {
 
 void SimpleScanQueue::serialize(QVariantMap &map) {
   QVariantList list;
+  /*
   for (int i = 0; i < m_currentScan; ++i) {
     QVariantMap map;
     m_scans[i].serialize (map);    
     list << map;
   }
+  */
+
+  for (int i = m_currentScan+1; i != m_currentScan; ++i) {
+    if (i == MAX_SCANQUEUE_SCANS) {
+      i = 0;
+    }
+    if (m_scans[i].isValid()) {
+      QVariantMap map;
+      m_scans[i].serialize (map);    
+      list << map;
+    }
+  }
+
+
   map["scans"] = list;
 }
 

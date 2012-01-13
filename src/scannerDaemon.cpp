@@ -18,6 +18,8 @@
 #include <qjson/serializer.h>
 #include "version.h"
 #include "util.h"
+#include "ports.h"
+
 #include "scannerDaemon.h"
 #include "speedsensor.h"
 
@@ -29,7 +31,7 @@
 
 const int  BUFFER_SIZE = 1024;
 #define DEFAULT_LOG_FILE     "/var/log/mole-scanner.log"
-#define DEFAULT_PORT         5950
+#define APPLICATION_NAME     "mole-scanner"
 
 void usage();
 
@@ -37,7 +39,7 @@ int main(int argc, char *argv[])
 {
   QCoreApplication::setOrganizationName("Nokia");
   QCoreApplication::setOrganizationDomain("nrcc.noklab.com");
-  QCoreApplication::setApplicationName("mole-scanner");
+  QCoreApplication::setApplicationName(APPLICATION_NAME);
   QCoreApplication::setApplicationVersion(MOLE_VERSION);
   qsrand(QDateTime::currentMSecsSinceEpoch()+getpid());
 
@@ -46,7 +48,7 @@ int main(int argc, char *argv[])
   bool isDaemon = false;
   char defaultLogFilename[] = DEFAULT_LOG_FILE;
   char* logFilename = defaultLogFilename;
-  int port = DEFAULT_PORT;
+  int port = DEFAULT_SCANNER_DAEMON_PORT;
 
   QStringList args = QCoreApplication::arguments();
   {
@@ -75,7 +77,7 @@ int main(int argc, char *argv[])
   }
 
   if (isDaemon) {
-    daemonize("mole-scanner");
+    daemonize(APPLICATION_NAME);
   } else {
     qDebug() << "not daemonizing";
   }
@@ -85,45 +87,48 @@ int main(int argc, char *argv[])
 
   qDebug() << "installed msg handler";
 
-  LocalServer *localServer = new LocalServer(app, port);
+
   Scanner *scanner = new Scanner(app);
-  /*
-  connect(m_scanner, SIGNAL(addReading(QString,QString,qint16,qint8)),
-	  m_scanQueue, SLOT(addReading(QString,QString,qint16,qint8)));
-  connect(m_scanner, SIGNAL(scanCompleted()), m_scanQueue, SLOT(scanCompleted()));
-  */
+  SimpleScanQueue *scanQueue = new SimpleScanQueue(app);
+  LocalServer *localServer = new LocalServer(app, scanQueue, port);
+  app->connect(scanner, SIGNAL(addReading(QString,QString,qint16,qint8)),
+	       scanQueue, SLOT(addReading(QString,QString,qint16,qint8)));
+  app->connect(scanner, SIGNAL(scanCompleted()), scanQueue, SLOT(scanCompleted()));
   
   if (SpeedSensor::haveAccelerometer()) {
-    SpeedSensor speedSensor = new SpeedSensor(app);
-    connect(m_speedSensor, SIGNAL(hibernate(bool)), m_scanner, SLOT(handleHibernate(bool)));
+    SpeedSensor *speedSensor = new SpeedSensor(app);
+    app->connect(speedSensor, SIGNAL(hibernate(bool)), scanner, SLOT(handleHibernate(bool)));
+    app->connect(speedSensor, SIGNAL(motionChange(int)), scanQueue, SLOT(handleMotionChange(int)));
   }
 
-  //////////////////////////////////////////////////////////
-  qWarning() << "Starting mole-scanner " 
+
+  qWarning() << "Starting" << APPLICATION_NAME
 	     << "debug=" << debug
 	      << "isDaemon=" << isDaemon
 	      << "port=" << port
 	      << "logFilename=" << logFilename;
 
   //app->connect(app, SIGNAL(aboutToQuit()), syncer, SLOT(handleQuit()));
+  scanner->start();
   return app->exec();
 
 }
 
+/////////////////////////////////////////////////////////////////
 void usage() {
-  qCritical() << "mole-scanner\n"
+  qCritical() << APPLICATION_NAME << "\n"
 	      << "-h print usage\n"
 	      << "-d debug\n"
 	      << "-n run in foreground (do not daemonize)\n"
-	      << "-p port [" << DEFAULT_PORT << "]\n"
+	      << "-p port [" << DEFAULT_SCANNER_DAEMON_PORT << "]\n"
 	      << "-l log file [" << DEFAULT_LOG_FILE << "]\n";
   qCritical() << "version" << MOLE_VERSION;
   exit(0);
 }
 
-
-LocalServer::LocalServer(QObject *parent, int port)
-  :QTcpServer(parent)
+/////////////////////////////////////////////////////////////////
+LocalServer::LocalServer(QObject *parent, SimpleScanQueue *scanQueue, int port)
+  :QTcpServer(parent), m_scanQueue(scanQueue)
 {
   bool ok = listen(QHostAddress::LocalHost, port);
   if (!ok)
@@ -142,6 +147,7 @@ LocalServer::~LocalServer()
   close();
 }
 
+/////////////////////////////////////////////////////////////////
 void LocalServer::handleRequest()
 {
   if (!hasPendingConnections()) {
@@ -159,11 +165,16 @@ void LocalServer::handleRequest()
     QByteArray request = socket->read(BUFFER_SIZE);
 
     QString requestString (request);
+    requestString = requestString.simplified();
+    qDebug() << "request" << requestString;
     if (requestString == "scans" ||
 	requestString == "/scans") {
 
+      QVariantMap map;
+      m_scanQueue->serialize(map);
+
       QJson::Serializer serializer;
-      reply = serializer.serialize(scans);
+      reply = serializer.serialize(map);
     }
   }
   socket->write(reply);

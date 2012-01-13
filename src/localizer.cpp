@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+#include "mole.h"
+#include "network.h"
 #include "localizer.h"
 
 #include <QNetworkReply>

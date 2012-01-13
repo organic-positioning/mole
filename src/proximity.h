@@ -19,7 +19,6 @@
 #define PROXIMITY_H_
 
 #include "localizer.h"
-#include "moled.h"
 
 #include <qjson/parser.h>
 #include <qjson/serializer.h>

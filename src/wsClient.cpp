@@ -36,60 +36,82 @@ void usage();
 void version();
 
 int main(int argc, char *argv[]) {
-  WSClient *app = new WSClient(argc, argv);
-  app->start();
-  return app->exec();
-}
+  QString serverUrl = DEFAULT_SERVER_URL;
+  QString container;
+  QString poi;
+  int targetScanCount = 0;
+  int port = DEFAULT_SCANNER_DAEMON_PORT;
 
-WSClient::WSClient(int argc, char *argv[])
-  : QCoreApplication(argc, argv),
-    m_targetScanCount(1),
-    m_scansCompleted(0),
-    m_serverUrl (DEFAULT_SERVER_URL),
-    m_request(),
-    m_scanner(0),
-    m_scanQueue(0),
-    m_networkAccessManager(0) {
-
-  //connect(this, SIGNAL(aboutToQuit()), SLOT(handleQuit()));
+  QCoreApplication *app = new QCoreApplication;
   QStringList args = QCoreApplication::arguments();
   QStringListIterator argsIter(args);
-  argsIter.next(); // = mole
+  argsIter.next(); // = mole-ws
 
   while (argsIter.hasNext()) {
     QString arg = argsIter.next();
     if (arg == "-v") {
       version();
     } else if (arg == "-s") {
-      m_serverUrl = argsIter.next();
+      serverUrl = argsIter.next();
     } else if (arg == "--container" || arg == "-c") {
-      m_container = argsIter.next();
+      container = argsIter.next();
     } else if (arg == "--poi" || arg == "-p") {
-      m_poi = argsIter.next();
+      poi = argsIter.next();
     } else if (arg == "-t") {
-      m_targetScanCount = argsIter.next().toInt();
+      targetScanCount = argsIter.next().toInt();
+    } else if (arg == "-l") {
+      port = argsIter.next().toInt();
     } else if (arg == "--query" || arg == "-q") {
-      m_request = "query";
+      request = "query";
     } else if (arg == "--bind" || arg == "-b") {
-      m_request = "bind";
+      request = "bind";
     } else if (arg == "--remove" || arg == "-r") {
-      m_request = "remove";
+      request = "remove";
     } else {
       qDebug() << "unknown parameter";
       usage();
     }
   }
 
-  if (m_request.isEmpty()) {
+  if (request.isEmpty()) {
     qWarning() << "Error: no request given";
     usage();
   }
 
-  if ( (m_request == "bind" || m_request == "remove") &&
-       (m_container.isEmpty() || m_poi.isEmpty()) ) {
+  if ( (request == "bind" || request == "remove") &&
+       (container.isEmpty() || poi.isEmpty()) ) {
     qWarning() << "Error: container and POI required for 'bind' and 'remove'";
     usage();
   }
+
+  WSClient *client = NULL;
+  if (targetScanCount == 0) {
+    client = new WSClient(request, serverUrl, container, poi, port);
+  } else {
+    client = new WSClientSelfScanner(request, serverUrl, container, poi, targetScanCount);
+  }
+  
+  client->start();
+  return app->exec();
+}
+
+//////////////////////////////////////////////////////////
+
+WSClient::WSClient(QString request, QString serverUrl, QString container, QString poi, int port) :
+  m_serverUrl (DEFAULT_SERVER_URL),
+  m_request(request),
+  m_networkAccessManager(0) {
+  m_networkAccessManager = new QNetworkAccessManager;
+}
+
+//////////////////////////////////////////////////////////
+
+WSClientSelfScanner::WSClientSelfScanner(QString request, QString serverUrl, QString container, QString poi, int targetScanCount) :
+  WSClient(request, serverUrl, 0),
+  m_targetScanCount(targetScanCount),
+  m_scansCompleted(0),
+  m_scanner(0),
+  m_scanQueue(0) {
 
   if (m_request == "bind" || m_request == "query") {
     m_scanQueue = new SimpleScanQueue;
@@ -105,14 +127,13 @@ WSClient::WSClient(int argc, char *argv[])
 
 //////////////////////////////////////////////////////////
  
-void WSClient::start() {
+void WSClientSelfScanner::start() {
   if (m_request == "bind" || m_request == "query") {
     // kick off a few local scans, and send them with the request
     // for remote processing
     m_scanner->start();
     qWarning() << "Waiting for" << m_targetScanCount<<"scan(s)";
   }
-  m_networkAccessManager = new QNetworkAccessManager;
 
   if (m_request == "remove") {
     sendRequest();
@@ -121,7 +142,7 @@ void WSClient::start() {
 
 //////////////////////////////////////////////////////////
 
-void WSClient::scanCompleted() {
+void WSClientSelfScanner::scanCompleted() {
   ++m_scansCompleted;
   if (m_scansCompleted >= m_targetScanCount) {
     m_scanner->stop();
@@ -213,14 +234,16 @@ void WSClient::handleResponse() {
 void usage()
 {
   qCritical()
-    << "molews\n"
+    << "mole-ws\n"
     << "--query     (-q)\n"
     << "--bind      (-d)\n"
     << "--remove    (-r)\n"
     << "--poi       (-p) string [place of interest within container]\n"
     << "--container (-c) string [name of container] \n"
     << "-s remote server url (default=" << DEFAULT_SERVER_URL << ")\n"
-    << "-t scan this many times before sending to remote server (default 1)\n"
+    << "-t scan this many times before sending to remote server\n"
+    << "   Otherwise contact scanner daemon for scans\n"
+    << "-l Contact scanner daemon on this port (default=" << DEFAULT_SCANNER_DAEMON_PORT << ")\n"
     << "Bind and Remove require container and poi\n";
   exit (-1);
 }

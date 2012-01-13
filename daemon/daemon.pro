@@ -26,7 +26,6 @@ HEADERS += \
     ../src/daemon.h \
     ../src/localizer.h \
     ../src/localServer.h \
-    ../src/moled.h \
     ../src/scanner.h \
     ../src/scan.h \
     ../src/scanQueue.h \

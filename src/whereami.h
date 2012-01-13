@@ -24,7 +24,6 @@
 #include <QUrl>
 #include <QtDBus> 
 
-#include "moled.h"
 #include "localizer.h"
 
 class WhereAmI : public QObject {

@@ -49,6 +49,4 @@ extern QNetworkConfigurationManager *networkConfigurationManager;
 void initSettings();
 void initCommon(QObject *parent, QString logFilename);
 
-enum Motion { HIBERNATE, STATIONARY, MOVING };
-
 #endif /* MOLE_H_ */

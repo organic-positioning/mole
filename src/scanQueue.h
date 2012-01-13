@@ -1,6 +1,6 @@
 /*
  * Mole - Mobile Organic Localisation Engine
- * Copyright 2010 Nokia Corporation.
+ * Copyright 2010-2012 Nokia Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 #define SCANQUEUE_H_
 
 #include <QtCore>
-#include "moled.h"
+#include "motion.h"
 
 const int MAX_SCANQUEUE_READINGS = 50;
 const int MAX_SCANQUEUE_SCANS = 60;
@@ -74,11 +74,13 @@ class ScanQueue : public QObject
   bool addReading(QString mac, QString ssid, qint16 frequency, qint8 strength);
   bool scanCompleted();
   void serialize(QDateTime oldestValidScan, QVariantList &scanList);
-  void handleMotionChange(Motion motion);
   void hibernate(bool goToSleep);
   bool hibernating() { return m_hibernating; }
 
   const int maxActiveQueueLength;
+
+ public slots:
+  void handleMotionChange(Motion motion);
 
  private:
   Localizer *m_localizer;

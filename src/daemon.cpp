@@ -17,6 +17,8 @@
 
 #include <unistd.h>
 
+#include "mole.h"
+#include "util.h"
 #include "daemon.h"
 #include "binder.h"
 #include "localizer.h"
@@ -24,6 +26,7 @@
 #include "scanQueue.h"
 #include "speedsensor.h"
 #include "proximity.h"
+#include "settings_access.h"
 
 #ifdef Q_WS_MAEMO_5
 #include "scanner-maemo.h"
@@ -184,12 +187,16 @@ Daemon::Daemon(int argc, char *argv[])
 
   m_speedSensor = 0;
   if (runMovementDetector && SpeedSensor::haveAccelerometer()) {
-    m_speedSensor = new SpeedSensor(this, m_scanQueue);
+    m_speedSensor = new SpeedSensor(this);
     connect(m_speedSensor, SIGNAL(hibernate(bool)), m_scanner, SLOT(handleHibernate(bool)));
+    connect(m_speedSensor, SIGNAL(motionChange(int)), m_scanQueue, SLOT(handleMotionChange(int)));
     connect(m_speedSensor, SIGNAL(hibernate(bool)), m_localizer, SLOT(handleHibernate(bool)));
   }
 
   connect(this, SIGNAL(aboutToQuit()), SLOT(handle_quit()));
+
+  // TODO don't we need to start the scanner etc?
+
 }
 
 void Daemon::handle_quit()

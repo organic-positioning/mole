@@ -21,6 +21,7 @@
 #include "../completer.h"
 #include "../models.h"
 #include "../mole.h"
+#include "../motion.h"
 #include "../network.h"
 #include "../qt-utils.h"
 #include "../settings_access.h"

@@ -1,6 +1,6 @@
 /*
  * Mole - Mobile Organic Localisation Engine
- * Copyright 2010 Nokia Corporation.
+ * Copyright 2010-2012 Nokia Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+#include "scanner.h"
 #include "scanQueue.h"
 
 #include "localizer.h"
@@ -28,8 +29,8 @@
 // and then tell it when they have completed each scan
 // (via scanCompleted)
 
-const QRegExp LocallyAdministeredMAC ("^.[2367abef]:");
-const QRegExp MacRegExp ("^[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]$");
+//const QRegExp LocallyAdministeredMAC ("^.[2367abef]:");
+//const QRegExp MacRegExp ("^[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]$");
 
 ScanQueue::ScanQueue(QObject *parent, Localizer *_localizer, int _maxActiveQueueLength, bool _recordScans)
   : QObject(parent)

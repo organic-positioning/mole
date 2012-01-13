@@ -17,6 +17,7 @@
 #include "binder.h"
 
 #include "mole.h"
+#include "settings_access.h"
 #include "network.h"
 #include "localizer.h"
 #include "scanQueue.h"

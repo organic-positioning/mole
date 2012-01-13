@@ -18,7 +18,6 @@
 #ifndef LOCALIZER_H_
 #define LOCALIZER_H_
 
-#include "moled.h"
 #include "math.h"
 #include "network.h"
 #include "overlap.h"

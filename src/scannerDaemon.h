@@ -18,20 +18,22 @@
 #ifndef SCANNER_DAEMON_H
 #define SCANNER_DAEMON_H
 
+#include <QtCore>
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QVariant>
+#include "simpleScanQueue.h"
 
 class LocalServer : public QTcpServer
 {
   Q_OBJECT
 
  public:
-  LocalServer(QObject *parent = 0, int port = 0);
+  LocalServer(QObject *parent = 0, SimpleScanQueue *scanQueue = NULL, int port = 0);
   ~LocalServer ();
 
  private:
-  QString scans;
+  SimpleScanQueue *m_scanQueue;
 
  private slots:
   void handleRequest();

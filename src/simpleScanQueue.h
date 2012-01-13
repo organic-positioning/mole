@@ -19,7 +19,7 @@
 #define SIMPLESCANQUEUE_H_
 
 #include <QtCore>
-#include "scanner.h"
+#include "motion.h"
 
 const int MAX_SCANQUEUE_READINGS = 50;
 const int MAX_SCANQUEUE_SCANS = 10;
@@ -48,29 +48,31 @@ class Scan
   void addReading(QString mac, QString ssid, qint16 frequency, qint8 strength);
   void serialize(QVariantMap &map);
   void clear();
-
+  bool isValid() { return m_timestamp.isValid(); }
+  void stamp() { m_timestamp = QDateTime::currentDateTime(); }
   friend bool operator== (Scan &s1, Scan &s2);
 
  private:
   int m_currentReading;
   QDateTime m_timestamp;
   Reading m_readings[MAX_SCANQUEUE_READINGS];
-  void stamp() { m_timestamp = QDateTime::currentDateTime(); }
+
 };
 
 class SimpleScanQueue : public QObject
 {
   Q_OBJECT
 
-    public:
+ public:
   SimpleScanQueue(QObject *parent = 0);
   void serialize(QVariantMap &map);
 
-  public slots:
+ public slots:
   void addReading(QString mac, QString ssid, qint16 frequency, qint8 strength);
   void scanCompleted();
+  void handleMotionChange(Motion motion);
 
-  signals:
+ signals:
   void scanQueueCompleted();
 
  private:

@@ -16,6 +16,8 @@
  */
 
 #include "proximity.h"
+#include "mole.h"
+#include "settings_access.h"
 
 Proximity::Proximity(QObject *parent, Localizer *_localizer)
   : QObject(parent)

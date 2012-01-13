@@ -1,6 +1,6 @@
 /*
  * Mole - Mobile Organic Localisation Engine
- * Copyright 2010 Nokia Corporation.
+ * Copyright 2010-2012 Nokia Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,13 +20,12 @@
 bool SpeedSensor::accelerometerExists = true;
 bool SpeedSensor::testedForAccelerometer = false;
 
-SpeedSensor::SpeedSensor(QObject* parent, ScanQueue *_scanQueue,
+SpeedSensor::SpeedSensor(QObject* parent,
                          int _samplingPeriod, int _dutyCycle,
 			 int _hibernationDelay)
   : QObject(parent)
   , m_lastHibernateMessage(false)
   , m_sensor(new QAccelerometer(this))
-  , m_scanQueue(_scanQueue)
   , m_on(false)
   , m_readingCount(0)
   , samplingPeriod(_samplingPeriod)
@@ -182,7 +181,7 @@ void SpeedSensor::emitMotion(Motion motion)
     m_hibernateTimer.stop();
     m_lastHibernateMessage = false;
     emit hibernate(false);
-    m_scanQueue->hibernate(false);
+    //m_scanQueue->hibernate(false);
   } else {
     if (!m_lastHibernateMessage) {
       if (!m_hibernateTimer.isActive()) {
@@ -191,7 +190,7 @@ void SpeedSensor::emitMotion(Motion motion)
     }
   }
 
-  m_scanQueue->handleMotionChange(motion);
+  emit motionChange(motion);
 #ifdef USE_MOLE_DBUS
   QDBusMessage msg = QDBusMessage::createSignal("/", "com.nokia.moled", "MotionEstimate");
   msg << motion;
@@ -206,7 +205,7 @@ void SpeedSensor::handleHibernateTimeout()
   m_hibernateTimer.stop();
   m_lastHibernateMessage = true;
   emit hibernate(true);
-  m_scanQueue->hibernate(true);
+  //m_scanQueue->hibernate(true);
 }
 
 void SpeedSensor::shutdown()

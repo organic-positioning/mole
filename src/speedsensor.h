@@ -24,8 +24,7 @@
 
 // QTM_BEGIN_NAMESPACE
 
-#include "moled.h"
-#include "scanQueue.h"
+#include "motion.h"
 
 const int X = 0;
 const int Y = 1;
@@ -44,7 +43,7 @@ class SpeedSensor : public QObject, public QAccelerometerFilter
   Q_OBJECT
 
  public:
-  SpeedSensor(QObject* parent = 0, ScanQueue *scanQueue = 0,
+  SpeedSensor(QObject* parent = 0, 
               int samplingPeriod = 250, int dutyCycle = 4500,
 	      int _hibernationDelay = 300000);
 
@@ -52,6 +51,7 @@ class SpeedSensor : public QObject, public QAccelerometerFilter
   static bool haveAccelerometer();
  signals:
   void hibernate(bool goToSleep);
+  void motionChange(int motion);
 
  private slots:
   // Override of QAcclerometerFilter::filter(QAccelerometerReading*)
@@ -65,7 +65,6 @@ class SpeedSensor : public QObject, public QAccelerometerFilter
  private:
   bool m_lastHibernateMessage;
   QAccelerometer *m_sensor;
-  ScanQueue *m_scanQueue;
   bool m_on;
   Motion m_motionHistory[MOTION_HISTORY_SIZE];
   QTimer m_timer;
