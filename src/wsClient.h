@@ -29,21 +29,28 @@
 #include "scanner-nm.h"
 #endif
 
-class WSClient {
+class WSClient : public QObject {
   Q_OBJECT
 
 public:
-  WSClient(QString request, QString serverUrl, QString container, QString poi, int port);
-  void start();
-  void sendRequest();
+  WSClient(QString request, QString container, QString poi, QString serverUrl, int port);
+  virtual void start();
 
-private:
-  QString m_serverUrl;
+
+protected:
   QString m_request;
   QString m_container;
   QString m_poi;
+  QString m_serverUrl;
+  int m_localScannerPort;
+
+  QVariantMap m_scans;
+  QVariantMap m_source;
   QVariantMap m_requestMap;
   QNetworkAccessManager *m_networkAccessManager;
+  void sendRequest();
+  //QByteArray getDataFromDaemon(QString request);
+  QVariantMap getDataFromDaemon(QString request);
 
 public slots:
   void handleResponse();
@@ -55,8 +62,8 @@ class WSClientSelfScanner : public WSClient
   Q_OBJECT
 
 public:
-  WSClientSelfScanner(QString request, QString serverUrl, QString container, QString poi, int targetScanCount);
-  //void start();
+  WSClientSelfScanner(QString request, QString container, QString poi, QString serverUrl, int targetScanCount);
+  virtual void start();
   //void sendRequest();
 
 public slots:

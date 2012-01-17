@@ -1,11 +1,23 @@
 Mole Web Service Client and Server TODO
 
-- scale/normalize score provided in query results
+Week of Jan 9:
+- using MT vm and Lenovo
+- get full loop of scanner daemon + mole-ws working, possibly (should)
+  work against a local server; currently getting NPE in server; check
+  that json send with daemon's scans is the same as without using this.
+  - in process: there is some difference between what 'self-scanning' is sending and what is being sent with the scanner
 
-- shorted time for scanning (do several scans in quick succession)
+- improve output of query results through new class
+- test accelerometer
+- test other components (binder, daemon, cli)
+- change simpleScanQueue size back to normal
+- create new maemo and linux packages
+
+Future improvements:
+- scale/normalize score provided in query results
+- shorten time for scanning (do several scans in quick succession)
 
 If desired:
-- improve output of query results
 - improve the persistence of the db
 - server does pre-screening of containers based on mac union
 - use device type to segment scans

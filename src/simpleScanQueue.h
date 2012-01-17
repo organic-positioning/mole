@@ -21,7 +21,7 @@
 #include <QtCore>
 #include "motion.h"
 
-const int MAX_SCANQUEUE_READINGS = 50;
+const int MAX_SCANQUEUE_READINGS = 2;
 const int MAX_SCANQUEUE_SCANS = 2;
 
 //const int MAX_SCANQUEUE_READINGS = 50;

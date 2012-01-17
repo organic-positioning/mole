@@ -32,11 +32,17 @@
 #include <QTextStream>
 #include <QDateTime>
 #include <QFile>
+#include <QVariantMap>
+
+#include "version.h"
 
 extern bool debug;
 extern FILE *logStream;
 extern void outputHandler(QtMsgType type, const char *msg);
 extern void daemonize(QString exec);
 extern void initLogger(const char* logFilename);
+extern QString getUUID();
+extern QString getDeviceInfo();
+extern void serializeSource(QVariantMap &map);
 
 #endif // MOLE_UTIL_H

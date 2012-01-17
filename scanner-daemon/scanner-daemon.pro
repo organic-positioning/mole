@@ -7,7 +7,7 @@ TARGET = mole-scanner
 
 CONFIG += mobility
 CONFIG += debug
-MOBILITY += sensors
+MOBILITY += sensors systeminfo
 
 HEADERS += \
     ../src/scannerDaemon.h \

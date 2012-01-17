@@ -16,6 +16,8 @@
  */
 
 #include "scanner.h"
+#include "version.h"
+#include "util.h"
 #include "simpleScanQueue.h"
 
 SimpleScanQueue::SimpleScanQueue(QObject *parent)
@@ -180,7 +182,14 @@ void SimpleScanQueue::serialize(QVariantMap &map) {
   }
   */
 
+  int loopCount = 0;
+  // send scans in oldest-to-newest order
   for (int i = m_currentScan+1; i != m_currentScan; ++i) {
+    qDebug() << "serialize" << i;
+    if (loopCount++ > 100) {
+      qWarning() << "send log of this error to JL";
+      break;
+    }
     if (i == MAX_SCANQUEUE_SCANS) {
       i = 0;
     }
@@ -190,9 +199,7 @@ void SimpleScanQueue::serialize(QVariantMap &map) {
       list << map;
     }
   }
-
-
   map["scans"] = list;
+
+
 }
-
-

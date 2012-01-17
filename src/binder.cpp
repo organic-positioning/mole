@@ -59,6 +59,8 @@ Binder::Binder(QObject *parent, Localizer *_localizer, ScanQueue *_scanQueue)
 
   //qWarning("Temporarily omitting acquiring system device info");
 
+  m_deviceDesc = getDeviceInfo();
+  /*
   QSystemDeviceInfo *device = new QSystemDeviceInfo(parent);
   qDebug() << "product name  " << device->productName().simplified();
   m_deviceDesc.append(device->productName().simplified());
@@ -69,7 +71,7 @@ Binder::Binder(QObject *parent, Localizer *_localizer, ScanQueue *_scanQueue)
   qDebug() << "manufacturer  " << device->manufacturer().simplified();
   m_deviceDesc.append(device->manufacturer().simplified());
   delete device;
-
+  */
 
 #ifdef USE_MOLE_DBUS
   qDebug () << "Binder listening on D-Bus";

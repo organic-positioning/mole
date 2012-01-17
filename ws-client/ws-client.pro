@@ -5,17 +5,23 @@
 TEMPLATE = app
 TARGET = mole-ws
 
+CONFIG += mobility
+CONFIG += debug
+MOBILITY += systeminfo
+
 HEADERS += \
     ../src/wsClient.h \
     ../src/ports.h \
     ../src/version.h \
     ../src/dbus.h \
+    ../src/util.h \
     ../src/scanner.h \
     ../src/simpleScanQueue.h
 
 SOURCES += \
     ../src/wsClient.cpp \
     ../src/scanner.cpp \
+    ../src/util.cpp \
     ../src/simpleScanQueue.cpp
 
 unix:LIBS += -L/usr/lib -lqjson

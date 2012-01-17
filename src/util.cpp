@@ -17,6 +17,10 @@
 
 #include "util.h"
 
+#include <QSettings>
+#include <QSystemDeviceInfo>
+QTM_USE_NAMESPACE
+
 bool debug = false;
 FILE *logStream = NULL;
 
@@ -59,6 +63,7 @@ void outputHandler(QtMsgType type, const char *msg)
   }
 }
 
+//////////////////////////////////////////////////////////////////////////////
 void daemonize(QString exec)
 {
   if (::getppid() == 1) 
@@ -97,4 +102,48 @@ void daemonize(QString exec)
   ::signal(SIGTTIN,SIG_IGN);
 }
 
+//////////////////////////////////////////////////////////////////////////////
+// return our uuid, and store it in settings if it wasn't already there
+QString getUUID() {
+  QSettings settings;
+  if (!settings.contains("uuid") ||
+      settings.value("uuid").toString().size() < 35) {
+    QString uuid;
+    for (int i = 0; i < 4; i++) {
+      int nextRand = qrand();
+      uuid.append(QString::number(nextRand, 16));
+      if (i < 3) {
+        uuid.append("-");
+      }
+      qDebug() << "uuid" << uuid;
+    }
+    settings.setValue("uuid", uuid);
+  }
+  return settings.value("uuid").toString();
+}
 
+//////////////////////////////////////////////////////////////////////////////
+// return a description of the device
+QString getDeviceInfo() {
+  QSettings settings;
+  if (!settings.contains("deviceinfo")) {
+    QSystemDeviceInfo device;
+    qDebug() << "product name  " << device.productName().simplified();
+    QString deviceInfo;
+    deviceInfo.append(device.productName().simplified());
+    deviceInfo.append("/");
+    qDebug() << "model " << device.model().simplified();
+    deviceInfo.append(device.model().simplified());
+    deviceInfo.append("/");
+    qDebug() << "manufacturer  " << device.manufacturer().simplified();
+    deviceInfo.append(device.manufacturer().simplified());
+    settings.setValue("deviceinfo", deviceInfo);
+  }
+  return settings.value("deviceinfo").toString();
+}
+
+void serializeSource(QVariantMap &map) {
+  map["uuid"] = getUUID();
+  map["device"] = getDeviceInfo();
+  map["version"] = MOLE_VERSION;
+}

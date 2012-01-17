@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <QtCore>
 #include <QCoreApplication>
+#include <QTcpSocket>
 #include <QNetworkRequest>
 #include <QNetworkReply>
 #include <QNetworkAccessManager>
@@ -28,21 +29,30 @@
 #include "wsClient.h"
 #include "ports.h"
 #include "version.h"
+#include "util.h"
 
 QString DEFAULT_SERVER_URL = "http://mole.research.nokia.com:8090";
 #define BUFFER_SIZE 4096
+#define APPLICATION_NAME     "mole-ws"
 
 void usage();
 void version();
 
 int main(int argc, char *argv[]) {
+  QCoreApplication::setOrganizationName("Nokia");
+  QCoreApplication::setOrganizationDomain("nrcc.noklab.com");
+  QCoreApplication::setApplicationName(APPLICATION_NAME);
+  QCoreApplication::setApplicationVersion(MOLE_VERSION);
+  qsrand(QDateTime::currentMSecsSinceEpoch()+getpid());
+
   QString serverUrl = DEFAULT_SERVER_URL;
+  QString request;
   QString container;
   QString poi;
   int targetScanCount = 0;
   int port = DEFAULT_SCANNER_DAEMON_PORT;
 
-  QCoreApplication *app = new QCoreApplication;
+  QCoreApplication *app = new QCoreApplication(argc,argv);
   QStringList args = QCoreApplication::arguments();
   QStringListIterator argsIter(args);
   argsIter.next(); // = mole-ws
@@ -86,9 +96,9 @@ int main(int argc, char *argv[]) {
 
   WSClient *client = NULL;
   if (targetScanCount == 0) {
-    client = new WSClient(request, serverUrl, container, poi, port);
+    client = new WSClient(request, container, poi, serverUrl, port);
   } else {
-    client = new WSClientSelfScanner(request, serverUrl, container, poi, targetScanCount);
+    client = new WSClientSelfScanner(request, container, poi, serverUrl, targetScanCount);
   }
   
   client->start();
@@ -97,21 +107,83 @@ int main(int argc, char *argv[]) {
 
 //////////////////////////////////////////////////////////
 
-WSClient::WSClient(QString request, QString serverUrl, QString container, QString poi, int port) :
-  m_serverUrl (DEFAULT_SERVER_URL),
+WSClient::WSClient(QString request, QString container, QString poi, QString serverUrl, int localScannerPort) :
   m_request(request),
+  m_container(container),
+  m_poi(poi),
+  m_serverUrl (serverUrl),
+  m_localScannerPort(localScannerPort),
   m_networkAccessManager(0) {
   m_networkAccessManager = new QNetworkAccessManager;
 }
 
 //////////////////////////////////////////////////////////
+// If we need scans for this type of request,
+// contact the local scannerDaemon for them.
+// If we are doing a remove, we still need our uuid.
+void WSClient::start() {
 
-WSClientSelfScanner::WSClientSelfScanner(QString request, QString serverUrl, QString container, QString poi, int targetScanCount) :
-  WSClient(request, serverUrl, 0),
+  // we always send this along, whether or not we are sending scans
+  if (m_source.isEmpty()) {
+    m_source = getDataFromDaemon("/source");
+
+  }
+
+  if (m_request == "bind" || m_request == "query") {
+    m_scans = getDataFromDaemon("/scans");
+    m_requestMap["scans"] = m_scans;
+  }
+  sendRequest();
+}
+
+//////////////////////////////////////////////////////////
+// Fetch either scans or our uuid from the daemon
+//QByteArray WSClient::getDataFromDaemon(QString request) {
+QVariantMap WSClient::getDataFromDaemon(QString request) {
+    QTcpSocket socket;
+    socket.connectToHost(DEFAULT_LOCAL_HOST, m_localScannerPort);
+
+    const int timeout = 5*1000;
+    if (!socket.waitForConnected(timeout)) {
+      qFatal("Error connecting to socket: %s\n", qPrintable(socket.errorString()));
+      exit(-1);
+    }
+
+    socket.write(request.toAscii());
+
+    while (socket.bytesAvailable() < (int)sizeof(quint16)) {
+      if (!socket.waitForReadyRead(timeout)) {
+	qFatal("Error reading from socket: %s\n", qPrintable(socket.errorString()));
+	exit(-1);
+      }
+    }
+
+    QByteArray json = socket.readAll();
+    qDebug() << "received" << json;
+    socket.close();
+
+    QJson::Parser parser;
+    bool ok;
+    QVariantMap response = parser.parse (json, &ok).toMap();
+    if (!ok) {
+      qFatal("Could not parse response from scanner daemon");
+    }
+    return response;
+}
+
+//////////////////////////////////////////////////////////
+// If we are scanning ourself, then build our own scanner and scanQueue
+// wait for the desired number of scans, then proceed to the request.
+WSClientSelfScanner::WSClientSelfScanner(QString request, QString container, QString poi, QString serverUrl, int targetScanCount) :
+  WSClient(request, container, poi, serverUrl, 0),
   m_targetScanCount(targetScanCount),
   m_scansCompleted(0),
   m_scanner(0),
   m_scanQueue(0) {
+
+  // in addition to scanning (if necessary)
+  // include the description of ourselves (uuid, device info, mole version)
+  serializeSource(m_source);
 
   if (m_request == "bind" || m_request == "query") {
     m_scanQueue = new SimpleScanQueue;
@@ -141,7 +213,7 @@ void WSClientSelfScanner::start() {
 }
 
 //////////////////////////////////////////////////////////
-
+// We are sent this signal by the scanQueue
 void WSClientSelfScanner::scanCompleted() {
   ++m_scansCompleted;
   if (m_scansCompleted >= m_targetScanCount) {
@@ -153,17 +225,19 @@ void WSClientSelfScanner::scanCompleted() {
 }
 
 //////////////////////////////////////////////////////////
-
+// Through self-scanning or talking to our local daemon,
+// we now have whatever scans are needed.
+// Send the request to the web service and wait for the response.
 void WSClient::sendRequest() {
   QJson::Serializer serializer;
 
   // TODO placeholders that describe the client
   QVariantMap source;
-  source["key"] = "key1";
-  source["secret"] = "secret1";
-  source["device"] = "device1";
-  source["version"] = MOLE_VERSION;
-  m_requestMap["source"] = source;
+  //source["key"] = "key1";
+  //source["secret"] = "secret1";
+  //source["device"] = "device1";
+  //source["version"] = MOLE_VERSION;
+  m_requestMap["source"] = m_source;
 
   if (!m_container.isEmpty() && !m_poi.isEmpty()) {
     QVariantMap location;
@@ -174,7 +248,6 @@ void WSClient::sendRequest() {
 
   const QByteArray requestJson = serializer.serialize(m_requestMap);
   qDebug () << "json" << requestJson;
-
 
   QString urlStr = m_serverUrl;
   urlStr.append("/");
@@ -187,6 +260,8 @@ void WSClient::sendRequest() {
   connect(reply, SIGNAL(finished()), SLOT (handleResponse()));
   qDebug() << "sent request to" << urlStr;
 }
+
+//////////////////////////////////////////////////////////
 
 void WSClient::handleResponse() {
   QNetworkReply *reply = qobject_cast<QNetworkReply *>(sender());
