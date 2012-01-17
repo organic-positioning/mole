@@ -70,7 +70,7 @@ void SimpleScanQueue::addReading(QString mac, QString ssid, qint16 frequency, qi
 
 void SimpleScanQueue::scanCompleted()
 {
-  qDebug() << Q_FUNC_INFO << m_currentScan;
+  qDebug() << Q_FUNC_INFO << m_currentScan << "entry";
 
   if (m_seenMacs.isEmpty()) {
     qDebug() << "scanQueue: found no readings";
@@ -80,13 +80,14 @@ void SimpleScanQueue::scanCompleted()
   m_seenMacs.clear();
 
   // Reject duplicate scans.
-
-  if (m_currentScan > 0) {
-    if (m_scans[m_currentScan] == m_scans[m_currentScan-1]) {
-      qDebug() << "rejecting duplicate scan";
-      m_scans[m_currentScan].clear();
-      return;
-    }
+  int previousScan = m_currentScan-1;
+  if (previousScan < 0) {
+    previousScan = MAX_SCANQUEUE_SCANS-1;
+  }
+  if (m_scans[m_currentScan] == m_scans[previousScan]) {
+    qDebug() << "rejecting duplicate scan";
+    m_scans[m_currentScan].clear();
+    return;
   }
 
   // mark this scan as valid
@@ -98,6 +99,7 @@ void SimpleScanQueue::scanCompleted()
   // reset the data structure for the next incoming scan
   m_scans[m_currentScan].clear();
   emit scanQueueCompleted();
+  qDebug() << Q_FUNC_INFO << m_currentScan << "exit";
 }
 
 void SimpleScanQueue::handleMotionChange(Motion motion) {
