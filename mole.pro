@@ -1,15 +1,10 @@
 TEMPLATE = subdirs
 
-SUBDIRS = ws-client \
+SUBDIRS = daemon \
+          cli \
+          gui \
+          ws-client \
           scanner-daemon
-
-#          daemon \
-#          cli \
-#          gui \
-
-
-# TODO
-#          ws-client-thin
 
 
 #CONFIG += ordered

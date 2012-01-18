@@ -28,6 +28,8 @@ HEADERS += \
     ../src/localServer.h \
     ../src/scanner.h \
     ../src/scan.h \
+    ../src/util.h \
+    ../src/source.h \
     ../src/scanQueue.h \
     ../src/proximity.h \
     ../src/speedsensor.h \
@@ -57,7 +59,9 @@ SOURCES += \
     ../src/overlap.cpp \
     ../src/sig.cpp \
     ../src/settings_access.cpp \
-    ../src/math.cpp
+    ../src/math.cpp \
+    ../src/util.cpp \
+    ../src/source.cpp
 
 unix:LIBS += -L/usr/lib -lqjson
 

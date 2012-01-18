@@ -18,6 +18,7 @@
 #include <qjson/serializer.h>
 #include "version.h"
 #include "util.h"
+#include "source.h"
 #include "ports.h"
 
 #include "scannerDaemon.h"

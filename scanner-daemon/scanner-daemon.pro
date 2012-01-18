@@ -13,6 +13,7 @@ HEADERS += \
     ../src/scannerDaemon.h \
     ../src/ports.h \
     ../src/util.h \
+    ../src/source.h \
     ../src/version.h \
     ../src/dbus.h \
     ../src/scanner.h \
@@ -21,6 +22,7 @@ HEADERS += \
 
 SOURCES += \
     ../src/util.cpp \
+    ../src/source.cpp \
     ../src/scannerDaemon.cpp \
     ../src/scanner.cpp \
     ../src/speedsensor.cpp \

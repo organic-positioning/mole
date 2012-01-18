@@ -20,7 +20,7 @@
 #include <csignal>
 
 QString MOLE_ORGANIZATION = "Nokia";
-QString MOLE_APPLICATION  = "Mole";
+QString MOLE_APPLICATION  = "moled";
 QString MOLE_DOMAIN       = "mole.research.nokia.com";
 
 QString DEFAULT_MAP_SERVER_URL = "http://mole.research.nokia.com:8080";
@@ -34,7 +34,7 @@ QString DEFAULT_ROOT_PATH = "/var/cache/mole";
 QString MOLE_ICON_PATH    = "/usr/share/pixmaps/mole/";
 #endif
 
-bool debug = false;
+//bool debug = false;
 bool verbose = false;
 
 QDir rootDir;
@@ -42,8 +42,8 @@ QString mapServerURL = DEFAULT_MAP_SERVER_URL;
 QString staticServerURL = DEFAULT_STATIC_SERVER_URL;
 QString rootPathname = DEFAULT_ROOT_PATH;
 
-QFile *logFile;
-QTextStream *logStream;
+//QFile *logFile;
+//QTextStream *logStream;
 QSettings *settings;
 QNetworkAccessManager *networkAccessManager;
 QNetworkConfigurationManager *networkConfigurationManager;
@@ -58,13 +58,13 @@ struct CleanExit{
 
   static void exitQt(int /*sig*/)
   {
-    *logStream << QDateTime::currentDateTime().toString() << " I: Exiting.\n\n";
-    if (logFile)
-      logFile->close();
+    fprintf(logStream, "%s I: Exiting\n", QDateTime::currentDateTime().toString().toAscii().data());
+    fclose(logStream);
     QCoreApplication::exit(0);
   }
 };
 
+/*
 void outputHandler(QtMsgType type, const char *msg)
 {
   switch (type) {
@@ -88,6 +88,7 @@ void outputHandler(QtMsgType type, const char *msg)
     abort();
   }
 }
+*/
 
 void initSettings()
 {
@@ -124,6 +125,7 @@ void initCommon(QObject *parent, QString logFilename)
     exit(-1);
   }
 
+  /*
   // Initialize logger
   if (!logFilename.isEmpty()) {
     logFile = new QFile(logFilename);
@@ -136,8 +138,10 @@ void initCommon(QObject *parent, QString logFilename)
   } else {
     logStream = new QTextStream(stderr);
   }
+  */
 
   // Set up shutdown handler
+  initLogger(logFilename.toAscii().data());
   CleanExit cleanExit;
   qInstallMsgHandler(outputHandler);
 

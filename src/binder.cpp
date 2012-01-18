@@ -19,6 +19,7 @@
 #include "mole.h"
 #include "settings_access.h"
 #include "network.h"
+#include "source.h"
 #include "localizer.h"
 #include "scanQueue.h"
 
@@ -57,21 +58,7 @@ Binder::Binder(QObject *parent, Localizer *_localizer, ScanQueue *_scanQueue)
 
   m_bindsDir = new QDir(m_bindDirName);
 
-  //qWarning("Temporarily omitting acquiring system device info");
-
   m_deviceDesc = getDeviceInfo();
-  /*
-  QSystemDeviceInfo *device = new QSystemDeviceInfo(parent);
-  qDebug() << "product name  " << device->productName().simplified();
-  m_deviceDesc.append(device->productName().simplified());
-  m_deviceDesc.append("/");
-  qDebug() << "model " << device->model().simplified();
-  m_deviceDesc.append(device->model().simplified());
-  m_deviceDesc.append("/");
-  qDebug() << "manufacturer  " << device->manufacturer().simplified();
-  m_deviceDesc.append(device->manufacturer().simplified());
-  delete device;
-  */
 
 #ifdef USE_MOLE_DBUS
   qDebug () << "Binder listening on D-Bus";

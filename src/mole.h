@@ -22,6 +22,7 @@
 
 #include "version.h"
 #include "dbus.h"
+#include "util.h"
 #include "ports.h"
 
 #include <QtCore>
@@ -38,7 +39,6 @@ extern QString DEFAULT_STATIC_SERVER_URL;
 extern QString DEFAULT_ROOT_PATH;
 extern QSettings *settings;
 extern QDir rootDir;
-extern bool debug;
 extern bool verbose;
 extern QString mapServerURL;
 extern QString staticServerURL;

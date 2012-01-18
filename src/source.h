@@ -15,31 +15,17 @@
  * limitations under the License.
  */
 
-#ifndef MOLE_UTIL_H
-#define MOLE_UTIL_H
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <iostream>
-#include <fcntl.h>
-#include <csignal>
-#include <sys/types.h>
-#include <sys/stat.h>
+#ifndef MOLE_SOURCE_H
+#define MOLE_SOURCE_H
 
 #include <QCoreApplication>
 #include <QDebug>
-#include <QStringList>
-#include <QTextStream>
-#include <QDateTime>
-#include <QFile>
 #include <QVariantMap>
 
 #include "version.h"
 
-extern bool debug;
-extern FILE *logStream;
-extern void outputHandler(QtMsgType type, const char *msg);
-extern void daemonize(QString exec);
-extern void initLogger(const char* logFilename);
+extern QString getUUID();
+extern QString getDeviceInfo();
+extern void serializeSource(QVariantMap &map);
 
-#endif // MOLE_UTIL_H
+#endif // MOLE_SOURCE_H

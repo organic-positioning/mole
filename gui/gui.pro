@@ -19,6 +19,7 @@ HEADERS += \
     ../src/mole.h \
     ../src/network.h \
     ../src/qt-utils.h \
+    ../src/util.h \
     ../src/math.h \
     ../src/settings_access.h \
     ../src/timer.h \
@@ -35,6 +36,7 @@ SOURCES += \
     ../src/models.cpp \
     ../src/network.cpp \
     ../src/qt-utils.cpp \
+    ../src/util.cpp \
     ../src/math.cpp \
     ../src/settings_access.cpp \
     ../src/timer.cpp

@@ -32,6 +32,7 @@
 #include "ports.h"
 #include "version.h"
 #include "util.h"
+#include "source.h"
 
 QString DEFAULT_SERVER_URL = "http://mole.research.nokia.com:8090";
 #define BUFFER_SIZE 4096
@@ -260,28 +261,6 @@ void WSClient::sendRequest() {
 
 //////////////////////////////////////////////////////////
 
-void testObject(const QVariantMap& variant, QObject* object) {
-  QStringList properies;
-  const QMetaObject *metaobject = object->metaObject();
-   int count = metaobject->propertyCount();
-   for (int i=0; i<count; ++i) {
-     QMetaProperty metaproperty = metaobject->property(i);
-     if (metaproperty.isWritable()) {
-       properies << QLatin1String( metaproperty.name());
-       qDebug() << "prop" << QLatin1String( metaproperty.name());
-     }
-   }
- 
-   QVariantMap::const_iterator iter;
-   for (iter = variant.constBegin(); iter != variant.end(); iter++) {
-     qDebug() << "set?" << iter.key().toAscii();
-     if (properies.contains(iter.key())) {
-       object->setProperty(iter.key().toAscii(), iter.value());
-       qDebug() << "set" << iter.key().toAscii() << "v" << iter.value();
-     }
-   }
-}
-
 void WSClient::handleResponse() {
   QNetworkReply *reply = qobject_cast<QNetworkReply *>(sender());
 
@@ -314,8 +293,6 @@ void WSClient::handleResponse() {
 	      resultCount++;
 	      QVariant variant = resIter.next();
 	      LocationProbability locationProbability;
-	      //testObject(variant.toMap(), &locationProbability);
-
 	      QJson::QObjectHelper::qvariant2qobject(variant.toMap(), 
 						     &locationProbability);
 	      qWarning () << locationProbability;

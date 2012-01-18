@@ -15,6 +15,7 @@ HEADERS += \
     ../src/version.h \
     ../src/dbus.h \
     ../src/util.h \
+    ../src/source.h \
     ../src/scanner.h \
     ../src/simpleScanQueue.h
 
@@ -22,6 +23,7 @@ SOURCES += \
     ../src/wsClient.cpp \
     ../src/scanner.cpp \
     ../src/util.cpp \
+    ../src/source.cpp \
     ../src/simpleScanQueue.cpp
 
 unix:LIBS += -L/usr/lib -lqjson
