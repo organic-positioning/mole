@@ -172,8 +172,8 @@ void Scan::serialize(QVariantMap &map) {
   map.insert("readings", readingsList);
 }
 
-void SimpleScanQueue::serialize(QVariantMap &map) {
-  QVariantList list;
+void SimpleScanQueue::serialize(QVariantList &list) {
+  //QVariantList list;
   /*
   for (int i = 0; i < m_currentScan; ++i) {
     QVariantMap map;
@@ -199,7 +199,5 @@ void SimpleScanQueue::serialize(QVariantMap &map) {
       list << map;
     }
   }
-  map["scans"] = list;
-
-
+  //map["scans"] = list;
 }

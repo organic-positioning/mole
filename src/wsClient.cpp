@@ -125,12 +125,12 @@ void WSClient::start() {
 
   // we always send this along, whether or not we are sending scans
   if (m_source.isEmpty()) {
-    m_source = getDataFromDaemon("/source");
+    m_source = getDataFromDaemon("/source").toMap();
 
   }
 
   if (m_request == "bind" || m_request == "query") {
-    m_scans = getDataFromDaemon("/scans");
+    m_scans = getDataFromDaemon("/scans").toList();
     m_requestMap["scans"] = m_scans;
   }
   sendRequest();
@@ -139,13 +139,13 @@ void WSClient::start() {
 //////////////////////////////////////////////////////////
 // Fetch either scans or our uuid from the daemon
 //QByteArray WSClient::getDataFromDaemon(QString request) {
-QVariantMap WSClient::getDataFromDaemon(QString request) {
+QVariant WSClient::getDataFromDaemon(QString request) {
     QTcpSocket socket;
     socket.connectToHost(DEFAULT_LOCAL_HOST, m_localScannerPort);
 
     const int timeout = 5*1000;
     if (!socket.waitForConnected(timeout)) {
-      qFatal("Error connecting to socket: %s\n", qPrintable(socket.errorString()));
+      qFatal("Error connecting to local daemon: %s\n", qPrintable(socket.errorString()));
       exit(-1);
     }
 
@@ -153,7 +153,7 @@ QVariantMap WSClient::getDataFromDaemon(QString request) {
 
     while (socket.bytesAvailable() < (int)sizeof(quint16)) {
       if (!socket.waitForReadyRead(timeout)) {
-	qFatal("Error reading from socket: %s\n", qPrintable(socket.errorString()));
+	qFatal("Error reading from local daemon: %s\n", qPrintable(socket.errorString()));
 	exit(-1);
       }
     }
@@ -164,7 +164,7 @@ QVariantMap WSClient::getDataFromDaemon(QString request) {
 
     QJson::Parser parser;
     bool ok;
-    QVariantMap response = parser.parse (json, &ok).toMap();
+    QVariant response = parser.parse (json, &ok);
     if (!ok) {
       qFatal("Could not parse response from scanner daemon");
     }
@@ -204,7 +204,7 @@ void WSClientSelfScanner::start() {
     // kick off a few local scans, and send them with the request
     // for remote processing
     m_scanner->start();
-    qWarning() << "Waiting for" << m_targetScanCount<<"scan(s)";
+    qWarning() << "Waiting for" << m_targetScanCount << "scan(s)";
   }
 
   if (m_request == "remove") {
@@ -219,7 +219,9 @@ void WSClientSelfScanner::scanCompleted() {
   if (m_scansCompleted >= m_targetScanCount) {
     m_scanner->stop();
     qWarning() << "Finished scanning";
-    m_scanQueue->serialize(m_requestMap);
+    QVariantList list;
+    m_scanQueue->serialize(list);
+    m_requestMap["scans"] = list;
     sendRequest();
   }
 }

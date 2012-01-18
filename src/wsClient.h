@@ -44,13 +44,13 @@ protected:
   QString m_serverUrl;
   int m_localScannerPort;
 
-  QVariantMap m_scans;
+  QVariantList m_scans;
   QVariantMap m_source;
   QVariantMap m_requestMap;
   QNetworkAccessManager *m_networkAccessManager;
   void sendRequest();
   //QByteArray getDataFromDaemon(QString request);
-  QVariantMap getDataFromDaemon(QString request);
+  QVariant getDataFromDaemon(QString request);
 
 public slots:
   void handleResponse();

@@ -167,25 +167,26 @@ void LocalServer::handleRequest()
     QString requestString (request);
     requestString = requestString.simplified();
     qDebug() << "request" << requestString;
-    QVariantMap map;
+
+
+    QJson::Serializer serializer;
 
     if (requestString == "scans" ||
 	requestString == "/scans") {
 
+      QVariantList list;
       qDebug() << "serializing scanQueue";
-      m_scanQueue->serialize(map);
+      m_scanQueue->serialize(list);
+      reply = serializer.serialize(list);
       qDebug() << "serialized scanQueue";
 
     } else if (requestString == "source" ||
 	       requestString == "/source") {
-
+      QVariantMap map;
       serializeSource(map);
+      reply = serializer.serialize(map);
     }
-
-    QJson::Serializer serializer;
-    reply = serializer.serialize(map);
     qDebug() << "serialized reply";
-
   }
   socket->write(reply);
   qDebug () << "wrote reply" << reply;

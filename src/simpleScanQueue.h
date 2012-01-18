@@ -69,7 +69,7 @@ class SimpleScanQueue : public QObject
 
  public:
   SimpleScanQueue(QObject *parent = 0);
-  void serialize(QVariantMap &map);
+  void serialize(QVariantList &list);
 
  public slots:
   void addReading(QString mac, QString ssid, qint16 frequency, qint8 strength);
