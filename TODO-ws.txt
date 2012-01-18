@@ -1,11 +1,11 @@
 Mole Web Service Client and Server TODO
 
 Week of Jan 9:
-- using MT vm and Lenovo
-- get full loop of scanner daemon + mole-ws working, possibly (should)
++ using MT vm and Lenovo
++ get full loop of scanner daemon + mole-ws working, possibly (should)
   work against a local server; currently getting NPE in server; check
   that json send with daemon's scans is the same as without using this.
-  - in process: there is some difference between what 'self-scanning' is sending and what is being sent with the scanner
+
 
 - improve output of query results through new class
 - test accelerometer

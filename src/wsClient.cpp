@@ -26,6 +26,8 @@
 
 #include <qjson/parser.h>
 #include <qjson/serializer.h>
+#include <qjson/qobjecthelper.h>
+#include <qjson/qjson_export.h>
 #include "wsClient.h"
 #include "ports.h"
 #include "version.h"
@@ -232,13 +234,6 @@ void WSClientSelfScanner::scanCompleted() {
 // Send the request to the web service and wait for the response.
 void WSClient::sendRequest() {
   QJson::Serializer serializer;
-
-  // TODO placeholders that describe the client
-  QVariantMap source;
-  //source["key"] = "key1";
-  //source["secret"] = "secret1";
-  //source["device"] = "device1";
-  //source["version"] = MOLE_VERSION;
   m_requestMap["source"] = m_source;
 
   if (!m_container.isEmpty() && !m_poi.isEmpty()) {
@@ -265,6 +260,28 @@ void WSClient::sendRequest() {
 
 //////////////////////////////////////////////////////////
 
+void testObject(const QVariantMap& variant, QObject* object) {
+  QStringList properies;
+  const QMetaObject *metaobject = object->metaObject();
+   int count = metaobject->propertyCount();
+   for (int i=0; i<count; ++i) {
+     QMetaProperty metaproperty = metaobject->property(i);
+     if (metaproperty.isWritable()) {
+       properies << QLatin1String( metaproperty.name());
+       qDebug() << "prop" << QLatin1String( metaproperty.name());
+     }
+   }
+ 
+   QVariantMap::const_iterator iter;
+   for (iter = variant.constBegin(); iter != variant.end(); iter++) {
+     qDebug() << "set?" << iter.key().toAscii();
+     if (properies.contains(iter.key())) {
+       object->setProperty(iter.key().toAscii(), iter.value());
+       qDebug() << "set" << iter.key().toAscii() << "v" << iter.value();
+     }
+   }
+}
+
 void WSClient::handleResponse() {
   QNetworkReply *reply = qobject_cast<QNetworkReply *>(sender());
 
@@ -290,20 +307,37 @@ void WSClient::handleResponse() {
       } else {
 	if (response.contains ("queryResult")) {
 	  QVariant resultList = response["queryResult"];
-	  qWarning () << "queryResult=" << resultList;
-	  /*
-	    QListIterator<QVariant> resIter (resultList);
+	  qDebug () << "queryResult=" << resultList;
+	  int resultCount = 0;
+	  QListIterator<QVariant> resIter (resultList.toList());
 	    while (resIter.hasNext()) {
-	    LocationProbability locProb = (LocationProbability) resIter.next();
-	    qWarning () << locProb;
+	      resultCount++;
+	      QVariant variant = resIter.next();
+	      LocationProbability locationProbability;
+	      //testObject(variant.toMap(), &locationProbability);
+
+	      QJson::QObjectHelper::qvariant2qobject(variant.toMap(), 
+						     &locationProbability);
+	      qWarning () << locationProbability;
 	    }
-	  */
+	    qWarning () << "Finished" << resultCount << "results";
 	}
       }
     }
   }
   reply->deleteLater();
   QCoreApplication::quit();
+}
+
+//////////////////////////////////////////////////////////  
+QDebug operator<<(QDebug dbg, const LocationProbability &lP) {
+  dbg.nospace()
+    << "["
+    << "c=" << lP.location().container()
+    << ",p="<< lP.location().poi()
+    << ",pr="<< lP.probability();
+  dbg.nospace() << "]";
+  return dbg.space();
 }
 
 //////////////////////////////////////////////////////////  
