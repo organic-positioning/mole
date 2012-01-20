@@ -71,8 +71,6 @@ class ScanQueue : public QObject
   ScanQueue(QObject *parent = 0, Localizer *localizer = 0, int maxActiveQueueLength = 0, 
 	    bool recordScans = false);
 
-  bool addReading(QString mac, QString ssid, qint16 frequency, qint8 strength);
-  bool scanCompleted();
   void serialize(QDateTime oldestValidScan, QVariantList &scanList);
   void hibernate(bool goToSleep);
   bool hibernating() { return m_hibernating; }
@@ -80,6 +78,8 @@ class ScanQueue : public QObject
   const int maxActiveQueueLength;
 
  public slots:
+  bool addReading(QString mac, QString ssid, qint16 frequency, qint8 strength);
+  bool scanCompleted();
   void handleMotionChange(Motion motion);
 
  private:

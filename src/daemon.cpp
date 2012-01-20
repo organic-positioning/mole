@@ -50,7 +50,8 @@ Daemon::Daemon(int argc, char *argv[])
 {
   initSettings();
 
-  QString logFilename = DEFAULT_LOG_FILE;
+  char defaultLogFilename[] = DEFAULT_LOG_FILE;
+  char* logFilename = defaultLogFilename;
 
   int port = DEFAULT_LOCAL_PORT;
   bool isDaemon = true;
@@ -75,9 +76,9 @@ Daemon::Daemon(int argc, char *argv[])
         debug = true;
     } else if (arg == "-n") {
         isDaemon = false;
-        logFilename = "";
+        logFilename = NULL;
     } else if (arg == "-l") {
-        logFilename = argsIter.next();
+	logFilename = argsIter.next().toAscii().data();
     } else if (arg == "-s") {
         mapServerURL = argsIter.next();
     } else if (arg == "-f") {
@@ -179,7 +180,7 @@ Daemon::Daemon(int argc, char *argv[])
   m_scanner = 0;
   if (runWiFiScanner) {
     m_scanner = new Scanner(this);
-    connect(m_scanner, SIGNAL(setWiFiDesc(QString)), m_binder, SLOT(handleWiFiDesc(QString)));
+    connect(m_scanner, SIGNAL(setWiFiDesc(QString)), m_binder, SLOT(setWiFiDesc(QString)));
     connect(m_scanner, SIGNAL(addReading(QString,QString,qint16,qint8)),
             m_scanQueue, SLOT(addReading(QString,QString,qint16,qint8)));
     connect(m_scanner, SIGNAL(scanCompleted()), m_scanQueue, SLOT(scanCompleted()));
@@ -195,7 +196,9 @@ Daemon::Daemon(int argc, char *argv[])
 
   connect(this, SIGNAL(aboutToQuit()), SLOT(handle_quit()));
 
-  // TODO don't we need to start the scanner etc?
+  if (runWiFiScanner) {
+    m_scanner->start();
+  }
 
 }
 

@@ -18,22 +18,15 @@
 #ifndef MOLE_DBUS_H_
 #define MOLE_DBUS_H_
 
+
+
 #ifdef Q_OS_SYMBIAN
-
-#endif
-
-// TODO fix this b/c maemo is linux
-// The idea is that we should be able to exclude D-Bus on Linux
-
-#ifdef Q_WS_MAEMO_5
+// Exclude D-Bus on Symbian
+#warning symbian: no d-bus
+#else
 #include <QtDBus>
 #define USE_MOLE_DBUS 1
+//#warning not symbian: using d-bus
 #endif
-
-#ifdef Q_OS_LINUX
-#include <QtDBus>
-#define USE_MOLE_DBUS 1
-#endif
-
 
 #endif /* MOLE_DBUS_H_ */

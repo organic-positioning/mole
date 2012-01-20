@@ -16,6 +16,7 @@
  */
 
 #include "speedsensor.h"
+#include "dbus.h"
 
 bool SpeedSensor::accelerometerExists = true;
 bool SpeedSensor::testedForAccelerometer = false;
@@ -195,6 +196,9 @@ void SpeedSensor::emitMotion(Motion motion)
   QDBusMessage msg = QDBusMessage::createSignal("/", "com.nokia.moled", "MotionEstimate");
   msg << motion;
   QDBusConnection::systemBus().send(msg);
+#warning speedsensor using d-bus
+#else
+#warning speedsensor not using d-bus
 #endif
   qDebug() << "emitMotion" << motion;
 }

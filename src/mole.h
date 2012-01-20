@@ -47,6 +47,6 @@ extern QNetworkAccessManager *networkAccessManager;
 extern QNetworkConfigurationManager *networkConfigurationManager;
 
 void initSettings();
-void initCommon(QObject *parent, QString logFilename);
+void initCommon(QObject *parent, const char* logFilename);
 
 #endif /* MOLE_H_ */

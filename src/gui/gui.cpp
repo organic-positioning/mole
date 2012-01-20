@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
   if (settings->contains("fingerprint_server_url"))
     staticServerURL = settings->value("fingerprint_server_url").toString();
 
-  QString logFilename = "";
+  char* logFilename = NULL;
 
   QStringList args = QCoreApplication::arguments();
   QStringListIterator argsIter(args);
@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     } else if (arg == "-f") {
       staticServerURL = argsIter.next();
     } else if (arg == "-l") {
-      logFilename = argsIter.next();
+      logFilename = argsIter.next().toAscii().data();
     } else {
       usage();
     }

@@ -18,6 +18,7 @@
 #include "proximity.h"
 #include "mole.h"
 #include "settings_access.h"
+#include "dbus.h"
 
 Proximity::Proximity(QObject *parent, Localizer *_localizer)
   : QObject(parent)
@@ -41,6 +42,9 @@ Proximity::Proximity(QObject *parent, Localizer *_localizer)
     (QString(), QString(), 
      "com.nokia.moled", "ProximitySettings", this, SLOT
      (handleProximitySettings (bool,QString)));
+#warning proximity using d-bus
+#else
+#warning proximity not using d-bus
 #endif
 
   connect(&m_updateTimer, SIGNAL(timeout()), this, SLOT(update()));

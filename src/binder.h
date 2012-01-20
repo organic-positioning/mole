@@ -36,12 +36,13 @@ class Binder : public QObject
   ~Binder();
 
   void setLocationEstimate(QString estimatedSpaceName, double estimatedSpaceScore);
-  void setWiFiDesc(QString wiFiDesc);
+
 
  public slots:
   QString handleBindRequest(QString source, QString country, QString region,
                             QString city, QString area, int floor,
                             QString space_name, QString tags);
+  void setWiFiDesc(QString wiFiDesc);
 
  private slots:
   void handleBindResponse();

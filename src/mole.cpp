@@ -34,7 +34,6 @@ QString DEFAULT_ROOT_PATH = "/var/cache/mole";
 QString MOLE_ICON_PATH    = "/usr/share/pixmaps/mole/";
 #endif
 
-//bool debug = false;
 bool verbose = false;
 
 QDir rootDir;
@@ -64,32 +63,6 @@ struct CleanExit{
   }
 };
 
-/*
-void outputHandler(QtMsgType type, const char *msg)
-{
-  switch (type) {
-  case QtDebugMsg:
-    if (debug) {
-      *logStream << QDateTime::currentMSecsSinceEpoch() << " D: " << msg << "\n";
-      logStream->flush();
-    }
-    break;
-  case QtWarningMsg:
-    *logStream << QDateTime::currentMSecsSinceEpoch() << " I: " << msg << "\n";
-    logStream->flush();
-    break;
-  case QtCriticalMsg:
-    *logStream << QDateTime::currentMSecsSinceEpoch() << " C: " << msg << "\n";
-    logStream->flush();
-    break;
-  case QtFatalMsg:
-    *logStream << QDateTime::currentMSecsSinceEpoch() << " F: " << msg << "\n";
-    logStream->flush();
-    abort();
-  }
-}
-*/
-
 void initSettings()
 {
   QCoreApplication::setOrganizationName(MOLE_ORGANIZATION);
@@ -97,7 +70,7 @@ void initSettings()
   QCoreApplication::setApplicationName(MOLE_APPLICATION);
 }
 
-void initCommon(QObject *parent, QString logFilename)
+void initCommon(QObject *parent, const char* logFilename)
 {
   // very basic sanity time check
   QDateTime localtime(QDateTime::currentDateTime());
@@ -125,23 +98,8 @@ void initCommon(QObject *parent, QString logFilename)
     exit(-1);
   }
 
-  /*
-  // Initialize logger
-  if (!logFilename.isEmpty()) {
-    logFile = new QFile(logFilename);
-    if (logFile->open(QFile::WriteOnly | QFile::Append)) {
-      logStream = new QTextStream(logFile);
-    } else {
-      fprintf(stderr, "Could not open log file %s.  Exiting.\n", logFilename.toAscii().data());
-      exit(-1);
-    }
-  } else {
-    logStream = new QTextStream(stderr);
-  }
-  */
-
   // Set up shutdown handler
-  initLogger(logFilename.toAscii().data());
+  initLogger(logFilename);
   CleanExit cleanExit;
   qInstallMsgHandler(outputHandler);
 
@@ -151,5 +109,4 @@ void initCommon(QObject *parent, QString logFilename)
   staticServerURL.trimmed();
   rootPathname.trimmed();
   mapServerURL.trimmed();
-  logFilename.trimmed();
 }

@@ -5,12 +5,14 @@ Week of Jan 9:
 + get full loop of scanner daemon + mole-ws working, possibly (should)
   work against a local server; currently getting NPE in server; check
   that json send with daemon's scans is the same as without using this.
-
-
-- improve output of query results through new class
-- test accelerometer
++ improve output of query results through new class using QJson::QObjectHelper::qvariant2qobject
++ change simpleScanQueue size back to normal
++ improve output of query results through new class
 - test other components (binder, daemon, cli)
-- change simpleScanQueue size back to normal
+  - Leaving off: moled not talking to binder via dbus
+- test accelerometer
+  - Installed QtCreator w/Maemo on MT vm
+- test that fresh compilation works
 - create new maemo and linux packages
 
 Future improvements:

@@ -16,6 +16,7 @@
  */
 
 #include "localizer.h"
+#include "dbus.h"
 
 const qreal ALPHA = 0.20;
 const int maxEmitStatisticsDelay = 10000;
@@ -100,6 +101,10 @@ void LocalizerStats::emitStatistics()
 	   << rankEntries;
 
   QDBusConnection::systemBus().send(statsMsg);
+#warning localizer statistics: using dbus
+#else
+#warning localizer statistics: no dbus
+  qDebug() << Q_FUNC_INFO << "no dbus";
 #endif
 }
 

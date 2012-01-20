@@ -22,6 +22,7 @@
 #include "source.h"
 #include "localizer.h"
 #include "scanQueue.h"
+#include "dbus.h"
 
 #include <QNetworkReply>
 #include <QNetworkRequest>
@@ -76,6 +77,10 @@ Binder::Binder(QObject *parent, Localizer *_localizer, ScanQueue *_scanQueue)
      (handleBindRequest (QString,QString,QString,QString,QString,
 			 int, QString,QString)));
   */
+#warning binder using d-bus
+#else
+#warning binder not using d-bus
+
 #endif
 
   connect(&m_xmitBindTimer, SIGNAL(timeout()), this, SLOT(xmitBind()));
