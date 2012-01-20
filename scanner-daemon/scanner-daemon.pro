@@ -15,7 +15,6 @@ HEADERS += \
     ../src/util.h \
     ../src/source.h \
     ../src/version.h \
-    ../src/dbus.h \
     ../src/scanner.h \
     ../src/speedsensor.h \
     ../src/simpleScanQueue.h

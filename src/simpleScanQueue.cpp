@@ -179,17 +179,22 @@ void Scan::serialize(QVariantMap &map) {
 
 void SimpleScanQueue::serialize(QVariantList &list) {
   // send scans in oldest-to-newest order, omitting m_currentScan
+  int validCount = 0;
   int i = m_currentScan+1;
   if (i == MAX_SCANQUEUE_SCANS)
     i = 0;
   while (i != m_currentScan) {
+    qDebug() << "serialize" << i;
     if (m_scans[i].isValid()) {
+      qDebug() << "serialize valid" << i;
       QVariantMap map;
       m_scans[i].serialize (map);    
       list << map;
+      validCount++;
     }
     i++;
     if (i == MAX_SCANQUEUE_SCANS)
       i = 0;
   }
+  qDebug() << Q_FUNC_INFO << "validCount=" << validCount;
 }

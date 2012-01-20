@@ -168,13 +168,24 @@ QVariant WSClient::getDataFromDaemon(QString request) {
 
     while (socket.bytesAvailable() < (int)sizeof(quint16)) {
       if (!socket.waitForReadyRead(timeout)) {
-	qFatal("Error reading from local daemon: %s\n", qPrintable(socket.errorString()));
+	qFatal("Error reading (1) from local daemon: %s\n", qPrintable(socket.errorString()));
 	exit(-1);
       }
     }
 
-    QByteArray json = socket.readAll();
-    qDebug() << "received" << json;
+    // blocking (and quite trusting) read
+    // server closes the connection after sending the data
+    QByteArray json;
+    while (socket.isOpen()) {
+      QByteArray data = socket.read(4096);
+      if (data.size() == 0) break;
+      json.append(data);
+      qDebug() << "data size=" << data.size();
+      socket.waitForReadyRead(timeout);
+    }
+
+    //QByteArray json = socket.readAll();
+    qDebug() << "received json sized" << json.size();
     socket.close();
 
     QJson::Parser parser;
@@ -257,7 +268,7 @@ void WSClient::sendRequest() {
   }
 
   const QByteArray requestJson = serializer.serialize(m_requestMap);
-  qDebug () << "json" << requestJson;
+  //qDebug () << "json" << requestJson;
 
   QString urlStr = m_serverUrl;
   urlStr.append("/");

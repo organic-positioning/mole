@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+#include <unistd.h>
+
 #include <qjson/serializer.h>
 #include "version.h"
 #include "util.h"
@@ -78,7 +80,8 @@ int main(int argc, char *argv[])
   }
 
   if (isDaemon) {
-    daemonize(APPLICATION_NAME);
+    //daemonize(APPLICATION_NAME);
+    daemon(0,0);
   } else {
     qDebug() << "not daemonizing";
   }
@@ -95,12 +98,14 @@ int main(int argc, char *argv[])
 	       scanQueue, SLOT(addReading(QString,QString,qint16,qint8)));
   app->connect(scanner, SIGNAL(scanCompleted()), scanQueue, SLOT(scanCompleted()));
   
+
   if (SpeedSensor::haveAccelerometer()) {
     SpeedSensor *speedSensor = new SpeedSensor(app);
     app->connect(speedSensor, SIGNAL(hibernate(bool)), scanner, SLOT(handleHibernate(bool)));
     //app->connect(speedSensor, SIGNAL(motionChange(int)), scanQueue, SLOT(handleMotionChange(int)));
     app->connect(speedSensor, SIGNAL(motionChange(Motion)), scanQueue, SLOT(handleMotionChange(Motion)));
   }
+
 
   qWarning() << "Starting" << APPLICATION_NAME
 	     << "debug=" << debug
@@ -110,6 +115,7 @@ int main(int argc, char *argv[])
 
   //app->connect(app, SIGNAL(aboutToQuit()), syncer, SLOT(handleQuit()));
   scanner->start();
+
   return app->exec();
 
 }
@@ -189,7 +195,7 @@ void LocalServer::handleRequest()
     qDebug() << "serialized reply";
   }
   socket->write(reply);
-  //qDebug () << "wrote reply" << reply;
+  qDebug () << "wrote reply sized" << reply.size();
   qDebug() << "handleRequest from port" << socket->peerPort();
   socket->disconnectFromHost();
 }

@@ -34,7 +34,6 @@ QString getUUID() {
       if (i < 3) {
         uuid.append("-");
       }
-      qDebug() << "uuid" << uuid;
     }
     settings.setValue("uuid", uuid);
   }
