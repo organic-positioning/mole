@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 
   QCoreApplication *app = new QCoreApplication(argc, argv);
 
-  bool isDaemon = false;
+  bool isDaemon = true;
   char defaultLogFilename[] = DEFAULT_LOG_FILE;
   char* logFilename = defaultLogFilename;
   int port = DEFAULT_SCANNER_DAEMON_PORT;
@@ -88,7 +88,6 @@ int main(int argc, char *argv[])
 
   qDebug() << "installed msg handler";
 
-
   Scanner *scanner = new Scanner(app);
   SimpleScanQueue *scanQueue = new SimpleScanQueue(app);
   LocalServer *localServer = new LocalServer(app, scanQueue, port);
@@ -99,9 +98,9 @@ int main(int argc, char *argv[])
   if (SpeedSensor::haveAccelerometer()) {
     SpeedSensor *speedSensor = new SpeedSensor(app);
     app->connect(speedSensor, SIGNAL(hibernate(bool)), scanner, SLOT(handleHibernate(bool)));
-    app->connect(speedSensor, SIGNAL(motionChange(int)), scanQueue, SLOT(handleMotionChange(int)));
+    //app->connect(speedSensor, SIGNAL(motionChange(int)), scanQueue, SLOT(handleMotionChange(int)));
+    app->connect(speedSensor, SIGNAL(motionChange(Motion)), scanQueue, SLOT(handleMotionChange(Motion)));
   }
-
 
   qWarning() << "Starting" << APPLICATION_NAME
 	     << "debug=" << debug
@@ -190,7 +189,7 @@ void LocalServer::handleRequest()
     qDebug() << "serialized reply";
   }
   socket->write(reply);
-  qDebug () << "wrote reply" << reply;
+  //qDebug () << "wrote reply" << reply;
   qDebug() << "handleRequest from port" << socket->peerPort();
   socket->disconnectFromHost();
 }

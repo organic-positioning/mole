@@ -72,7 +72,7 @@ void SimpleScanQueue::addReading(QString mac, QString ssid, qint16 frequency, qi
 
 void SimpleScanQueue::scanCompleted()
 {
-  qDebug() << Q_FUNC_INFO << m_currentScan << "entry";
+  qDebug() << Q_FUNC_INFO << m_currentScan;
 
   if (m_seenMacs.isEmpty()) {
     qDebug() << "scanQueue: found no readings";
@@ -101,15 +101,20 @@ void SimpleScanQueue::scanCompleted()
   // reset the data structure for the next incoming scan
   m_scans[m_currentScan].clear();
   emit scanQueueCompleted();
-  qDebug() << Q_FUNC_INFO << m_currentScan << "exit";
 }
 
 void SimpleScanQueue::handleMotionChange(Motion motion) {
   qDebug() << Q_FUNC_INFO << motion;
 
   if (motion == MOVING) {
+    // keep one scan valid
+    int previousScan = m_currentScan-1;
+    if (previousScan < 0) {
+      previousScan = MAX_SCANQUEUE_SCANS-1;
+    }
+
     for (int i = 0; i < MAX_SCANQUEUE_SCANS; i++) {
-      if (i != m_currentScan) {
+      if (i != m_currentScan && i != previousScan) {
 	m_scans[i].clear();
       }
     }
@@ -173,31 +178,18 @@ void Scan::serialize(QVariantMap &map) {
 }
 
 void SimpleScanQueue::serialize(QVariantList &list) {
-  //QVariantList list;
-  /*
-  for (int i = 0; i < m_currentScan; ++i) {
-    QVariantMap map;
-    m_scans[i].serialize (map);    
-    list << map;
-  }
-  */
-
-  int loopCount = 0;
-  // send scans in oldest-to-newest order
-  for (int i = m_currentScan+1; i != m_currentScan; ++i) {
-    qDebug() << "serialize" << i;
-    if (loopCount++ > 100) {
-      qWarning() << "send log of this error to JL";
-      break;
-    }
-    if (i == MAX_SCANQUEUE_SCANS) {
-      i = 0;
-    }
+  // send scans in oldest-to-newest order, omitting m_currentScan
+  int i = m_currentScan+1;
+  if (i == MAX_SCANQUEUE_SCANS)
+    i = 0;
+  while (i != m_currentScan) {
     if (m_scans[i].isValid()) {
       QVariantMap map;
       m_scans[i].serialize (map);    
       list << map;
     }
+    i++;
+    if (i == MAX_SCANQUEUE_SCANS)
+      i = 0;
   }
-  //map["scans"] = list;
 }

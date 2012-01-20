@@ -66,6 +66,10 @@ int main(int argc, char *argv[]) {
       version();
     } else if (arg == "-s") {
       serverUrl = argsIter.next();
+    } else if (arg == "-d") {
+      debug = true;
+    } else if (arg == "-h" || arg == "--help") {
+      usage();
     } else if (arg == "--container" || arg == "-c") {
       container = argsIter.next();
     } else if (arg == "--poi" || arg == "-p") {
@@ -86,6 +90,9 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  initLogger(NULL);
+  qInstallMsgHandler(outputHandler);
+
   if (request.isEmpty()) {
     qWarning() << "Error: no request given";
     usage();
@@ -94,6 +101,11 @@ int main(int argc, char *argv[]) {
   if ( (request == "bind" || request == "remove") &&
        (container.isEmpty() || poi.isEmpty()) ) {
     qWarning() << "Error: container and POI required for 'bind' and 'remove'";
+    usage();
+  }
+
+  if (request == "query" && (!container.isEmpty() || !poi.isEmpty())) {
+    qWarning() << "Error: container or POI given for 'query'";
     usage();
   }
 
@@ -311,8 +323,8 @@ QDebug operator<<(QDebug dbg, const LocationProbability &lP) {
   dbg.nospace()
     << "["
     << "c=" << lP.location().container()
-    << ",p="<< lP.location().poi()
-    << ",pr="<< lP.probability();
+    << ", p="<< lP.location().poi()
+    << ", pr="<< lP.probability();
   dbg.nospace() << "]";
   return dbg.space();
 }
@@ -332,7 +344,8 @@ void usage()
     << "-t scan this many times before sending to remote server\n"
     << "   Otherwise contact scanner daemon for scans\n"
     << "-l Contact scanner daemon on this port (default=" << DEFAULT_SCANNER_DAEMON_PORT << ")\n"
-    << "Bind and Remove require container and poi\n";
+    << "Bind and Remove require container and poi\n"
+    << "-d produce debug output\n";
   exit (-1);
 }
 

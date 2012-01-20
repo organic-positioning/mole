@@ -51,7 +51,8 @@ class SpeedSensor : public QObject, public QAccelerometerFilter
   static bool haveAccelerometer();
  signals:
   void hibernate(bool goToSleep);
-  void motionChange(int motion);
+  //void motionChange(int motion);
+  void motionChange(Motion motion);
 
  private slots:
   // Override of QAcclerometerFilter::filter(QAccelerometerReading*)

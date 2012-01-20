@@ -72,7 +72,7 @@ maemo5 {
     SOURCES += ../src/scanner-maemo.cpp
 }
 
-unix {
+unix:!maemo5 {
 #    INCLUDEPATH += /usr/include/QtMobility
     HEADERS += ../src/scanner-nm.h
     SOURCES += ../src/scanner-nm.cpp

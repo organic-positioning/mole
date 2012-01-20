@@ -9,7 +9,8 @@ Week of Jan 9:
 + change simpleScanQueue size back to normal
 + improve output of query results through new class
 - test other components (binder, daemon, cli)
-  - Leaving off: moled not talking to binder via dbus
+  + Fixed moled not talking to binder via dbus
+- test restarting server after bind
 - test accelerometer
   - Installed QtCreator w/Maemo on MT vm
 - test that fresh compilation works
