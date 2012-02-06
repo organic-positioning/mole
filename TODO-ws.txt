@@ -8,12 +8,12 @@ Week of Jan 9:
 + improve output of query results through new class using QJson::QObjectHelper::qvariant2qobject
 + change simpleScanQueue size back to normal
 + improve output of query results through new class
-- test other components (binder, daemon, cli)
++ test other components (binder, daemon, cli)
   + Fixed moled not talking to binder via dbus
+  + Installed QtCreator w/Maemo on MT vm
+  + Fixed problem when scanner-daemon is daemonized.
 + test restarting server after bind
 - test accelerometer
-  - Installed QtCreator w/Maemo on MT vm
-  - Leaving off: problem when scanner-daemon is daemonized.  Weird socket error.  Seems to be caused by scanner when daemonized??
 - test that fresh compilation works
 - create new maemo and linux packages
 - see publish option in qtcreator
