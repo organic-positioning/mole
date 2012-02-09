@@ -114,7 +114,8 @@ int main(int argc, char *argv[])
 	     << "debug=" << debug
 	      << "isDaemon=" << isDaemon
 	      << "port=" << port
-	      << "logFilename=" << logFilename;
+	      << "logFilename=" << logFilename
+	      << "motionDetection=" << runMovementDetector;
 
   //app->connect(app, SIGNAL(aboutToQuit()), syncer, SLOT(handleQuit()));
   scanner->start();

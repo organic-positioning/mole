@@ -24,6 +24,7 @@ SimpleScanQueue::SimpleScanQueue(QObject *parent)
   : QObject(parent)
   , m_currentScan(0)
 {
+  //segFaultBugFirstTime = true;
   qWarning() << "Creating simpleScanQueue for" 
 	     << MAX_SCANQUEUE_SCANS << "scans and"
 	     << MAX_SCANQUEUE_READINGS << "readings";
@@ -32,6 +33,18 @@ SimpleScanQueue::SimpleScanQueue(QObject *parent)
 
 Scan::Scan() : m_currentReading(0) {
   m_timestamp = QDateTime();
+}
+
+Scan& Scan::operator= (const Scan &scan) {
+  if (this == &scan)
+    return *this;
+
+  m_timestamp = scan.m_timestamp;
+  m_currentReading = scan.m_currentReading;
+  for (int i = 0; i < MAX_SCANQUEUE_READINGS; i++) {
+    m_readings[i] = scan.m_readings[i];
+  }
+  return *this;
 }
 
 void Scan::addReading(QString mac, QString ssid, qint16 frequency, qint8 strength) {
@@ -86,6 +99,7 @@ void SimpleScanQueue::scanCompleted()
   if (previousScan < 0) {
     previousScan = MAX_SCANQUEUE_SCANS-1;
   }
+
   if (m_scans[m_currentScan] == m_scans[previousScan]) {
     qDebug() << "rejecting duplicate scan";
     m_scans[m_currentScan].clear();
@@ -94,6 +108,17 @@ void SimpleScanQueue::scanCompleted()
 
   // mark this scan as valid
   m_scans[m_currentScan].stamp();
+
+  /*
+  if (segFaultBugFirstTime) {
+    for (int i = 0; i < 125; i++) {
+      m_scans[m_currentScan+1] = m_scans[m_currentScan];
+      m_currentScan++;
+    }
+    segFaultBugFirstTime = false;  
+  }
+  */
+
   m_currentScan++;
   if (m_currentScan >= MAX_SCANQUEUE_SCANS) {
     m_currentScan = 0;
@@ -148,12 +173,22 @@ Reading::Reading() : m_mac(), m_ssid(), m_frequency(0), m_strength(0) {
 
 }
 
+Reading& Reading::operator= (const Reading &reading) {
+  if (this == &reading)
+    return *this;
+  m_mac = reading.m_mac;
+  m_ssid = reading.m_ssid;
+  m_frequency = reading.m_frequency;
+  m_strength = reading.m_strength;
+  return *this;
+}
+
 void Reading::set(QString _mac, QString _ssid, qint16 _frequency, qint8 _strength) {
-    m_mac = _mac;
-    m_ssid = _ssid;
-    m_frequency = _frequency;
-    m_strength = _strength;
-  }
+  m_mac = _mac;
+  m_ssid = _ssid;
+  m_frequency = _frequency;
+  m_strength = _strength;
+}
 
 
 void Reading::serialize(QVariantMap &map) {

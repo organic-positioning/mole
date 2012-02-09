@@ -34,6 +34,7 @@ class Reading
 
  public:
   Reading();
+  Reading& operator= (const Reading &reading);
   void serialize(QVariantMap &map);
   void set(QString _mac, QString _ssid, qint16 _frequency, qint8 _strength);
   void clear() { m_mac.clear(); m_ssid.clear(); m_frequency = 0; m_strength = 0; }
@@ -49,6 +50,7 @@ class Scan
 {
  public:
   Scan();
+  Scan& operator= (const Scan &scan);
   void addReading(QString mac, QString ssid, qint16 frequency, qint8 strength);
   void serialize(QVariantMap &map);
   void clear();
@@ -80,11 +82,12 @@ class SimpleScanQueue : public QObject
   void scanQueueCompleted();
 
  private:
-  qint8 m_currentScan;
+  qint16 m_currentScan;
   QSet<QString> m_seenMacs;
 
   Scan m_scans[MAX_SCANQUEUE_SCANS];
 
+  //bool segFaultBugFirstTime;
 };
 
 #endif /* SIMPLESCANQUEUE_H_ */
