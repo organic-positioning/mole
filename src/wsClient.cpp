@@ -347,7 +347,7 @@ void usage()
   qCritical()
     << "mole-ws\n"
     << "--query     (-q)\n"
-    << "--bind      (-d)\n"
+    << "--bind      (-b)\n"
     << "--remove    (-r)\n"
     << "--poi       (-p) string [place of interest within container]\n"
     << "--container (-c) string [name of container] \n"

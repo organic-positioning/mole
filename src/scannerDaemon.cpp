@@ -52,6 +52,7 @@ int main(int argc, char *argv[])
   char defaultLogFilename[] = DEFAULT_LOG_FILE;
   char* logFilename = defaultLogFilename;
   int port = DEFAULT_SCANNER_DAEMON_PORT;
+  bool runMovementDetector = true;
 
   QStringList args = QCoreApplication::arguments();
   {
@@ -67,6 +68,8 @@ int main(int argc, char *argv[])
 	logFilename = NULL;
       } else if (arg == "-l") {
 	logFilename = args_iter.next().toAscii().data();
+      } else if (arg == "--no-accelerometer") {
+        runMovementDetector = false;
       } else if (arg == "-p") {
         port = args_iter.next().toInt();
         if (port <= 0) {
@@ -99,7 +102,7 @@ int main(int argc, char *argv[])
   app->connect(scanner, SIGNAL(scanCompleted()), scanQueue, SLOT(scanCompleted()));
   
 
-  if (SpeedSensor::haveAccelerometer()) {
+  if (runMovementDetector && SpeedSensor::haveAccelerometer()) {
     SpeedSensor *speedSensor = new SpeedSensor(app);
     app->connect(speedSensor, SIGNAL(hibernate(bool)), scanner, SLOT(handleHibernate(bool)));
     //app->connect(speedSensor, SIGNAL(motionChange(int)), scanQueue, SLOT(handleMotionChange(int)));
@@ -127,7 +130,8 @@ void usage() {
 	      << "-d debug\n"
 	      << "-n run in foreground (do not daemonize)\n"
 	      << "-p port [" << DEFAULT_SCANNER_DAEMON_PORT << "]\n"
-	      << "-l log file [" << DEFAULT_LOG_FILE << "]\n";
+	      << "-l log file [" << DEFAULT_LOG_FILE << "]\n"
+              << "--no-accelerometer turn off movement detection\n";
   qCritical() << "version" << MOLE_VERSION;
   exit(0);
 }

@@ -13,10 +13,12 @@ Week of Jan 9:
   + Installed QtCreator w/Maemo on MT vm
   + Fixed problem when scanner-daemon is daemonized.
 + test restarting server after bind
++ test that fresh compilation works
+  + tested only on ubuntu, 
++ see publish option in qtcreator
+  + unsuccessful due to qt creator not seeming to work properly; aborting
 - test accelerometer
-- test that fresh compilation works
 - create new maemo and linux packages
-- see publish option in qtcreator
 
 Future improvements:
 - scale/normalize score provided in query results
@@ -26,3 +28,9 @@ If desired:
 - improve the persistence of the db
 - server does pre-screening of containers based on mac union
 - use device type to segment scans
+
+Potential problem when comparing a room with a bind with many scans to one with few.
+Let device build up 15 scans in room 313 (current scan queue size).  Did bind with two scans in 311 (on empty database).
+For device in 311, result is now:
+[c="4CC", p="313", pr=0.00293387]
+

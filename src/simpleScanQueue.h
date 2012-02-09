@@ -25,7 +25,7 @@
 //const int MAX_SCANQUEUE_SCANS = 2;
 
 const int MAX_SCANQUEUE_READINGS = 50;
-const int MAX_SCANQUEUE_SCANS = 15;
+const int MAX_SCANQUEUE_SCANS = 200;
 
 
 class Reading
