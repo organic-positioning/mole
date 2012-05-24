@@ -103,7 +103,7 @@ bool ScanQueue::addReading(QString mac, QString ssid, qint16 frequency, qint8 st
 
 bool ScanQueue::scanCompleted()
 {
-  qDebug() << "sQ scanCompleted" << m_currentScan;
+  qDebug() << Q_FUNC_INFO << "index=" << m_currentScan;
 
   m_currentReading = 0;
 
@@ -117,7 +117,7 @@ bool ScanQueue::scanCompleted()
 
   m_seenMacs.clear();
 
-  qDebug() << "scanSize previous" << previousSeenMacsSize << "current" << m_seenMacsSize;
+  qDebug() << Q_FUNC_INFO << "scanSize previous" << previousSeenMacsSize << "current" << m_seenMacsSize;
 
 
   // Check for duplicate scans.
@@ -342,7 +342,7 @@ APDesc* ScanQueue::getAP(QString mac, QString ssid, qint16 frequency)
 
 void ScanQueue::handleMotionChange(Motion motion)
 {
-  qDebug() << "localizer got speed estimate" << motion;
+  qDebug() << Q_FUNC_INFO << "motion=" << motion;
 
   if (motion == MOVING) {
     m_movementDetected = true;

@@ -29,8 +29,7 @@ If desired:
 - server does pre-screening of containers based on mac union
 - use device type to segment scans
 
-Potential problem when comparing a room with a bind with many scans to one with few.
-Let device build up 15 scans in room 313 (current scan queue size).  Did bind with two scans in 311 (on empty database).
-For device in 311, result is now:
-[c="4CC", p="313", pr=0.00293387]
-
+- Server Upgrades
+  - http://download.eclipse.org/jetty/
+  - consider switching from Gson to Jackson
+  - Hide latency of talking to Dynamo by checking json serialization and then returning OK to client.

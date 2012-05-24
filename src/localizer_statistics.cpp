@@ -33,6 +33,7 @@ void LocalizerStats::logStatistics()
 }
 
 void LocalizerStats::clearAfterWalkDetection() {
+  qDebug() << Q_FUNC_INFO;
   m_scanQueueSize = 0;
   m_macsSeenSize = 0;
   m_totalAreaCount = 0;
@@ -58,10 +59,12 @@ void LocalizerStats::emitStatistics()
     m_emitNewLocationSec = 0;
   }
 
-  qDebug() << "emit_statistics "
+  qDebug() << Q_FUNC_INFO
            << "network_success_rate " << m_networkSuccessRate
            << "emit_new_location_sec " << m_emitNewLocationSec
-           << "scan_rate_ms " << m_scanRateSec;
+           << "scan_rate_ms " << m_scanRateSec
+	   << "scanQueueSize" << m_scanQueueSize
+	   << "currentMotion" << m_currentMotion;
 
   QString empty = "";
 

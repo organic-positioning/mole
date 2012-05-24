@@ -1,6 +1,6 @@
 /*
  * Mole - Mobile Organic Localisation Engine
- * Copyright 2010 Nokia Corporation.
+ * Copyright 2010-2012 Nokia Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,7 +49,7 @@ Scanner::~Scanner()
 
 void Scanner::handleHibernate(bool goToSleep)
 {
-  qDebug () << "Scanner handleHibernate" << goToSleep;
+  qDebug () << Q_FUNC_INFO << "hibernate=" << goToSleep;
   m_hibernating = goToSleep;
   if (goToSleep) {
     // stop scanning now

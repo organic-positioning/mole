@@ -1,6 +1,6 @@
 /*
  * Mole - Mobile Organic Localisation Engine
- * Copyright 2010-2011 Nokia Corporation.
+ * Copyright 2010-2012 Nokia Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -885,6 +885,7 @@ void Localizer::loudMac(QString &loudMacA, QString &loudMacB)
 }
 
 void Localizer::handleMotionChange(Motion currentMotion) { 
+  qDebug() << Q_FUNC_INFO << "motion=" << currentMotion;
     m_stats->setCurrentMotion(currentMotion);
     if (currentMotion == MOVING) {
       m_stats->clearAfterWalkDetection();
@@ -895,7 +896,7 @@ void Localizer::handleMotionChange(Motion currentMotion) {
 
 void Localizer::handleHibernate(bool goToSleep)
 {
-  qDebug () << "Localizer handleHibernate" << goToSleep;
+  qDebug () << Q_FUNC_INFO << "hibernate=" << goToSleep;
   m_hibernating = goToSleep;
   m_stats->handleHibernate(goToSleep);
 }

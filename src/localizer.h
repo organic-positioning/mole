@@ -149,7 +149,7 @@ class LocalizerStats : public QObject
   void setPotentialSpaceCount(int v) { m_potentialSpaceCount = v; }
   void setCurrentMotion(Motion motion) { m_currentMotion = motion; }
   void clearAfterWalkDetection();
-  void handleHibernate(bool goToSleep);
+  void handleMotionChange(Motion currentMotion);
 
   void clearRankEntries();
   void addRankEntry(QString space, double score);
@@ -157,6 +157,7 @@ class LocalizerStats : public QObject
 
  public slots:
   void emitStatistics();
+  void handleHibernate(bool goToSleep);
 
  private:
   QTimer *m_logTimer;
@@ -217,7 +218,7 @@ public:
   QMap<QString,APDesc*> *fingerprint() const { return m_fingerprint; }
   void replaceFingerprint(QMap<QString,APDesc*> *newFP);
 
-  void handleMotionChange(Motion currentMotion);
+
 
   void queryCurrentEstimate(QString&, QString&, QString&, QString&,
                             QString&, QString&, int&, double&);
@@ -233,6 +234,7 @@ public:
 
  public slots:
   void handleHibernate(bool goToSleep);
+  void handleMotionChange(Motion currentMotion);
   //void positionUpdated(QGeoPositionInfo geoPositionInfo);
 
 private:

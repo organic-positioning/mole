@@ -190,8 +190,12 @@ Daemon::Daemon(int argc, char *argv[])
   if (runMovementDetector && SpeedSensor::haveAccelerometer()) {
     m_speedSensor = new SpeedSensor(this);
     connect(m_speedSensor, SIGNAL(hibernate(bool)), m_scanner, SLOT(handleHibernate(bool)));
-    connect(m_speedSensor, SIGNAL(motionChange(int)), m_scanQueue, SLOT(handleMotionChange(int)));
     connect(m_speedSensor, SIGNAL(hibernate(bool)), m_localizer, SLOT(handleHibernate(bool)));
+
+    connect(m_speedSensor, SIGNAL(motionChange(Motion)), m_localizer, SLOT(handleMotionChange(Motion)));
+    connect(m_speedSensor, SIGNAL(motionChange(Motion)), m_scanQueue, SLOT(handleMotionChange(Motion)));
+
+
   }
 
   connect(this, SIGNAL(aboutToQuit()), SLOT(handle_quit()));

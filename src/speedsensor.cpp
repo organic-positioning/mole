@@ -182,7 +182,7 @@ void SpeedSensor::emitMotion(Motion motion)
     m_hibernateTimer.stop();
     m_lastHibernateMessage = false;
     emit hibernate(false);
-    //m_scanQueue->hibernate(false);
+    qDebug () << Q_FUNC_INFO << "emit hibernate false";
   } else {
     if (!m_lastHibernateMessage) {
       if (!m_hibernateTimer.isActive()) {
@@ -191,25 +191,28 @@ void SpeedSensor::emitMotion(Motion motion)
     }
   }
 
+  qDebug() << Q_FUNC_INFO << "motion=" << motion;
+
   emit motionChange(motion);
 #ifdef USE_MOLE_DBUS
   QDBusMessage msg = QDBusMessage::createSignal("/", "com.nokia.moled", "MotionEstimate");
   msg << motion;
   QDBusConnection::systemBus().send(msg);
+  qDebug() << Q_FUNC_INFO << "dbus sent motion=" << motion;
 #warning speedsensor using d-bus
 #else
 #warning speedsensor not using d-bus
+  qDebug() << Q_FUNC_INFO << "dbus off";
 #endif
-  qDebug() << "emitMotion" << motion;
+
 }
 
 void SpeedSensor::handleHibernateTimeout()
 {
-  qDebug () << "SpeedSensor handleHibernateTimeout";
+  qDebug () << Q_FUNC_INFO << "emit hibernate true";
   m_hibernateTimer.stop();
   m_lastHibernateMessage = true;
   emit hibernate(true);
-  //m_scanQueue->hibernate(true);
 }
 
 void SpeedSensor::shutdown()

@@ -404,7 +404,7 @@ void BinderGUI::onAboutClicked()
   QString about = "<h2>Organic Indoor Positioning ";
   about.append (MOLE_VERSION);
   about.append ("</h2>");
-  about.append ("<p>Copyright &copy; 2011 Nokia Inc.");
+  about.append ("<p>Copyright &copy; 2012 Nokia Inc.");
   about.append ("<p>Organic Indoor Positioning is a joint development from Massachusetts Institute of Technology and Nokia Research.");
   about.append ("<p>Help grow Organic Indoor Positioning by <b>binding</b> your current location. "
        "Each bind links the name you pick with a WiFi signature.  When other Organic Indoor "
