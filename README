@@ -21,3 +21,5 @@ A second major difference between the on-device and web-services components is t
 While both sets of components use the same algorithm to localize, they use different databases because of this schema change.  The on-device component is probably more informative because of the diagnostic information that the GUI provides, such as whether the user is moving and the number of scans being used to localize at the moment.  The GUI also allows you to easily see the score of all of the rooms being evaluated and to see other devices nearby you if they have proximity turned on.
 
 More directions are here: https://projects.developer.nokia.com/mole/wiki
+
+For a click-to-install Maemo N900 link, go here: http://mole.research.nokia.com/
