@@ -20,6 +20,7 @@
 
 bool SpeedSensor::accelerometerExists = true;
 bool SpeedSensor::testedForAccelerometer = false;
+bool SpeedSensor::HibernateWhenInactive = false;
 
 SpeedSensor::SpeedSensor(QObject* parent,
                          int _samplingPeriod, int _dutyCycle,
@@ -181,8 +182,10 @@ void SpeedSensor::emitMotion(Motion motion)
   if (motion == MOVING) {
     m_hibernateTimer.stop();
     m_lastHibernateMessage = false;
-    emit hibernate(false);
-    qDebug () << Q_FUNC_INFO << "emit hibernate false";
+    if (HibernateWhenInactive) {
+      emit hibernate(false);
+      qDebug () << Q_FUNC_INFO << "emit hibernate false";
+    }
   } else {
     if (!m_lastHibernateMessage) {
       if (!m_hibernateTimer.isActive()) {
@@ -209,10 +212,12 @@ void SpeedSensor::emitMotion(Motion motion)
 
 void SpeedSensor::handleHibernateTimeout()
 {
-  qDebug () << Q_FUNC_INFO << "emit hibernate true";
+  if (HibernateWhenInactive) {
+    emit hibernate(true);
+    qDebug () << Q_FUNC_INFO << "emit hibernate true";
+  }
   m_hibernateTimer.stop();
   m_lastHibernateMessage = true;
-  emit hibernate(true);
 }
 
 void SpeedSensor::shutdown()

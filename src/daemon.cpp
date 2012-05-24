@@ -95,6 +95,8 @@ Daemon::Daemon(int argc, char *argv[])
         recordScans = true;
     } else if (arg == "-A") {
       runAllAlgorithms = true;
+    } else if (arg == "-H") {
+      SpeedSensor::HibernateWhenInactive = true;
     } else {
         usage();
     }
@@ -316,6 +318,7 @@ void usage()
               << "--no-accelerometer turn off movement detection\n"
               << "--no-wifi turn off wifi scanner\n"
               << "-S record all scans to log file\n"
+              << "-H hibernate when accelerometer detects idleness\n"
               << "-A run all localization algorithms for comparison\n";
 
   exit(0);

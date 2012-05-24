@@ -49,10 +49,13 @@ class SpeedSensor : public QObject, public QAccelerometerFilter
 
   void shutdown();
   static bool haveAccelerometer();
+  static bool HibernateWhenInactive;
+
  signals:
   void hibernate(bool goToSleep);
   //void motionChange(int motion);
   void motionChange(Motion motion);
+
 
  private slots:
   // Override of QAcclerometerFilter::filter(QAccelerometerReading*)
@@ -62,6 +65,7 @@ class SpeedSensor : public QObject, public QAccelerometerFilter
   void handleTimeout();
   void handleHibernateTimeout();
   void emitMotion(Motion motion);
+
 
  private:
   bool m_lastHibernateMessage;
@@ -79,6 +83,7 @@ class SpeedSensor : public QObject, public QAccelerometerFilter
 
   static bool testedForAccelerometer;
   static bool accelerometerExists;
+
 
 };
 
